@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<!-- ============================================================
+  日历待办工具 · UI 契约原型
+  - 定位：开发前的 UI 契约，用户确认后作为开发基准
+  - 单文件零依赖，双击浏览器即可演示
+  - 纪律：只保留最新确认态；配色/间距用 CSS 变量集中定义（可搬为设计 token）
+  - 演示已实现：标签页切换、周/月切换、前后导航、事项增/改/删与日历⇄待办动态迁移、
+    日历格 hover「+」快捷新建（总览可新增、弹窗选分类）、待办分组折叠、+N 浮层、分类增删改/改色、字段管理界面
+  - 演示未实现（正式版按文档实现）：撤销栈（10 步）、类型转换矩阵的实际数据迁移、
+    备份导入导出、持久化（刷新即还原演示数据）
+============================================================ -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>日历待办工具 · 交互原型</title>
+<style>
+:root{
+  /* 演示用基础色（PRD 4.1 色盘为 11×6，选色面板见下方 .pal-grid）——开发阶段直接搬为设计 token */
+  --c1:#4F8EF7;--c2:#34B96F;--c3:#F5A623;--c4:#E5534B;--c5:#9B59B6;
+  --c6:#00B8D4;--c7:#FF7EB6;--c8:#8D6E63;--c9:#607D8B;--c10:#9E9E9E;
+  --bg:#f4f5f7;--panel:#ffffff;--border:#e3e6ea;--text:#2b2f36;--muted:#8a919c;
+  --accent:#4F8EF7;--danger:#E5534B;
+  --radius:8px;--shadow:0 8px 28px rgba(30,40,60,.16);
+  --bar-h:20px;--lane-step:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font:13px/1.5 "Segoe UI","Microsoft YaHei",system-ui,sans-serif;color:var(--text);background:var(--bg);min-width:1080px}
+button{font:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font:inherit;color:inherit}
+
+/* ===== 顶部演示横幅 ===== */
+.banner{height:32px;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:#FFF7E0;border-bottom:1px solid #f0e2b6;color:#8a6d1a;font-size:12px}
+
+/* ===== 三栏骨架 ===== */
+.app{display:flex;height:calc(100vh - 32px)}
+/* 左：标签栏 */
+.tabbar{width:160px;flex:none;background:var(--panel);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;padding:8px 6px;gap:2px}
+.tab{display:flex;align-items:center;gap:7px;width:100%;padding:8px 8px;border-radius:6px;
+  text-align:left;color:var(--text);position:relative}
+.tab:hover{background:#f0f3f8}
+.tab.active{background:#e8f0fe;font-weight:600}
+.tab.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent)}
+.tab .dotc{width:9px;height:9px;border-radius:3px;flex:none}
+.tab .tname{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab .more{display:none;width:20px;height:20px;line-height:18px;text-align:center;border-radius:4px;color:var(--muted);flex:none}
+.tab:hover .more{display:block}
+.tab .more:hover{background:#dde4ee;color:var(--text)}
+.tab-fixed-top{order:0}
+.tab-fixed-bottom{margin-top:auto}
+.tabbar .divider{height:1px;background:var(--border);margin:6px 4px}
+.btn-newcat{margin:4px 0 0;padding:6px 8px;border:1px dashed var(--border);border-radius:6px;color:var(--muted);text-align:left}
+.btn-newcat:hover{color:var(--accent);border-color:var(--accent)}
+/* 中：主区 */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.toolbar{height:50px;flex:none;display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.toolbar .title{font-size:15px;font-weight:600;margin-right:6px;cursor:pointer}
+.toolbar .title:hover{color:var(--accent)}
+.tbtn{height:28px;padding:0 10px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text)}
+.tbtn:hover{border-color:var(--accent);color:var(--accent)}
+.tbtn.icon{width:28px;padding:0}
+.seg{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.seg button{height:26px;padding:0 12px;background:#fff;color:var(--muted)}
+.seg button.on{background:var(--accent);color:#fff}
+.tag{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:10px;padding:1px 8px;background:#fafbfc}
+.spacer{flex:1}
+.btn-primary{height:30px;padding:0 14px;border-radius:6px;background:var(--accent);color:#fff;font-weight:600}
+.btn-primary:hover{filter:brightness(1.06)}
+.btn-ghost{height:30px;padding:0 12px;border-radius:6px;border:1px solid var(--border);background:#fff}
+.btn-danger{height:30px;padding:0 12px;border-radius:6px;background:var(--danger);color:#fff}
+/* 日历 */
+.content{flex:1;display:flex;min-height:0}
+.calwrap{flex:1;overflow:auto;background:var(--panel);margin:10px;border:1px solid var(--border);border-radius:var(--radius)}
+.calhead{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);background:#fafbfc;position:sticky;top:0;z-index:3}
+.calhead div{padding:6px 8px;font-size:12px;color:var(--muted);text-align:center}
+.weekrow{position:relative;display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border)}
+.weekrow:last-child{border-bottom:none}
+.daycell{position:relative;border-right:1px solid var(--border);min-height:118px}
+.daycell:nth-child(7){border-right:none}
+.daycell .dnum{position:absolute;top:4px;left:8px;font-size:12px;color:var(--text);z-index:1}
+.daycell.other .dnum{color:#c3c9d1}
+.daycell.today{background:#eaf3ff}
+.daycell.today .dnum{color:var(--accent);font-weight:700}
+.barlayer{position:absolute;inset:0;z-index:2;pointer-events:none}
+.bar{position:absolute;height:var(--bar-h);border-radius:3px;color:#fff;font-size:12px;
+  display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;pointer-events:auto;cursor:pointer;
+  text-shadow:0 1px 1px rgba(0,0,0,.18)}
+.bar:hover{filter:brightness(1.08)}
+.morechip{position:absolute;bottom:4px;right:6px;z-index:3;font-size:11px;color:var(--accent);
+  background:#eaf3ff;border-radius:8px;padding:0 7px;cursor:pointer}
+.morechip:hover{background:#d8e9ff}
+.celladd{position:absolute;top:3px;right:6px;z-index:4;width:18px;height:18px;line-height:15px;text-align:center;border-radius:50%;background:#fff;border:1px solid var(--border);color:var(--accent);font-size:14px;font-weight:700;cursor:pointer;opacity:0;transition:opacity .12s;pointer-events:auto;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.daycell:hover .celladd{opacity:1}
+.celladd:hover{background:#e8f0fe;border-color:var(--accent)}
+/* 右：待办 */
+.todo{width:280px;flex:none;background:var(--panel);border-left:1px solid var(--border);margin:10px 10px 10px 0;
+  border-radius:var(--radius);display:flex;flex-direction:column;min-height:0}
+.todo h3{font-size:13px;padding:10px 12px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600}
+.tlist{flex:1;overflow:auto;position:relative;padding:4px 12px 12px 30px}
+.tlist::before{content:'';position:absolute;left:14px;top:12px;bottom:12px;width:2px;background:var(--border);border-radius:2px}
+.thead{position:relative;display:flex;align-items:center;gap:8px;padding:9px 6px;cursor:pointer;border-radius:6px;user-select:none}
+.thead:hover{background:#f4f6fa}
+.thead .dot{position:absolute;left:-20px;width:10px;height:10px;border:2px solid #98a1ac;border-radius:50%;background:#fff;z-index:1}
+.thead .tlabel{font-weight:600;font-size:12px}
+.thead .tcount{font-size:11px;color:var(--muted)}
+.thead .chev{margin-left:auto;color:var(--muted);transition:transform .15s}
+.tgroup.collapsed .chev{transform:rotate(-90deg)}
+.tgroup.collapsed .tbody{display:none}
+.titem{position:relative;background:var(--c9);color:#fff;border-radius:8px;padding:5px 9px;margin:5px 0;
+  font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 1px rgba(0,0,0,.18)}
+.titem:hover{filter:brightness(1.08)}
+.tempty{color:var(--muted);font-size:12px;padding:14px 6px;text-align:center}
+
+/* ===== 弹窗 ===== */
+.overlay{position:fixed;inset:0;background:rgba(24,30,40,.45);display:flex;align-items:center;justify-content:center;z-index:50}
+.overlay.top{z-index:60}
+.dialog{background:var(--panel);border-radius:12px;box-shadow:var(--shadow);width:520px;max-width:92vw;max-height:88vh;display:flex;flex-direction:column}
+.dialog.small{width:380px}
+.dhead{display:flex;align-items:center;padding:14px 16px 10px;font-size:15px;font-weight:600}
+.dhead .x{margin-left:auto;width:26px;height:26px;border-radius:6px;color:var(--muted);text-align:center;line-height:24px}
+.dhead .x:hover{background:#f0f3f8}
+.dbody{padding:4px 16px 8px;overflow:auto}
+.dfoot{display:flex;justify-content:flex-end;gap:8px;padding:10px 16px 14px}
+.frow{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.frow>label{width:76px;flex:none;color:var(--muted);font-size:12px}
+.frow input[type=text],.frow input[type=number],.frow input[type=date],.frow input[type=time],.frow select,.frow textarea{
+  flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:#fff;min-width:0}
+.frow textarea{min-height:56px;resize:vertical}
+.frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
+/* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
+input[type=date]::-webkit-calendar-picker-indicator,
+input[type=time]::-webkit-calendar-picker-indicator{display:none}
+.ferr{color:var(--danger);font-size:12px;padding:0 0 6px 86px;display:none}
+.ferr.show{display:block}
+.fsec{border-top:1px dashed var(--border);margin:12px 0 10px;padding-top:10px}
+.fsec .sec-t{font-size:12px;color:var(--muted);margin-bottom:8px}
+.fv-multi{display:flex;flex-wrap:wrap;gap:6px 12px;flex:1}
+.fv-multi label{display:flex;align-items:center;gap:4px;color:var(--text);font-size:12px;width:auto}
+/* 确认框 */
+.cbody{padding:6px 16px 2px;color:var(--text);font-size:13px;line-height:1.7}
+.cbody .sub{color:var(--muted);font-size:12px}
+/* 弹出菜单 */
+.popmenu{position:fixed;z-index:70;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);
+  padding:4px;min-width:120px}
+.popmenu button{display:block;width:100%;text-align:left;padding:7px 10px;border-radius:6px;color:var(--text)}
+.popmenu button:hover{background:#f0f3f8}
+.popmenu button.danger{color:var(--danger)}
+.popmenu .pm-title{font-size:11px;color:var(--muted);padding:4px 10px 2px}
+.palette{position:fixed;z-index:70;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:10px}
+.pal-grid{display:grid;grid-template-columns:repeat(11,1fr);gap:5px}
+.palette .sw{width:20px;height:20px;border-radius:4px;cursor:pointer;border:1px solid rgba(0,0,0,.08)}
+.palette .sw.sel{outline:2px solid var(--accent);outline-offset:1px}
+.palette .sw:hover{transform:scale(1.18)}
+.more-colors{margin-top:8px;width:100%;border:1px solid var(--border);border-radius:6px;padding:5px 0;color:var(--muted)}
+.more-colors:hover{color:var(--accent);border-color:var(--accent)}
+.pick{position:fixed;z-index:70;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);padding:10px;width:264px}
+.pk-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.pk-head b{font-size:13px}
+.pk-nav{width:24px;height:24px;border-radius:4px;color:var(--muted);text-align:center;line-height:22px}
+.pk-nav:hover{background:#f0f3f8;color:var(--text)}
+.pk-dow{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px}
+.pk-dow span{font-size:11px;color:var(--muted);text-align:center}
+.pk-weekrow{display:grid;grid-template-columns:repeat(7,1fr);border-radius:6px;cursor:pointer}
+.pk-weekrow:hover{background:#f0f4fb}
+.pk-weekrow.sel{background:#e8f0fe}
+.pk-weekrow button{height:26px;font-size:12px;color:var(--text);border-radius:4px;position:relative}
+.pk-weekrow button.dim{color:#c3c9d1}
+.pk-weekrow button.today::after{content:'';position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.pk-months{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:4px}
+.pk-months button{height:30px;border-radius:6px;border:1px solid var(--border);color:var(--text);background:#fff}
+.pk-months button:hover{border-color:var(--accent);color:var(--accent)}
+.pk-months button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+/* 字段管理 */
+.fm-row{display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid #f0f2f5}
+.fm-row .fname{flex:1;font-weight:600}
+.fm-row .ftype{color:var(--muted);font-size:12px;width:64px}
+.fm-row .fopt{color:var(--muted);font-size:12px;width:56px}
+.fm-row .op{width:24px;height:24px;border-radius:5px;color:var(--muted);text-align:center;line-height:22px}
+.fm-row .op:hover{background:#eef2f8;color:var(--text)}
+.fm-row .op.dis{opacity:.3;pointer-events:none}
+.fm-form{border:1px solid var(--border);border-radius:8px;padding:10px;margin:10px 0}
+/* 设置 */
+.set-wrap{display:flex;min-height:300px}
+.set-tabs{width:150px;border-right:1px solid var(--border);padding:8px 6px}
+.set-tabs button{display:flex;align-items:center;gap:6px;width:100%;text-align:left;padding:8px 10px;border-radius:6px;color:var(--text)}
+.set-tabs button.on{background:#e8f0fe;font-weight:600}
+.set-tabs button.dis{color:#b9c0c9;cursor:not-allowed}
+.set-tabs .badge{font-size:10px;background:#eef1f5;color:var(--muted);border-radius:8px;padding:0 6px}
+.set-body{flex:1;padding:14px 16px}
+.set-body .note{color:var(--muted);font-size:12px;line-height:1.8;margin-top:10px}
+/* 浮层（+N） */
+.daylist .dl-row{display:flex;align-items:center;gap:8px;padding:8px 6px;border-radius:6px;cursor:pointer}
+.daylist .dl-row:hover{background:#f0f3f8}
+.daylist .dotc{width:10px;height:10px;border-radius:3px;flex:none}
+/* Toast */
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:99;display:flex;flex-direction:column;gap:6px;align-items:center}
+.toast{background:#2c313a;color:#fff;border-radius:8px;padding:8px 16px;font-size:12px;box-shadow:var(--shadow);opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:#d4d9e0;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="banner">⚠ 交互原型 —— 页面与数据均为演示用途，与正式版无关；确认后的布局、配色与交互将作为开发契约</div>
+
+<div class="app">
+  <!-- 左：标签栏 -->
+  <div class="tabbar" id="tabbar"></div>
+
+  <!-- 中：日历区 -->
+  <div class="main">
+    <div class="toolbar" id="toolbar"></div>
+    <div class="content">
+      <div class="calwrap" id="cal"></div>
+      <!-- 右：待办区 -->
+      <div class="todo">
+        <h3>待办</h3>
+        <div class="tlist" id="todolist"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="modal-root"></div>
+<div id="confirm-root"></div>
+<div id="menu-root"></div>
+<div id="toast"></div>
+
+<script>
+/* ================= 基础数据 ================= */
+/* 飞书式色盘（PRD 4.1 v1.3）：11 列 × 6 行；第 1 行=第 4 行；第 2~6 行每列由浅到深、同列同色系 */
+const HUES=[['灰',0,0],['红',4,80],['橙',28,94],['黄',48,96],['绿',135,62],['青',185,82],['蓝',217,92],['紫',262,68],['品红',300,74],['粉',335,88],['棕',22,46]];
+const ROW_L=[55,86,70,55,38,24];
+function hsl2hex(h,s,l){s/=100;l/=100;
+  const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),
+  f=n=>{const v=l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return Math.round(255*v).toString(16).padStart(2,'0')};
+  return '#'+f(0)+f(8)+f(4)}
+const PAL_ROWS=ROW_L.map(l=>HUES.map(([,h,s])=>hsl2hex(h,s,l)));
+const STD_ROW=PAL_ROWS[3]; // 标准行（第 4 行）：新建分类的默认色取此行中使用最少的颜色
+function leastUsedColor(){
+  const used={};state.categories.forEach(c=>used[c.color.toLowerCase()]=(used[c.color.toLowerCase()]||0)+1);
+  let best=STD_ROW[0],min=1e9;
+  STD_ROW.forEach(c=>{const u=used[c]||0;if(u<min){min=u;best=c}});
+  return best;
+}
+function hexRgb(h){return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16))}
+function rgbHex(r,g,b){return '#'+[r,g,b].map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join('')}
+const TODAY='2026-08-31';                 // 演示锚定日期（周一）
+const OVERVIEW='overview';
+let catSeq=6, itemSeq=100, fSeq=50;
+
+const state={
+  view:'month',
+  cursor:TODAY,
+  activeTab:OVERVIEW,
+  categories:[
+    {id:1,name:'生活',color:'#34B96F',kind:'normal'},
+    {id:2,name:'工作',color:'#4F8EF7',kind:'normal'},
+    {id:3,name:'娱乐',color:'#F5A623',kind:'normal'},
+    {id:4,name:'学习',color:'#9B59B6',kind:'normal'},
+    {id:5,name:'未分类',color:'#9E9E9E',kind:'uncategorized'},
+  ],
+  fields:{
+    1:[{id:11,name:'花费',type:'number',options:null,sort:1},
+       {id:12,name:'类别',type:'multi_choice',options:['家庭','健康','购物','旅行'],sort:2},
+       {id:13,name:'详细记录',type:'multiline',options:null,sort:3}],
+    2:[{id:21,name:'项目',type:'text',options:null,sort:1},
+       {id:22,name:'工时',type:'number',options:null,sort:2},
+       {id:23,name:'优先级',type:'single_choice',options:['高','中','低'],sort:3}],
+    4:[{id:41,name:'来源',type:'single_choice',options:['B站','书籍','播客'],sort:1},
+       {id:42,name:'计划完成',type:'date',options:null,sort:2}],
+  },
+  items:[
+    {id:1,cat:2,title:'Q3 季度汇报材料撰写',desc:'汇总三个产品线数据',sd:'2026-08-31',st:'',ed:'2026-09-02',et:'',dd:'',dt:'',fv:{21:'Q3 OKR',22:'6',23:'高'}},
+    {id:2,cat:2,title:'版本发布检查清单',desc:'',sd:'2026-08-27',st:'',ed:'2026-08-28',et:'',dd:'',dt:'',fv:{}},
+    {id:3,cat:2,title:'团队周会',desc:'',sd:'2026-09-01',st:'10:00',ed:'2026-09-01',et:'11:00',dd:'',dt:'',fv:{23:'中'}},
+    {id:4,cat:2,title:'模块代码评审',desc:'',sd:'2026-09-01',st:'14:00',ed:'2026-09-01',et:'15:00',dd:'',dt:'',fv:{}},
+    {id:5,cat:2,title:'客户电话回访',desc:'',sd:'2026-09-01',st:'16:30',ed:'2026-09-01',et:'17:00',dd:'',dt:'',fv:{21:'供应商A'}},
+    {id:6,cat:1,title:'健身打卡',desc:'',sd:'2026-09-01',st:'19:00',ed:'2026-09-01',et:'20:00',dd:'',dt:'',fv:{}},
+    {id:7,cat:3,title:'团队午餐',desc:'',sd:'2026-09-01',st:'12:00',ed:'2026-09-01',et:'13:00',dd:'',dt:'',fv:{}},
+    {id:8,cat:1,title:'父母结婚纪念日',desc:'订餐厅',sd:'2026-09-06',st:'',ed:'2026-09-06',et:'',dd:'',dt:'',fv:{12:['家庭']}},
+    {id:9,cat:4,title:'Rust 所有权章节精读',desc:'',sd:'2026-08-28',st:'',ed:'2026-08-29',et:'',dd:'',dt:'',fv:{41:'书籍'}},
+    {id:10,cat:2,title:'与设计团队对齐新版官网视觉规范与交付排期（跨部门）',desc:'',sd:'2026-08-25',st:'',ed:'2026-08-26',et:'',dd:'',dt:'',fv:{}},
+    {id:11,cat:1,title:'周末大扫除与九月计划',desc:'',sd:'2026-08-30',st:'',ed:'2026-09-01',et:'',dd:'',dt:'',fv:{}},
+    {id:12,cat:1,title:'孩子家长会',desc:'',sd:'2026-09-04',st:'',ed:'2026-09-04',et:'',dd:'',dt:'',fv:{}},
+    {id:13,cat:2,title:'季度 OKR 草稿',desc:'',sd:'2026-09-14',st:'',ed:'2026-09-18',et:'',dd:'',dt:'',fv:{}},
+    {id:14,cat:3,title:'桌游之夜',desc:'',sd:'2026-09-12',st:'',ed:'2026-09-12',et:'',dd:'',dt:'',fv:{}},
+    {id:15,cat:4,title:'英语单词打卡',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-01',dt:'08:00',fv:{}},
+    {id:16,cat:1,title:'预约体检',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-03',dt:'',fv:{12:['健康']}},
+    {id:17,cat:3,title:'周末电影：新上映科幻片',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-05',dt:'',fv:{}},
+    {id:18,cat:3,title:'Switch 新游戏试玩',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-07',dt:'09:00',fv:{}},
+    {id:19,cat:4,title:'整理错题本',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-10',dt:'',fv:{}},
+    {id:20,cat:2,title:'回复供应商报价',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-08-31',dt:'14:00',fv:{}},
+    {id:21,cat:1,title:'交电费',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-08-30',dt:'',fv:{}},
+    {id:22,cat:5,title:'旧手机数据迁移',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-15',dt:'',fv:{}},
+    {id:23,cat:5,title:'整理旧相册',desc:'',sd:'',st:'',ed:'',et:'',dd:'',dt:'',fv:{}},
+    {id:24,cat:5,title:'待确认：订阅服务退订',desc:'',sd:'',st:'',ed:'',et:'',dd:'',dt:'',fv:{}},
+  ],
+  collapsed:{},
+};
+
+/* ================= 工具 ================= */
+const $=s=>document.querySelector(s);
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function pad(n){return String(n).padStart(2,'0')}
+function parseD(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}
+function fmtD(dt){return dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate())}
+function addDays(s,n){const dt=parseD(s);dt.setDate(dt.getDate()+n);return fmtD(dt)}
+function diffDays(a,b){return Math.round((parseD(b)-parseD(a))/86400000)} // b-a
+function weekStart(s){const dt=parseD(s);const idx=(dt.getDay()+6)%7;dt.setDate(dt.getDate()-idx);return fmtD(dt)}
+function daysInMonth(s){const[y,m]=s.split('-').map(Number);return new Date(y,m,0).getDate()}
+function isChoice(t){return t==='single_choice'||t==='multi_choice'}
+const TYPE_LABEL={text:'单行文本',multiline:'多行文本',number:'数字',date:'日期',single_choice:'单选',multi_choice:'多选'};
+function catOf(id){return state.categories.find(c=>c.id===id)}
+function fieldsOf(id){return (state.fields[id]||[]).slice().sort((a,b)=>a.sort-b.sort)}
+function activeCatId(){return state.activeTab===OVERVIEW?null:state.activeTab}
+
+function toast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;$('#toast').appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},2200);
+}
+
+/* ================= 标签栏 ================= */
+function renderTabs(){
+  const cats=state.categories.filter(c=>c.kind==='normal');
+  const unc=state.categories.find(c=>c.kind==='uncategorized');
+  const tab=(c,fixedTop)=>`
+    <div class="tab ${(c.id?state.activeTab===c.id:state.activeTab===OVERVIEW)?'active':''} ${fixedTop?'tab-fixed-top':''}" onclick="switchTab('${c.id||OVERVIEW}')">
+      ${c.id?`<span class="dotc" style="background:${c.color}"></span>`:''}
+      <span class="tname" title="${esc(c.name)}">${esc(c.name)}</span>
+      ${c.id?`<span class="more" onclick="openMenu(${c.id},this)">⋮</span>`:''}
+    </div>`;
+  let html=tab({name:'总览'},true);
+  html+=cats.map(c=>tab(c)).join('');
+  html+=`<button class="btn-newcat" onclick="openNewCat()">＋ 新建分类</button>`;
+  html+=`<div class="tab-fixed-bottom">${tab(unc)}<div class="divider"></div>
+    <div class="tab" onclick="openSettings()"><span class="tname">⚙ 设置</span></div></div>`;
+  $('#tabbar').innerHTML=html;
+}
+function switchTab(id){state.activeTab=id===OVERVIEW?OVERVIEW:Number(id);renderAll()}
+
+/* ===== 分类菜单（⋮） ===== */
+/* ===== 弹出层统一管理：支持"再次点击同一入口=关闭" ===== */
+let popOpen=null,popAnchor=null;
+function closePop(){$('#menu-root').innerHTML='';popOpen=null}
+function popOutside(e){
+  if(!e.target.closest('.popmenu,.palette,.pick')&&!e.target.closest('.more')&&!e.target.closest('.title'))closePop();
+}
+function showPop(el,html,tag,cls){
+  closePop();
+  popOpen=tag;popAnchor=el.getBoundingClientRect();
+  const p=document.createElement('div');p.className=cls||'popmenu';p.innerHTML=html;
+  p.addEventListener('click',e=>e.stopPropagation());
+  $('#menu-root').appendChild(p);
+  const w=p.offsetWidth,h=p.offsetHeight;
+  p.style.left=Math.max(8,Math.min(popAnchor.left,window.innerWidth-w-8))+'px';
+  p.style.top=(popAnchor.bottom+6+h>window.innerHeight-8?Math.max(8,popAnchor.top-h-6):popAnchor.bottom+6)+'px';
+}
+function openMenu(catId,el){
+  const tag='menu-'+catId;
+  if(popOpen===tag){closePop();return}
+  closePop();
+  const c=catOf(catId);
+  const items = c.kind==='normal'
+    ? `<button onclick="openPalette(${catId},this)">设置颜色</button>
+       <button onclick="openRename(${catId})">重命名</button>
+       <button class="danger" onclick="openDelCat(${catId})">删除</button>`
+    : `<button onclick="openPalette(${catId},this)">设置颜色</button>`;
+  showPop(el,items,tag);
+}
+function openPalette(catId,el){
+  const tag='pal-'+catId;
+  if(popOpen===tag){closePop();return}
+  closePop();
+  const cur=catOf(catId).color.toLowerCase();
+  const grid=PAL_ROWS.map(row=>row.map(c=>
+    `<div class="sw ${c===cur?'sel':''}" style="background:${c}" title="${c}" onclick="pickColor(${catId},'${c}')"></div>`).join('')).join('');
+  showPop(el,`<div class="pal-grid">${grid}</div><button class="more-colors" onclick="openCustomColor(${catId})">更多颜色</button>`,tag,'palette');
+}
+/* 更多颜色：自选 / HEX / RGB（PRD 6.2 v1.3） */
+function cpSet(hex){
+  hex=hex.toLowerCase();
+  $('#cp-color').value=hex;$('#cp-hex').value=hex;$('#cp-prev').style.background=hex;
+  const[r,g,b]=hexRgb(hex);$('#cp-r').value=r;$('#cp-g').value=g;$('#cp-b').value=b;
+  $('#cp-hex').style.borderColor='';
+}
+function cpFromColor(){cpSet($('#cp-color').value)}
+function cpFromHex(){
+  let v=$('#cp-hex').value.trim();
+  if(/^#?[0-9a-fA-F]{6}$/.test(v)){if(!v.startsWith('#'))v='#'+v;cpSet(v)}
+  else $('#cp-hex').style.borderColor='var(--danger)';
+}
+function cpFromRgb(){
+  const r=Math.min(255,Math.max(0,Number($('#cp-r').value||0)));
+  const g=Math.min(255,Math.max(0,Number($('#cp-g').value||0)));
+  const b=Math.min(255,Math.max(0,Number($('#cp-b').value||0)));
+  cpSet(rgbHex(r,g,b));
+}
+function openCustomColor(catId){
+  closePop();
+  const cur=catOf(catId).color.toLowerCase();
+  modal(`<div class="dhead">更多颜色<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody">
+      <div class="frow"><label>当前颜色</label><div id="cp-prev" style="width:48px;height:26px;border-radius:6px;border:1px solid var(--border);background:${cur}"></div>
+        <input type="color" id="cp-color" value="${cur}" style="width:42px;height:28px;padding:0;border:none;background:none" oninput="cpFromColor()"></div>
+      <div class="frow"><label>HEX</label><input type="text" id="cp-hex" value="${cur.toUpperCase()}" oninput="cpFromHex()" placeholder="#RRGGBB"></div>
+      <div class="frow"><label>RGB</label>
+        <input type="number" id="cp-r" min="0" max="255" style="flex:1" oninput="cpFromRgb()">
+        <input type="number" id="cp-g" min="0" max="255" style="flex:1" oninput="cpFromRgb()">
+        <input type="number" id="cp-b" min="0" max="255" style="flex:1" oninput="cpFromRgb()"></div>
+      <div class="cbody sub">支持自选颜色、输入 HEX 或 RGB 值</div>
+    </div>
+    <div class="dfoot"><button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="pickCustom(${catId})">确定</button></div>`);
+  cpSet(cur);
+}
+function pickCustom(catId){
+  let v=$('#cp-hex').value.trim();
+  if(!/^#?[0-9a-fA-F]{6}$/.test(v)){toast('HEX 格式不正确');return}
+  if(!v.startsWith('#'))v='#'+v;
+  closeModal();pickColor(catId,v);
+}
+function pickColor(id,color){catOf(id).color=color;closePop();renderAll();toast('颜色已更新（不做重复校验）')}
+
+/* ===== 分类重命名 / 新建 / 删除 ===== */
+function openRename(id){
+  closePop();
+  const c=catOf(id);
+  modal(`<div class="dhead">重命名分类<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody"><div class="frow"><label>名称</label>
+      <input type="text" id="rn-name" maxlength="20" value="${esc(c.name)}"></div>
+      <div class="ferr" id="rn-err">名称不能为空</div></div>
+    <div class="dfoot"><button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="submitRename(${id})">保存</button></div>`);
+  setTimeout(()=>$('#rn-name').select(),0);
+}
+function submitRename(id){
+  const v=$('#rn-name').value.trim();
+  if(!v){$('#rn-err').classList.add('show');return}
+  catOf(id).name=v;closeModal();renderAll();toast('已重命名');
+}
+function openNewCat(){
+  modal(`<div class="dhead">新建分类<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody"><div class="frow"><label>名称</label>
+      <input type="text" id="nc-name" maxlength="20" placeholder="如：旅行"></div>
+      <div class="ferr" id="nc-err">名称不能为空</div>
+      <div class="cbody sub">颜色将自动分配调色板中当前使用最少的颜色，创建后可再修改</div></div>
+    <div class="dfoot"><button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="submitNewCat()">创建</button></div>`);
+}
+function submitNewCat(){
+  const v=$('#nc-name').value.trim();
+  if(!v){$('#nc-err').classList.add('show');return}
+  const used={};state.categories.forEach(c=>used[c.color.toLowerCase()]=(used[c.color.toLowerCase()]||0)+1);
+  state.categories.push({id:catSeq++,name:v,color:leastUsedColor(),kind:'normal'});
+  closeModal();renderAll();toast('分类已创建');
+}
+function openDelCat(id){
+  closePop();
+  const c=catOf(id);
+  const n=state.items.filter(it=>it.cat===id).length;
+  if(n===0){
+    confirmBox(`确定删除分类【${esc(c.name)}】？`,{danger:true,okText:'删除',onOk(){delCategory(id);toast('分类已删除')}});
+  }else{
+    confirmBox(`分类【${esc(c.name)}】下有 ${n} 条事项，请选择处理方式：`,{
+      buttons:[
+        {text:`连同 ${n} 条事项一起删除`,cls:'btn-danger',fn(){delCategory(id);toast('分类与事项已删除')}},
+        {text:'事项移入未分类',cls:'btn-primary',fn(){
+          state.items.forEach(it=>{if(it.cat===id)it.cat=5});
+          delCategory(id);toast('事项已移入未分类（其字段值保留但不再显示）');
+        }},
+      ]});
+  }
+}
+function delCategory(id){
+  state.categories=state.categories.filter(c=>c.id!==id);
+  delete state.fields[id];
+  if(state.activeTab===id)state.activeTab=OVERVIEW;
+  renderAll();
+}
+
+/* ================= 工具栏与日历 ================= */
+function renderToolbar(){
+  const isOverview=state.activeTab===OVERVIEW;
+  const title=state.view==='month'
+    ? `${state.cursor.slice(0,4)}年${Number(state.cursor.slice(5,7))}月`
+    : (()=>{const s=weekStart(state.cursor),e=addDays(s,6);return `${s} ~ ${e.slice(5)}`})();
+  $('#toolbar').innerHTML=`
+    <button class="tbtn icon" onclick="nav(-1)">‹</button>
+    <button class="tbtn" onclick="goToday()">今天</button>
+    <button class="tbtn icon" onclick="nav(1)">›</button>
+    <div class="seg">
+      <button class="${state.view==='week'?'on':''}" onclick="setView('week')">周</button>
+      <button class="${state.view==='month'?'on':''}" onclick="setView('month')">月</button>
+    </div>
+    <span class="title" title="点击选择${state.view==='week'?'周':'年月'}" onclick="openPickPanel(this)">${title}</span>
+    ${isOverview?'<span class="tag">不可新增，仅编辑/删除</span>':''}
+    <span class="spacer"></span>
+    <button class="tbtn icon" title="撤销 Ctrl+Z" onclick="undoDemo()">↶</button>
+    <button class="tbtn icon" title="重做 Ctrl+Y" onclick="redoDemo()">↷</button>
+    ${isOverview?'':`<button class="btn-ghost" onclick="openFieldManager()">字段管理</button>
+    <button class="btn-primary" onclick="openItemModal(null)">＋ 新增事项</button>`}`;
+}
+function setView(v){state.view=v;renderAll()}
+function nav(d){
+  state.cursor = state.view==='month'
+    ? addDays(state.cursor.slice(0,8)+'01', d===1?32:-1)
+    : addDays(state.cursor, d*7);
+  renderAll();
+}
+function goToday(){state.cursor=TODAY;renderAll()}
+
+/* ===== 年月/周选择面板（交互参照 antd DatePicker：月面板点选月份、周面板点整行选周，周一为一周第一天） ===== */
+let pickCursor=TODAY;
+function openPickPanel(el){
+  const tag='pick';
+  if(popOpen===tag){closePop();return}
+  closePop();
+  popOpen=tag;pickCursor=state.cursor;
+  renderPickPanel(el);
+}
+function renderPickPanel(el){
+  let p=$('#menu-root .pick');
+  if(!p){
+    p=document.createElement('div');p.className='pick';
+    p.addEventListener('click',e=>e.stopPropagation());
+    $('#menu-root').appendChild(p);
+    const r=el.getBoundingClientRect();
+    p.style.left=Math.max(8,Math.min(r.left,window.innerWidth-280))+'px';
+    p.style.top=(r.bottom+8)+'px';
+  }
+  const pc=pickCursor;
+  const y=Number(pc.slice(0,4)),m=Number(pc.slice(5,7));
+  let inner='';
+  if(state.view==='week'){
+    const first=pc.slice(0,8)+'01',ws=weekStart(first);
+    const nRows=Math.ceil((diffDays(ws,first)+daysInMonth(pc))/7);
+    const wsel=weekStart(state.cursor);
+    inner=`<div class="pk-head"><button class="pk-nav" onclick="pickNav(-1)">‹</button><b>${y}年${m}月</b><button class="pk-nav" onclick="pickNav(1)">›</button></div>
+      <div class="pk-dow">${['一','二','三','四','五','六','日'].map(d=>`<span>${d}</span>`).join('')}</div>`+
+      [...Array(nRows)].map((_,r)=>{
+        const rowStart=addDays(ws,r*7);
+        const days=[...Array(7)].map((_,i)=>addDays(rowStart,i));
+        return `<div class="pk-weekrow ${rowStart===wsel?'sel':''}" onclick="pickWeek('${rowStart}')">${days.map(ds=>
+          `<button class="${ds.slice(0,7)!==pc.slice(0,7)?'dim':''} ${ds===TODAY?'today':''}" onclick="event.stopPropagation();pickWeek('${rowStart}')">${Number(ds.slice(8))}</button>`).join('')}</div>`;
+      }).join('');
+  }else{
+    inner=`<div class="pk-head"><button class="pk-nav" onclick="pickYear(-1)">‹</button><b>${y}年</b><button class="pk-nav" onclick="pickYear(1)">›</button></div>
+      <div class="pk-months">${[...Array(12)].map((_,i)=>`<button class="${(y===Number(state.cursor.slice(0,4))&&m===i+1)?'on':''}" onclick="pickMonth(${y},${i+1})">${i+1}月</button>`).join('')}</div>`;
+  }
+  p.innerHTML=inner;
+}
+function pickNav(d){
+  const y=Number(pickCursor.slice(0,4)),m=Number(pickCursor.slice(5,7));
+  let ny=y,nm=m+d;while(nm>12){nm-=12;ny++}while(nm<1){nm+=12;ny--}
+  pickCursor=`${ny}-${pad(nm)}-01`;renderPickPanel();
+}
+function pickYear(d){pickCursor=`${Number(pickCursor.slice(0,4))+d}-${pickCursor.slice(5,7)}-01`;renderPickPanel()}
+function pickWeek(mon){state.cursor=mon;closePop();renderAll()}
+function pickMonth(y,m){
+  const day=Math.min(Number(state.cursor.slice(8)),daysInMonth(`${y}-${pad(m)}-01`));
+  state.cursor=`${y}-${pad(m)}-${pad(day)}`;closePop();renderAll();
+}
+
+/* 周内横条布局：与正式版同思路（截断→排序→贪心泳道） */
+function layoutWeek(weekDates,maxLanes,scope){
+  const s=weekDates[0],e=weekDates[6];
+  const evs=state.items.filter(it=>(scope===null||it.cat===scope)&&it.sd&&it.ed&&it.sd<=e&&it.ed>=s)
+    .map(it=>({it,cs:diffDays(s,it.sd<s?s:it.sd),ce:diffDays(s,it.ed>e?e:it.ed),st:it.st||'00:00'}))
+    .sort((a,b)=>a.cs-b.cs||a.st.localeCompare(b.st)||a.ce-b.ce||a.it.id-b.it.id);
+  const laneEnd=[],out=[];
+  for(const ev of evs){
+    let l=0;while(l<laneEnd.length&&laneEnd[l]>=ev.cs)l++;
+    if(l>=maxLanes){out.push({...ev,lane:-1});continue}
+    laneEnd[l]=ev.ce;out.push({...ev,lane:l});
+  }
+  return out;
+}
+function renderCalendar(){
+  const head=['周一','周二','周三','周四','周五','周六','周日']
+    .map(d=>`<div>${d}</div>`).join('');
+  let rows;
+  if(state.view==='week'){
+    const s=weekStart(state.cursor);
+    rows=[[...Array(7)].map((_,i)=>addDays(s,i))];
+  }else{
+    const first=state.cursor.slice(0,8)+'01';
+    const ws=weekStart(first);
+    const total=diffDays(ws,first)+daysInMonth(state.cursor);
+    const nRows=Math.ceil(total/7);
+    rows=[...Array(nRows)].map((_,r)=>[...Array(7)].map((_,i)=>addDays(ws,r*7+i)));
+  }
+  const maxLanes=state.view==='week'?10:4;
+  const cellH=state.view==='week'?242:118;
+  let html=`<div class="calhead">${head}</div>`;
+  for(const week of rows){
+    const scope=activeCatId();
+    const placed=layoutWeek(week,maxLanes,scope);
+    const cells=week.map(ds=>{
+      const other=state.view==='month'&&ds.slice(0,7)!==state.cursor.slice(0,7);
+      return `<div class="daycell ${other?'other':''} ${ds===TODAY?'today':''}">
+        <span class="dnum">${Number(ds.slice(8))}</span>${!other?`<span class="celladd" title="新增事项" onclick="openItemModal(null,'${ds}')">+</span>`:''}</div>`;
+    }).join('');
+    const bars=placed.filter(p=>p.lane>=0).map(p=>{
+      const c=catOf(p.it.cat);
+      return `<div class="bar" style="left:calc(${p.cs*100/7}% + 3px);width:calc(${(p.ce-p.cs+1)*100/7}% - 6px);
+        top:${23+p.lane*22}px;background:${c.color}" title="${esc(p.it.title)}"
+        onclick="openItemModal(${p.it.id})">${esc(p.it.title)}</div>`;
+    }).join('');
+    const chips=[...Array(7)].map((_,d)=>{
+      const n=placed.filter(p=>p.lane===-1&&p.cs<=d&&d<=p.ce).length;
+      return n?`<span class="morechip" style="right:calc(${(6-d)*100/7}% + 6px)" onclick="openDayOverlay('${week[d]}')">+${n}</span>`:'';
+    }).join('');
+    html+=`<div class="weekrow" style="height:${cellH}px"><div class="barlayer">${bars}${chips}</div>${cells}</div>`;
+  }
+  $('#cal').innerHTML=html;
+}
+
+/* ================= 待办 ================= */
+function renderTodo(){
+  const scope=activeCatId();
+  const todos=state.items.filter(it=>(!it.sd||!it.ed)&&(scope===null||it.cat===scope))
+    .sort((a,b)=>{
+      const ka=a.dd?a.dd+a.dt:'9999',kb=b.dd?b.dd+b.dt:'9999';
+      return ka<kb?-1:ka>kb?1:a.id-b.id;
+    });
+  const groups={};
+  todos.forEach(it=>{const k=it.dd?it.dd.slice(0,7):'unset';(groups[k]=groups[k]||[]).push(it)});
+  const keys=Object.keys(groups).sort();
+  if(keys.includes('unset')){keys.splice(keys.indexOf('unset'),1);keys.push('unset')}
+  let html='';
+  if(!keys.length){html=`<div class="tempty">当前范围暂无待办</div>`}
+  for(const k of keys){
+    const label=k==='unset'?'长期规划':k;
+    const col=groups[k];
+    html+=`<div class="tgroup ${state.collapsed[k]?'collapsed':''}">
+      <div class="thead" onclick="toggleGroup('${k}')">
+        <span class="dot"></span><span class="tlabel">${label}</span>
+        <span class="tcount">${col.length} 条</span><span class="chev">▾</span>
+      </div>
+      <div class="tbody">${col.map(it=>{
+        const c=catOf(it.cat);
+        const tip=it.dd?`截止 ${it.dd}${it.dt?' '+it.dt:''}｜${c.name}`:c.name;
+        return `<div class="titem" style="background:${c.color}" title="${esc(it.title+'（'+tip+'）')}"
+          onclick="openItemModal(${it.id})">${esc(it.title)}</div>`;
+      }).join('')}</div></div>`;
+  }
+  $('#todolist').innerHTML=html;
+}
+function toggleGroup(k){state.collapsed[k]=!state.collapsed[k];renderTodo()}
+
+/* ================= 弹窗基座 ================= */
+function modal(inner,topmost){
+  const root=topmost?$('#confirm-root'):$('#modal-root');
+  root.innerHTML=`<div class="overlay ${topmost?'top':''}" onclick="if(event.target===this)closeModal(${topmost})"><div class="dialog">${inner}</div></div>`;
+}
+function closeModal(topmost){
+  (topmost?$('#confirm-root'):$('#modal-root')).innerHTML='';
+}
+function confirmBox(msg,opts={}){
+  const acts=[{text:'取消',cls:'btn-ghost',fn:null},...(opts.buttons||[{text:opts.okText||'确定',cls:opts.danger?'btn-danger':'btn-primary',fn:opts.onOk}])];
+  window.__cfns=acts.map(a=>()=>{closeConfirm();a.fn&&a.fn()});
+  const btns=acts.map((a,i)=>`<button class="${a.cls}" onclick="window.__cfns[${i}]()">${a.text}</button>`).join('');
+  $('#confirm-root').innerHTML=`<div class="overlay top" onclick="if(event.target===this)closeConfirm()">
+    <div class="dialog small"><div class="dhead">提示<button class="x" onclick="closeConfirm()">✕</button></div>
+    <div class="cbody">${msg}</div><div class="dfoot">${btns}</div></div></div>`;
+}
+function closeConfirm(){$('#confirm-root').innerHTML=''}
+
+/* ================= 事项弹窗（新增/编辑） ================= */
+function fvInput(f,val){
+  const name=`data-fv="${f.id}"`;
+  if(f.type==='text')return `<input type="text" ${name} value="${esc(val||'')}">`;
+  if(f.type==='multiline')return `<textarea ${name}>${esc(val||'')}</textarea>`;
+  if(f.type==='number')return `<input type="number" ${name} value="${esc(val||'')}">`;
+  if(f.type==='date')return `<input type="date" ${name} value="${esc(val||'')}">`;
+  if(f.type==='single_choice'){
+    return `<select ${name}><option value="">（未选）</option>${f.options.map(o=>`<option ${val===o?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  }
+  if(f.type==='multi_choice'){
+    const arr=Array.isArray(val)?val:[];
+    return `<div class="fv-multi">${f.options.map(o=>`<label><input type="checkbox" ${name} value="${esc(o)}" ${arr.includes(o)?'checked':''}>${esc(o)}</label>`).join('')}</div>`;
+  }
+  return '';
+}
+function fieldsSection(catId,vals){
+  const list=fieldsOf(catId);
+  if(!list.length)return `<div class="cbody sub" style="padding:2px 0 4px">该分类暂无自定义字段（可在工具栏「字段管理」中添加）</div>`;
+  return list.map(f=>`<div class="frow"><label>${esc(f.name)}</label>${fvInput(f,vals[f.id])}</div>`).join('');
+}
+function openItemModal(id,preSd){
+  closePop();
+  const isNew=id===null;
+  const it=isNew?null:state.items.find(x=>x.id===id);
+  const curCat=isNew?activeCatId():it.cat;
+  const catId=isNew?(curCat!==null?curCat:state.categories.find(c=>c.kind==='normal').id):it.cat;
+  const catOpts=state.categories
+    .filter(c=>c.kind==='normal'||c.kind==='uncategorized')
+    .map(c=>`<option value="${c.id}" ${c.id===catId?'selected':''}>${esc(c.name)}</option>`).join('');
+  modal(`<div class="dhead">${isNew?'新增事项':'编辑事项'}<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody" id="item-form">
+      <input type="hidden" id="if-id" value="${isNew?'':id}">
+      ${isNew&&curCat!==null?'':`<div class="frow"><label>所属分类</label><select id="if-cat" onchange="onCatChange(this.value)">${catOpts}</select></div>`}
+      <div class="frow"><label>标题 *</label><input type="text" id="if-title" maxlength="100" value="${it?esc(it.title):''}"></div>
+      <div class="frow"><label>描述</label><textarea id="if-desc">${it?esc(it.desc):''}</textarea></div>
+      <div class="frow"><label>开始时间</label>
+        <input type="date" id="if-sd" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" value="${it?it.st:''}"></div>
+      <div class="frow"><label>结束时间</label>
+        <input type="date" id="if-ed" value="${it?it.ed:''}"><input type="time" id="if-et" value="${it?it.et:''}"></div>
+      <div class="frow"><label>截止时间</label>
+        <input type="date" id="if-dd" value="${it?it.dd:''}"><input type="time" id="if-dt" value="${it?it.dt:''}"></div>
+      <div class="fsec"><div class="sec-t">自定义字段（随所属分类的模板变化）</div>
+        <div id="if-fields">${fieldsSection(catId,it?it.fv:{})}</div></div>
+      <div class="ferr" id="if-err"></div>
+    </div>
+    <div class="dfoot">
+      ${isNew?'':`<button class="btn-danger" style="margin-right:auto" onclick="askDeleteItem(${id})">删除</button>`}
+      <button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="saveItem()">保存</button>
+    </div>`);
+}
+function onCatChange(newCat){
+  const id=Number($('#if-id').value);
+  const it=state.items.find(x=>x.id===id);
+  $('#if-fields').innerHTML=fieldsSection(Number(newCat),it?it.fv:{});
+}
+function collectFV(){
+  const fv={};
+  document.querySelectorAll('#if-fields [data-fv]').forEach(el=>{
+    const k=el.dataset.fv;
+    if(el.type==='checkbox'){
+      if(el.checked){(fv[k]=fv[k]||[]).push(el.value)}
+    }else{fv[k]=el.value!==''?el.value:null}
+  });
+  return fv;
+}
+function saveItem(){
+  const idStr=$('#if-id').value;
+  const title=$('#if-title').value.trim();
+  const err=$('#if-err');
+  const sd=$('#if-sd').value,ed=$('#if-ed').value;
+  if(!title){err.textContent='标题不能为空';err.classList.add('show');return}
+  if(sd&&ed&&ed<sd){err.textContent='结束时间的日期不能早于开始时间';err.classList.add('show');return}
+  const base={title,desc:$('#if-desc').value,sd,st:$('#if-st').value,ed,et:$('#if-et').value,
+    dd:$('#if-dd').value,dt:$('#if-dt').value};
+  if(idStr===''){
+    state.items.push({id:itemSeq++,cat:$('#if-cat')?Number($('#if-cat').value):activeCatId(),fv:collectFV(),...base});
+    toast('已保存：按归属规则进入'+(base.sd&&base.ed?'日历':'待办'));
+  }else{
+    const id=Number(idStr);
+    const it=state.items.find(x=>x.id===id);
+    const catId=$('#if-cat')?Number($('#if-cat').value):it.cat;
+    // 字段值：仅覆盖当前模板内的字段，其他分类的字段值原样保留（PRD 4.3）
+    const old=it.fv,newFv=collectFV();
+    const merged={...old};
+    fieldsOf(catId).forEach(f=>{merged[f.id]=newFv[f.id]!==undefined?newFv[f.id]:null});
+    Object.assign(it,base,{cat:catId,fv:merged});
+    toast('已保存：归属已按规则自动迁移');
+  }
+  closeModal();renderAll();
+}
+function askDeleteItem(id){
+  const it=state.items.find(x=>x.id===id);
+  confirmBox(`确定删除事项【${esc(it.title)}】？此操作计入撤销栈，可 Ctrl+Z 撤销。`,
+    {danger:true,okText:'删除',onOk(){
+      state.items=state.items.filter(x=>x.id!==id);
+      closeModal();renderAll();toast('事项已删除');
+    }});
+}
+
+/* ================= +N 当日浮层 ================= */
+function openDayOverlay(ds){
+  const scope=activeCatId();
+  const evs=state.items.filter(it=>(scope===null||it.cat===scope)&&it.sd&&it.ed&&it.sd<=ds&&it.ed>=ds)
+    .sort((a,b)=>(a.st||'00:00')<(b.st||'00:00')?-1:(a.st||'00:00')>(b.st||'00:00')?1:a.id-b.id);
+  modal(`<div class="dhead">${ds} 的事项（${evs.length}）<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody daylist">${evs.map(it=>{
+      const c=catOf(it.cat);
+      return `<div class="dl-row" onclick="closeModal();openItemModal(${it.id})">
+        <span class="dotc" style="background:${c.color}"></span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(it.title)}</span>
+        <span class="tcount">${it.st||''}</span></div>`;
+    }).join('')}</div>`);
+}
+
+/* ================= 字段管理 ================= */
+let fmCat=null,fmEditing=null;
+function openFieldManager(){
+  fmCat=activeCatId();fmEditing=null;
+  if(fmCat===null){toast('总览页没有字段模板');return}
+  renderFm();
+}
+function renderFm(){
+  const c=catOf(fmCat),list=fieldsOf(fmCat);
+  const editing=list.find(f=>f.id===fmEditing);
+  const form=editing?`
+    <div class="fm-form">
+      <div class="frow"><label>字段名称</label><input type="text" id="fm-name" maxlength="20" value="${esc(editing.name)}"></div>
+      <div class="frow"><label>类型</label>
+        <select id="fm-type">${Object.keys(TYPE_LABEL).map(t=>`<option value="${t}" ${t===editing.type?'selected':''}>${TYPE_LABEL[t]}</option>`).join('')}</select></div>
+      <div class="frow" id="fm-optrow" style="display:${isChoice(editing.type)?'flex':'none'}">
+        <label>选项</label><input type="text" id="fm-opts" value="${editing.options?esc(editing.options.join('，')):''}" placeholder="用中文逗号分隔，如：高，中，低"></div>
+      <div class="dfoot" style="padding:4px 0 0">
+        <button class="btn-ghost" onclick="fmEditing=null;renderFm()">取消</button>
+        <button class="btn-primary" onclick="fmSubmit(${editing.id})">保存</button></div>
+    </div>`:'';
+  modal(`<div class="dhead">字段管理 · ${esc(c.name)}<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody">
+      ${list.length?list.map((f,i)=>`
+        <div class="fm-row">
+          <span class="fname">${esc(f.name)}</span>
+          <span class="ftype">${TYPE_LABEL[f.type]}</span>
+          <span class="fopt">${isChoice(f.type)?(f.options.length+' 选项'):'—'}</span>
+          <button class="op ${i===0?'dis':''}" onclick="fmMove(${f.id},-1)">↑</button>
+          <button class="op ${i===list.length-1?'dis':''}" onclick="fmMove(${f.id},1)">↓</button>
+          <button class="op" title="编辑" onclick="fmEdit(${f.id})">✎</button>
+          <button class="op" title="删除" onclick="fmDeleteAsk(${f.id})">🗑</button>
+        </div>`).join('')
+      :`<div class="tempty">暂无自定义字段</div>`}
+      ${form}
+      ${editing?'':`<div class="dfoot" style="justify-content:flex-start;padding:8px 0 0">
+        <button class="btn-primary" onclick="fmEdit('new')">＋ 新增字段</button></div>`}
+    </div>`);
+  const sel=$('#fm-type');
+  if(sel)sel.onchange=()=>{$('#fm-optrow').style.display=isChoice(sel.value)?'flex':'none'};
+}
+function fmEdit(fid){
+  if(fid==='new'){
+    const list=state.fields[fmCat]=state.fields[fmCat]||[];
+    const f={id:fSeq++,name:'新字段',type:'text',options:null,sort:list.length+1};
+    list.push(f);fmEditing=f.id;
+  }else{fmEditing=fid}
+  renderFm();
+}
+function fmSubmit(fid){
+  const name=$('#fm-name').value.trim();
+  if(!name){toast('字段名称不能为空');return}
+  const type=$('#fm-type').value;
+  const f=fieldsOf(fmCat).find(x=>x.id===fid);
+  let opts=null;
+  if(isChoice(type)){
+    opts=$('#fm-opts').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean);
+    if(!opts.length){toast('单选/多选至少需要一个选项');return}
+  }
+  const finish=()=>{f.name=name;f.type=type;f.options=opts;fmEditing=null;renderFm();toast('已保存')};
+  if(f.type===type){finish();return}
+  const zeroLoss=isChoice(type)&&!isChoice(f.type); // 转单选/多选：历史值去重生成选项，零丢失（PRD 6.6 v1.2）
+  const rule=zeroLoss
+    ? '该字段此前没有选项列表：将把<b>全部历史值字符串化去重生成选项</b>，所有原值保留（零丢失）。'
+    : isChoice(f.type)&&isChoice(type)
+      ? '按原选项列表校验：值命中选项则保留（多选→单选保留第一个选中项），未命中的清空。'
+      : '能转换的历史数据转换后保留，不能转换的<b>清空</b>（详见 PRD 6.6 转换矩阵；正式版将实际迁移数据）。';
+  confirmBox(`修改为【${TYPE_LABEL[type]}】的规则：<br>${rule}`,{danger:!zeroLoss,okText:'确认修改',onOk:finish});
+}
+function fmMove(fid,dir){
+  const list=state.fields[fmCat].sort((a,b)=>a.sort-b.sort);
+  const i=list.findIndex(f=>f.id===fid),j=i+dir;
+  if(j<0||j>=list.length)return;
+  [list[i].sort,list[j].sort]=[list[j].sort,list[i].sort];
+  renderFm();
+}
+function fmDeleteAsk(fid){
+  const f=fieldsOf(fmCat).find(x=>x.id===fid);
+  confirmBox(`确定删除字段【${esc(f.name)}】？<br><span class="sub">将丢失该字段下所有已填写数据。</span>`,
+    {danger:true,okText:'删除',onOk(){
+      state.fields[fmCat]=state.fields[fmCat].filter(x=>x.id!==fid);
+      state.items.forEach(it=>{if(it.fv)delete it.fv[fid]});
+      fmEditing=null;renderFm();toast('字段已删除');
+    }});
+}
+
+/* ================= 设置 ================= */
+function openSettings(){
+  modal(`<div class="dhead">设置<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody" style="padding:0"><div class="set-wrap">
+      <div class="set-tabs">
+        <button class="on">数据备份</button>
+        <button class="dis">邮箱绑定 <span class="badge">二期</span></button>
+        <button class="dis">提醒发送记录 <span class="badge">二期</span></button>
+      </div>
+      <div class="set-body">
+        <button class="btn-primary" onclick="toast('演示原型：导出逻辑在正式版实现')">导出备份</button>
+        <button class="btn-ghost" style="margin-left:8px" onclick="toast('演示原型：导入逻辑在正式版实现')">导入备份</button>
+        <div class="note">
+          · 导出为带版本号的单 JSON 文件，文件名含导出日期。<br>
+          · 导入会覆盖当前全部数据，需二次确认；导入前的状态可撤销。<br>
+          · 备份文件<b>不含邮箱授权码</b>；授权码在本机以 Windows DPAPI 加密存储。<br>
+          · 数据库位于 exe 同目录 data\calendar.db，删除目录即卸载干净。
+        </div>
+      </div>
+    </div></div>`);
+}
+
+/* ================= 撤销（演示） ================= */
+function undoDemo(){toast('演示原型：撤销逻辑在正式版实现（最多 10 步，重启清空）')}
+function redoDemo(){toast('演示原型：重做逻辑在正式版实现')}
+document.addEventListener('keydown',e=>{
+  if(!(e.ctrlKey||e.metaKey))return;
+  const tag=(document.activeElement&&document.activeElement.tagName)||'';
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return; // 文本级撤销交给输入框
+  if(e.key==='z'||e.key==='Z'){e.preventDefault();undoDemo()}
+  if(e.key==='y'||e.key==='Y'){e.preventDefault();redoDemo()}
+});
+
+/* 日期/时间输入：点击输入框任意位置即打开系统选择器（图标已隐藏，键盘输入不受影响） */
+document.addEventListener('click',e=>{
+  const el=e.target;
+  if(el&&el.tagName==='INPUT'&&(el.type==='date'||el.type==='time')&&el.showPicker){
+    try{el.showPicker()}catch(_){/* 无效场景（如无用户手势）忽略 */}
+  }
+});
+
+/* ================= 总渲染 ================= */
+function renderAll(){renderTabs();renderToolbar();renderCalendar();renderTodo()}
+document.addEventListener('click',popOutside); // 外部点击关闭弹出层：全局仅注册一次
+renderAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# 运行期数据（AGENTS 红线 6：随 exe 目录走）
+data/
+
+# 依赖与构建产物
+node_modules/
+dist/
+src-tauri/target/
+
+# 编辑器/系统
+.vscode/
+.idea/
+*.user
+
+# Codex 内部会话文件
+.zcode/

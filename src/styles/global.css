@@ -1,0 +1,8 @@
+/* P0 最小全局样式：正式设计 token（色盘/间距/圆角）在 P2 按 tokens.css 引入 */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
+body {
+  font: 13px/1.5 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  color: #2b2f36;
+  background: #f4f5f7;
+}
