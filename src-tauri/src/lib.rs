@@ -45,6 +45,14 @@ pub fn run() {
             commands::items::get_item_detail,
             commands::items::list_calendar_items,
             commands::items::list_todo_items,
+            commands::fields::list_fields,
+            commands::fields::create_field,
+            commands::fields::rename_field,
+            commands::fields::delete_field,
+            commands::fields::set_field_options,
+            commands::fields::change_field_type,
+            commands::fields::move_field,
+            commands::fields::list_item_field_values,
             commands::items::list_items
         ])
         .run(tauri::generate_context!())

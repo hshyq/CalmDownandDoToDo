@@ -740,4 +740,4 @@
 
 ### 验收
 - 前端 `vitest` 17 passed、`npm run build` 通过；后端 21 passed、clippy 零警告；`tauri dev` 起窗正常
-- 待人工手测：TC-DUE-001~008、TC-FLD-014（待办条目只显示标题）
+- **用户手测通过**：TC-DUE-001~008 / TC-FLD-014（2026-09-03）；期间修复 .todo-pane 宽度塌缩（占位样式 align-items:center 残留）并补贯穿竖线；提交 d0ab2be

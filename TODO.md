@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P5 待办视图（代码完成，待用户手测 TC-DUE-001~008 验收）**。业务代码开发按 `doc/开发批次计划.md` 分批推进（P0~P9），批次进度与状态以本文件为准。
+**开发阶段 · P6 自定义字段（进行中，P0~P5 已完成）**。业务代码开发按 `doc/开发批次计划.md` 分批推进（P0~P9），批次进度与状态以本文件为准。
 
 ## 已完成
 
@@ -32,7 +32,7 @@
 - [x] **P2 分类模块完成**（2026-09-03）：后端 store::categories + commands::categories（18 测试/clippy 0）；前端 TabBar/色盘/删除二选一（vitest 5/build/tauri dev 正常）。**手测 TC-CL-001~009 通过**；删除「移入未分类」语义按决策 A 落档（PRD v1.7 / TC-CL-005 / 技术方案 3.1）
 - [x] **P3 事项模块完成**（2026-09-03）：后端 store::items + commands::items（21 测试/clippy 0）；前端 ItemModal/ItemsView（vitest 5/build/tauri dev 正常）。**手测 TC-IT-001~012 通过**；提交 3238635
 - [x] **P4 日历视图完成**（2026-09-03）：list_calendar_items IPC；dates/layout 纯函数+10 vitest；CalendarView 周月/补齐/今日/横条泳道跨格/+N/格内「+」预填/总览选分类。**手测 TC-CAL-001~012 通过**；提交 b2e377a
-- [ ] **P5 待办视图**：list_todo_items IPC；features/todo/group.ts 分组纯函数+2 vitest（17 passed）；TodoPanel（时间轴分组年月/长期规划、圆点折叠会话级、条目分类色块点击编辑、简易虚拟滚动、编辑后 dataVersion 跨面板刷新）。build/tauri dev 正常。**待手测 TC-DUE-001~008 / TC-FLD-014**
+- [x] **P5 待办视图完成**（2026-09-03）：list_todo_items IPC；group 分组纯函数（17 vitest）；TodoPanel 时间轴/折叠/虚拟滚动/色块；dataVersion 跨面板刷新。**手测 TC-DUE-001~008 / TC-FLD-014 通过**；修复 .todo-pane 宽度塌缩（align-items 覆盖）并补贯穿竖线；提交 d0ab2be
 - [ ] **P6 自定义字段**：字段管理/六控件/转换矩阵表驱动+cargo test（TC-FLD）
 - [ ] **P7 撤销重做+进程**：undo 栈/Ctrl+Z·Y/单实例(D9)/WebView2 检测(D11)（TC-UNDO/TC-ENV）
 - [ ] **P8 备份**：导出导入/语义校验/二次确认/导入快照(D10)（TC-BAK）

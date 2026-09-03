@@ -2,4 +2,5 @@
 //! 错误统一转中文友好提示（AGENTS 第 5 节），前端直接展示。
 
 pub mod categories;
+pub mod fields;
 pub mod items;

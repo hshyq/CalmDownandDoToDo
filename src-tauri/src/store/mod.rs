@@ -4,9 +4,12 @@
 //! 归属规则不落库，由查询条件表达（PRD 5.1/技术方案 3.1）。
 
 pub mod categories;
+pub mod fieldconvert;
+pub mod fields;
 pub mod items;
 pub mod schema;
 pub mod validation;
+pub mod values;
 
 use std::fmt;
 use std::fs;
@@ -209,6 +212,63 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
     pub fn delete_category(&self, id: i64, mode: categories::DeleteMode) -> Result<()> {
         let mut guard = self.lock()?;
         categories::delete(&mut guard, id, mode)
+    }
+
+    // ---- 字段（P6；SQL 实现见 store::fields / store::values，写操作 P7 接入 undo）----
+
+    pub fn list_fields(&self, category_id: i64) -> Result<Vec<fields::FieldDef>> {
+        let guard = self.lock()?;
+        fields::list(&guard, category_id)
+    }
+
+    pub fn create_field(
+        &self,
+        category_id: i64,
+        name: &str,
+        ftype: &str,
+        options: Option<Vec<String>>,
+    ) -> Result<fields::FieldDef> {
+        let guard = self.lock()?;
+        fields::create(&guard, category_id, name, ftype, options.as_deref())
+    }
+
+    pub fn rename_field(&self, id: i64, name: &str) -> Result<()> {
+        let guard = self.lock()?;
+        fields::rename(&guard, id, name)
+    }
+
+    pub fn delete_field(&self, id: i64) -> Result<()> {
+        let guard = self.lock()?;
+        fields::delete(&guard, id)
+    }
+
+    pub fn set_field_options(&self, id: i64, options: Vec<String>) -> Result<()> {
+        let mut guard = self.lock()?;
+        fields::set_options(&mut guard, id, &options)
+    }
+
+    pub fn change_field_type(&self, id: i64, new_type: &str) -> Result<()> {
+        let mut guard = self.lock()?;
+        fields::change_type(&mut guard, id, new_type)
+    }
+
+    pub fn move_field(&self, id: i64, direction: &str) -> Result<()> {
+        let mut guard = self.lock()?;
+        fields::move_field(&mut guard, id, direction)
+    }
+
+    pub fn set_item_field_values(
+        &self,
+        item_id: i64,
+        values: Vec<(i64, Option<String>)>,
+    ) -> Result<()> {
+        let mut guard = self.lock()?;
+        values::set_values(&mut guard, item_id, &values)
+    }
+
+    pub fn list_item_field_values(&self, item_id: i64) -> Result<Vec<(i64, Option<String>)>> {
+        let guard = self.lock()?;
+        values::list_for_item(&guard, item_id)
     }
 
     // ---- 事项（P3；SQL 实现见 store::items，写操作 P7 接入 undo）----

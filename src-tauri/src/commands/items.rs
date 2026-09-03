@@ -20,6 +20,17 @@ pub struct ItemDraft {
     pub end_time: Option<String>,
     pub due_date: Option<String>,
     pub due_time: Option<String>,
+    /// 当前分类模板字段值（可选；切分类时旧值行保留，PRD 4.3）
+    #[serde(default)]
+    pub field_values: Option<Vec<FieldValuePayload>>,
+}
+
+/// 事项-字段值载荷（JS camelCase）。
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldValuePayload {
+    pub field_def_id: i64,
+    pub value: Option<String>,
 }
 
 impl<'a> From<&'a ItemDraft> for NewItem<'a> {
@@ -41,13 +52,28 @@ impl<'a> From<&'a ItemDraft> for NewItem<'a> {
 #[tauri::command]
 pub fn create_item(db: State<'_, Db>, draft: ItemDraft) -> Result<Item, String> {
     let new = NewItem::from(&draft);
-    db.create_item(&new).map_err(|e| e.to_string())
+    let item = db.create_item(&new).map_err(|e| e.to_string())?;
+    save_values(&db, item.id, draft.field_values.as_deref())?;
+    Ok(item)
+}
+
+/// 写入事项字段值（仅覆盖当前模板字段，不删其它分类值）。
+fn save_values(db: &Db, item_id: i64, values: Option<&[FieldValuePayload]>) -> Result<(), String> {
+    let Some(vals) = values else { return Ok(()) };
+    let mapped: Vec<(i64, Option<String>)> = vals
+        .iter()
+        .map(|v| (v.field_def_id, v.value.clone()))
+        .collect();
+    db.set_item_field_values(item_id, mapped)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn update_item(db: State<'_, Db>, id: i64, draft: ItemDraft) -> Result<Item, String> {
     let upd = NewItem::from(&draft);
-    db.update_item(id, &upd).map_err(|e| e.to_string())
+    let item = db.update_item(id, &upd).map_err(|e| e.to_string())?;
+    save_values(&db, item.id, draft.field_values.as_deref())?;
+    Ok(item)
 }
 
 #[tauri::command]
