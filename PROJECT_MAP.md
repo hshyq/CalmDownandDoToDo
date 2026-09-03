@@ -7,6 +7,8 @@
 >
 > **P1 已落地**（2026-09-03）：`src-tauri/src/store/`（mod.rs / schema.rs / validation.rs）——schema_migrations 幂等迁移（v1 建 6 表 + 3 索引 + `items.created_at`）；`Db::open`；`list_calendar_items`（窗口交集）/ `list_todo_items`（COALESCE 哨兵沉底）查询；应用层校验函数；12 项单测通过。schema 数据字典同步见技术方案 v1.3。
 > **P2 已落地**（2026-09-03，代码完成待手测 TC-CL）：后端 `store/categories.rs`（Category/DeleteMode/种子 ensure_seeded/list/create/rename/set_color/delete 二选一 + 6 项单测）与 `commands/categories.rs`（list/create/rename/set_category_color/count_items_in_category/delete_category，`Db` 经 setup manage）；前端 `components/TabBar/`（TabBar/ColorPicker 11×6 色盘）、`components/Modal/`、`stores/appStore.ts`（zustand）、`services/ipc.ts|types.ts|mock.ts`、`features/color/palette.ts`（纯函数+vitest）、`styles/tokens.css`。后端 cargo test 18 passed、前端 vitest 5 passed、clippy 零警告、vite build 通过、tauri dev 起窗正常（vite watch 已忽略 `src-tauri/target` 修 EBUSY）。
+>
+> **P3 已落地**（2026-09-03，代码完成待手测 TC-IT）：后端 `store/items.rs`（Item/NewItem、全字段校验 create/update/delete/get/list + 3 单测）与 `commands/items.rs`（ItemDraft camelCase、6 个 IPC）；前端 `components/Items/`（ItemModal 新增/编辑/删除、ItemsView 过渡列表分组「日历/待办」）、types/ipc/mock 扩展、appStore 事项操作。后端 cargo test 21 passed、前端 vitest 5 passed、clippy 零警告、vite build/tauri dev 正常。
 
 ## 一句话架构
 

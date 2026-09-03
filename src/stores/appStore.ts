@@ -1,14 +1,15 @@
-// 全局 UI 状态（zustand，P2：分类与标签）。
+// 全局 UI 状态（zustand，P2/P3：分类、标签、事项列表）。
 import { create } from "zustand";
-import { categoryApi } from "../services/ipc";
-import { mockApi } from "../services/mock";
-import { inTauri } from "../services/ipc";
-import type { Category, DeleteMode, TabId } from "../services/types";
+import { categoryApi, itemApi, inTauri } from "../services/ipc";
+import { mockApi, mockItemApi } from "../services/mock";
+import type { Category, DeleteMode, Item, ItemDraft, TabId } from "../services/types";
 
-const api = inTauri() ? categoryApi : mockApi;
+const categorySource = inTauri() ? categoryApi : mockApi;
+const itemSource = inTauri() ? itemApi : mockItemApi;
 
 interface AppStore {
   categories: Category[];
+  items: Item[];
   activeTab: TabId;
   ready: boolean;
   load: () => Promise<void>;
@@ -17,36 +18,64 @@ interface AppStore {
   rename: (id: number, name: string) => Promise<void>;
   setColor: (id: number, color: string) => Promise<void>;
   remove: (id: number, mode: DeleteMode) => Promise<void>;
+  loadItems: () => Promise<void>;
+  createItem: (draft: ItemDraft) => Promise<void>;
+  updateItem: (id: number, draft: ItemDraft) => Promise<void>;
+  deleteItem: (id: number) => Promise<void>;
 }
 
-export const useAppStore = create<AppStore>((set) => ({
+/** 当前标签的分类过滤：总览=null（全部）。 */
+function scopeOf(activeTab: TabId): number | null {
+  return activeTab === "overview" ? null : activeTab;
+}
+
+export const useAppStore = create<AppStore>((set, get) => ({
   categories: [],
+  items: [],
   activeTab: "overview",
   ready: false,
   async load() {
-    const categories = await api.list();
+    const categories = await categorySource.list();
     set({ categories, ready: true });
   },
   switchTab(tab) {
     set({ activeTab: tab });
   },
   async create(name, color) {
-    await api.create(name, color);
-    set({ categories: await api.list() });
+    await categorySource.create(name, color);
+    set({ categories: await categorySource.list() });
   },
   async rename(id, name) {
-    await api.rename(id, name);
-    set({ categories: await api.list() });
+    await categorySource.rename(id, name);
+    set({ categories: await categorySource.list() });
   },
   async setColor(id, color) {
-    await api.setColor(id, color);
-    set({ categories: await api.list() });
+    await categorySource.setColor(id, color);
+    set({ categories: await categorySource.list() });
   },
   async remove(id, mode) {
-    await api.remove(id, mode);
-    if (useAppStore.getState().activeTab === id) {
-      set({ activeTab: "overview" });
-    }
-    set({ categories: await api.list() });
+    await categorySource.remove(id, mode);
+    const active = get().activeTab;
+    if (active === id) set({ activeTab: "overview" });
+    set({ categories: await categorySource.list() });
+    await get().loadItems();
+  },
+  async loadItems() {
+    const { activeTab } = get();
+    const items = await itemSource.list(scopeOf(activeTab));
+    set({ items });
+  },
+  async createItem(draft) {
+    await itemSource.create(draft);
+    await get().loadItems();
+  },
+  async updateItem(id, draft) {
+    await itemSource.update(id, draft);
+    // 编辑可换分类：若切走，当前列表不再包含 → 刷新后由 activeTab 过滤
+    await get().loadItems();
+  },
+  async deleteItem(id) {
+    await itemSource.remove(id);
+    await get().loadItems();
   },
 }));

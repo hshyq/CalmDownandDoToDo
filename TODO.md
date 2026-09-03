@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P3 事项模块（待开始，P0~P2 已完成）**。业务代码开发按 `doc/开发批次计划.md` 分批推进（P0~P9），批次进度与状态以本文件为准。
+**开发阶段 · P3 事项模块（代码完成，待用户手测 TC-IT-001~012 验收）**。业务代码开发按 `doc/开发批次计划.md` 分批推进（P0~P9），批次进度与状态以本文件为准。
 
 ## 已完成
 
@@ -30,7 +30,7 @@
 - [ ] `webview2\` 固定版运行时捆绑（D11）：在 P9 打包阶段落实
 - [x] **P1 数据层完成**（2026-09-03）：schema_migrations 幂等迁移（v1 建 6 表+3 索引+items.created_at）；Db(Mutex) open/迁移；list_calendar_items（窗口交集）/list_todo_items（COALESCE 沉底）查询；validation 校验；`cargo test` 12 passed、clippy 零警告
 - [x] **P2 分类模块完成**（2026-09-03）：后端 store::categories + commands::categories（18 测试/clippy 0）；前端 TabBar/色盘/删除二选一（vitest 5/build/tauri dev 正常）。**手测 TC-CL-001~009 通过**；删除「移入未分类」语义按决策 A 落档（PRD v1.7 / TC-CL-005 / 技术方案 3.1）
-- [ ] **P3 事项模块**：CRUD/归属迁移/日历待办查询/总览可编辑删除（TC-IT）
+- [ ] **P3 事项模块**：后端 store::items + commands::items 完成（21 测试/clippy 0）；前端 ItemModal/ItemsView 过渡列表完成（vitest 5/build/tauri dev 正常）。**待手测 TC-IT-001~012**（过渡列表即显归属；日历横条展示属 P4）
 - [ ] **P4 日历视图**：周月网格/layout 纯函数+vitest/横条泳道/+N/格内「+」快捷新建（TC-CAL）
 - [ ] **P5 待办视图**：时间轴分组/折叠/虚拟滚动/「长期规划」（TC-DUE）
 - [ ] **P6 自定义字段**：字段管理/六控件/转换矩阵表驱动+cargo test（TC-FLD）

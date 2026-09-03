@@ -4,6 +4,7 @@
 //! 归属规则不落库，由查询条件表达（PRD 5.1/技术方案 3.1）。
 
 pub mod categories;
+pub mod items;
 pub mod schema;
 pub mod validation;
 
@@ -208,6 +209,33 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
     pub fn delete_category(&self, id: i64, mode: categories::DeleteMode) -> Result<()> {
         let mut guard = self.lock()?;
         categories::delete(&mut guard, id, mode)
+    }
+
+    // ---- 事项（P3；SQL 实现见 store::items，写操作 P7 接入 undo）----
+
+    pub fn create_item(&self, new: &items::NewItem<'_>) -> Result<items::Item> {
+        let guard = self.lock()?;
+        items::create(&guard, new)
+    }
+
+    pub fn update_item(&self, id: i64, upd: &items::ItemUpdate<'_>) -> Result<items::Item> {
+        let guard = self.lock()?;
+        items::update(&guard, id, upd)
+    }
+
+    pub fn delete_item(&self, id: i64) -> Result<()> {
+        let guard = self.lock()?;
+        items::delete(&guard, id)
+    }
+
+    pub fn get_item(&self, id: i64) -> Result<items::Item> {
+        let guard = self.lock()?;
+        items::get(&guard, id)
+    }
+
+    pub fn list_items(&self, category_id: Option<i64>) -> Result<Vec<items::Item>> {
+        let guard = self.lock()?;
+        items::list(&guard, category_id)
     }
 }
 

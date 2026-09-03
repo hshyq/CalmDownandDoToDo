@@ -1,5 +1,5 @@
 // 浏览器预览（非 Tauri）时的分类模拟数据，语义与后端 seed 一致（PRD 4.1）。
-import type { Category, DeleteMode } from "./types";
+import type { Category, DeleteMode, Item, ItemDraft } from "./types";
 
 const seed: Category[] = [
   { id: 1, name: "生活", color: "#34B96F", sort_order: 0, kind: "normal" },
@@ -39,5 +39,46 @@ export const mockApi = {
   /** 仅预览用：重置为种子（开发调试）。 */
   reset(): void {
     cats = [...seed];
+  },
+};
+
+let itemSeq = 1;
+let items: Item[] = [];
+
+export const mockItemApi = {
+  async list(categoryId: number | null): Promise<Item[]> {
+    const now = new Date().toISOString();
+    return items
+      .filter((it) => categoryId === null || it.category_id === categoryId)
+      .map((it) => ({ ...it, created_at: it.created_at || now }));
+  },
+  async create(draft: ItemDraft): Promise<Item> {
+    const it: Item = {
+      id: itemSeq++,
+      category_id: draft.categoryId,
+      title: draft.title,
+      description: draft.description,
+      start_date: draft.startDate,
+      start_time: draft.startTime,
+      end_date: draft.endDate,
+      end_time: draft.endTime,
+      due_date: draft.dueDate,
+      due_time: draft.dueTime,
+      created_at: new Date().toISOString(),
+    };
+    items.push(it);
+    return { ...it };
+  },
+  async update(id: number, draft: ItemDraft): Promise<Item> {
+    const idx = items.findIndex((i) => i.id === id);
+    if (idx < 0) throw new Error("事项不存在");
+    const it = { ...items[idx], category_id: draft.categoryId, title: draft.title,
+      description: draft.description, start_date: draft.startDate, start_time: draft.startTime,
+      end_date: draft.endDate, end_time: draft.endTime, due_date: draft.dueDate, due_time: draft.dueTime };
+    items[idx] = it;
+    return { ...it };
+  },
+  async remove(id: number): Promise<void> {
+    items = items.filter((i) => i.id !== id);
   },
 };

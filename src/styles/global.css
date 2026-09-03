@@ -153,3 +153,36 @@ body {
   z-index: 99; background: #32373f; color: #fff; padding: 8px 16px;
   border-radius: 8px; font-size: 13px; box-shadow: var(--shadow);
 }
+/* ===== P3：事项过渡列表 ===== */
+.toolbar .add { margin-left: auto; }
+.iv-body { flex: 1; overflow: auto; padding: 12px 16px; }
+.igroup { margin-bottom: 14px; }
+.ihead { font-size: 12px; color: var(--muted); margin: 8px 2px; font-weight: 600; }
+.iempty { color: var(--muted); padding: 6px 2px; }
+.irow {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 6px; cursor: pointer;
+}
+.irow:hover { border-color: var(--accent); }
+.idot { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.ititle { flex: none; max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.isum { flex: 1; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.ibadge { font-size: 11px; border-radius: 6px; padding: 1px 7px; flex: none; }
+.b-cal { background: #e8f0fe; color: var(--accent); }
+.b-todo { background: #f0f3f8; color: var(--muted); }
+
+/* ===== P3：事项弹窗表单 ===== */
+.iform .frow {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 10px;
+}
+.iform .frow label { flex: 0 0 64px; color: var(--muted); }
+.iform .frow input[type="date"], .iform .frow input[type="time"], .iform .frow select {
+  padding: 5px 6px; border: 1px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); background: #fff;
+}
+.iform .frow input[type="text"], .iform .frow textarea {
+  flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); background: #fff;
+}
+.iform .frow input:focus, .iform .frow textarea:focus, .iform .frow select:focus { outline: none; border-color: var(--accent); }
+.ferr { color: var(--danger); font-size: 12px; margin-top: 4px; }
+.btn-danger.left { margin-right: auto; }

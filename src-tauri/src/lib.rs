@@ -38,7 +38,12 @@ pub fn run() {
             commands::categories::rename_category,
             commands::categories::set_category_color,
             commands::categories::count_items_in_category,
-            commands::categories::delete_category
+            commands::categories::delete_category,
+            commands::items::create_item,
+            commands::items::update_item,
+            commands::items::delete_item,
+            commands::items::get_item_detail,
+            commands::items::list_items
         ])
         .run(tauri::generate_context!())
         .expect("启动 Tauri 应用失败");
