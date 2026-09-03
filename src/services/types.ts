@@ -13,6 +13,25 @@ export const OVERVIEW = "overview" as const;
 export type TabId = number | typeof OVERVIEW;
 
 export type DeleteMode = "cascade" | "move_to_uncategorized";
+/** 待办查询结果（对应 store::TodoItem；截止可空=「长期规划」沉底） */
+export interface TodoItem {
+  id: number;
+  category_id: number;
+  title: string;
+  due_date: string | null;
+  due_time: string | null;
+  created_at: string;
+}
+
+export function isTodoItemArr(v: unknown): v is TodoItem[] {
+  if (!Array.isArray(v)) return false;
+  return v.every((x) => {
+    if (typeof x !== "object" || x === null) return false;
+    const o = x as Record<string, unknown>;
+    return typeof o.id === "number" && typeof o.title === "string";
+  });
+}
+
 /** 日历查询结果（对应 store::CalendarItem；起止日期均非空） */
 export interface CalendarItem {
   id: number;

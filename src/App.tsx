@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import TabBar from "./components/TabBar/TabBar";
 import CalendarView from "./components/Calendar/CalendarView";
+import TodoPanel from "./components/Todo/TodoPanel";
 import { useAppStore } from "./stores/appStore";
 
 export default function App() {
@@ -16,7 +17,7 @@ export default function App() {
     <div className="app">
       <TabBar />
       <CalendarView />
-      <aside className="todo-pane">待办区将在 P5 实现</aside>
+      <TodoPanel />
     </div>
   );
 }

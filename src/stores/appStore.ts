@@ -12,6 +12,9 @@ interface AppStore {
   items: Item[];
   activeTab: TabId;
   ready: boolean;
+  /** 数据版本号：事项/分类写操作后递增，供日历/待办跨面板刷新（P5 引入） */
+  dataVersion: number;
+  bump: () => void;
   load: () => Promise<void>;
   switchTab: (tab: TabId) => void;
   create: (name: string, color: string) => Promise<void>;
@@ -34,6 +37,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
   items: [],
   activeTab: "overview",
   ready: false,
+  dataVersion: 0,
+  bump() {
+    set((s) => ({ dataVersion: s.dataVersion + 1 }));
+  },
   async load() {
     const categories = await categorySource.list();
     set({ categories, ready: true });
@@ -59,6 +66,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
     if (active === id) set({ activeTab: "overview" });
     set({ categories: await categorySource.list() });
     await get().loadItems();
+    get().bump();
   },
   async loadItems() {
     const { activeTab } = get();
@@ -68,14 +76,17 @@ export const useAppStore = create<AppStore>((set, get) => ({
   async createItem(draft) {
     await itemSource.create(draft);
     await get().loadItems();
+    get().bump();
   },
   async updateItem(id, draft) {
     await itemSource.update(id, draft);
     // 编辑可换分类：若切走，当前列表不再包含 → 刷新后由 activeTab 过滤
     await get().loadItems();
+    get().bump();
   },
   async deleteItem(id) {
     await itemSource.remove(id);
     await get().loadItems();
+    get().bump();
   },
 }));

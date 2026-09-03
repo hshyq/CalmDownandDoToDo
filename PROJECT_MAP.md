@@ -10,6 +10,8 @@
 >
 > **P4 已落地**（2026-09-03，代码完成待手测 TC-CAL）：注册 `list_calendar_items` IPC；前端 `features/calendar/`（dates.ts/layout.ts 纯函数 + 10 vitest）、`components/Calendar/CalendarView.tsx`（周/月、补齐、今日高亮、横条泳道/跨格、+N 浮层、格内「+」预填日期、总览选分类）；ItemModal presetStartDate；ItemsView 过渡列表退役。vitest 15 passed、build/tauri dev 正常。
 >
+> **P5 已落地**（2026-09-03，代码完成待手测 TC-DUE）：注册 `list_todo_items` IPC；前端 `features/todo/group.ts`（分组纯函数+2 vitest）、`components/Todo/TodoPanel.tsx`（时间轴分组/折叠/虚拟滚动/条目色块点击编辑）；appStore dataVersion/bump 跨面板刷新。vitest 17 passed、build/tauri dev 正常。
+>
 > **P3 已落地**（2026-09-03，代码完成待手测 TC-IT）：后端 `store/items.rs`（Item/NewItem、全字段校验 create/update/delete/get/list + 3 单测）与 `commands/items.rs`（ItemDraft camelCase、6 个 IPC）；前端 `components/Items/`（ItemModal 新增/编辑/删除、ItemsView 过渡列表分组「日历/待办」）、types/ipc/mock 扩展、appStore 事项操作。后端 cargo test 21 passed、前端 vitest 5 passed、clippy 零警告、vite build/tauri dev 正常。
 
 ## 一句话架构

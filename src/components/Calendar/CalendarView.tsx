@@ -20,7 +20,7 @@ interface ModalState {
 }
 
 export default function CalendarView() {
-  const { categories, activeTab, ready } = useAppStore();
+  const { categories, activeTab, ready, dataVersion } = useAppStore();
   const [view, setView] = useState<ViewMode>("month");
   const [cursor, setCursor] = useState<string>(todayISO());
   const [items, setItems] = useState<CalendarItem[]>([]);
@@ -65,7 +65,7 @@ export default function CalendarView() {
 
   useEffect(() => {
     if (ready) void reload();
-  }, [ready, reload]);
+  }, [ready, reload, dataVersion]);
 
   const nav = (dir: 1 | -1) => {
     if (view === "week") setCursor(addDays(cursor, 7 * dir));

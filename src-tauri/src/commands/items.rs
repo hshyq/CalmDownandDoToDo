@@ -72,6 +72,14 @@ pub fn list_calendar_items(
 }
 
 #[tauri::command]
+pub fn list_todo_items(
+    db: State<'_, Db>,
+    category_id: Option<i64>,
+) -> Result<Vec<crate::store::TodoItem>, String> {
+    db.list_todo_items(category_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn list_items(db: State<'_, Db>, category_id: Option<i64>) -> Result<Vec<Item>, String> {
     db.list_items(category_id).map_err(|e| e.to_string())
 }

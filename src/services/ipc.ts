@@ -1,12 +1,13 @@
 // IPC 封装：invoke + 错误统一转中文友好提示（AGENTS 第 5 节）。
 import { invoke } from "@tauri-apps/api/core";
-import type { CalendarItem, Category, DeleteMode, Item, ItemDraft } from "./types";
+import type { CalendarItem, Category, DeleteMode, Item, ItemDraft, TodoItem } from "./types";
 import {
   isCalendarItemArr,
   isCategory,
   isCategoryArray,
   isItem,
   isItemArray,
+  isTodoItemArr,
 } from "./types";
 
 /** 当前是否运行在 Tauri 窗口内（浏览器预览时走 mock）。 */
@@ -56,6 +57,11 @@ export const itemApi = {
   ): Promise<CalendarItem[]> {
     const v = await call<unknown>("list_calendar_items", { viewStart, viewEnd, categoryId });
     if (!isCalendarItemArr(v)) throw new Error("日历数据格式异常");
+    return v;
+  },
+  async todo(categoryId: number | null): Promise<TodoItem[]> {
+    const v = await call<unknown>("list_todo_items", { categoryId });
+    if (!isTodoItemArr(v)) throw new Error("待办数据格式异常");
     return v;
   },
   async getDetail(id: number): Promise<Item> {

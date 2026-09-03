@@ -44,6 +44,7 @@ pub fn run() {
             commands::items::delete_item,
             commands::items::get_item_detail,
             commands::items::list_calendar_items,
+            commands::items::list_todo_items,
             commands::items::list_items
         ])
         .run(tauri::generate_context!())
