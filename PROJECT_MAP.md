@@ -3,7 +3,9 @@
 > **当前状态**：开发阶段 · **P0 工程初始化已完成**（2026-09-02）。下方目录树为**目标蓝图**；★ 标记 P0 已落地的文件，其余随 `doc/开发批次计划.md`（P1~P9）落地后**必须**同步更新本图（只写现状，禁止写变更过程）。
 >
 > **P0 已落地清单**（2026-09-02）：根 `package.json` / `index.html` / `tsconfig.json` / `vite.config.ts` / `.gitignore`；`src/main.tsx`、`src/App.tsx`（P0 冒烟页）、`src/styles/global.css`、`src/test/smoke.test.ts`；`src-tauri/Cargo.toml`、`build.rs`、`tauri.conf.json`、`capabilities/default.json`、`icons/`（含 icon.ico 与源图 app-icon.png）、`src-tauri/src/main.rs`、`src-tauri/src/lib.rs`（P0 提供 `ping` IPC）。
-> **P0 验收**：`npm run build`（tsc+vite）✓、`vitest run` ✓、`cargo test` ✓、`cargo clippy --all-targets` 零警告 ✓、`cargo fmt` ✓、`npm run tauri dev` 窗口已起 ✓（IPC pong 待人工确认）。
+> **P0 验收**：`npm run build`（tsc+vite）✓、`vitest run` ✓、`cargo test` ✓、`cargo clippy --all-targets` 零警告 ✓、`cargo fmt` ✓、`npm run tauri dev` 窗口已起 ✓、IPC pong 已人工确认 ✓。
+>
+> **P1 已落地**（2026-09-03）：`src-tauri/src/store/`（mod.rs / schema.rs / validation.rs）——schema_migrations 幂等迁移（v1 建 6 表 + 3 索引 + `items.created_at`）；`Db::open`；`list_calendar_items`（窗口交集）/ `list_todo_items`（COALESCE 哨兵沉底）查询；应用层校验函数；12 项单测通过。schema 数据字典同步见技术方案 v1.3。
 
 ## 一句话架构
 
@@ -66,9 +68,10 @@
 │     │  ├─ backup.rs         export/import JSON（导入前整库快照入撤销栈）
 │     │  ├─ undo.rs           undo / redo / undo_depth
 │     │  └─ mail.rs           （二期）邮箱配置/发送测试/失败手动重试 retry_send/同步 send_queue
-│     ├─ store/               SQLite 唯一写库方
-│     │  ├─ mod.rs            Mutex 单连接 + 归属判定/COALESCE 排序等查询
-│     │  └─ migrations/       schema 版本迁移（只增不改历史）
+│     ├─ store/               SQLite 唯一写库方（P1 已落地）
+│     │  ├─ mod.rs            Db(Mutex 单连接)/open/迁移调用；日历窗口交集、待办 COALESCE 排序查询
+│     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（只增不改历史）
+│     │  └─ validation.rs     应用层校验（分类名/颜色/标题/日期时刻成对/结束不早于开始）
 │     ├─ undo/                命令栈：apply/revert、上限 10 步、重启清空
 │     ├─ mailer.rs            （二期）lettre SMTP + TLS，失败重试 3 次
 │     ├─ scheduler.rs         （二期）tokio interval 30s 扫描提醒：到点弹窗+计划内发信

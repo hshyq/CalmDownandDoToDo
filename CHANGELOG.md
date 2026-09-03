@@ -48,9 +48,24 @@
 
 ### 新增
 - 工程骨架：Tauri 2（2.11.5）+ React 18 + TypeScript + Vite + vitest + zustand（D12）；目录按 PROJECT_MAP 蓝图，`.gitignore` 就位（data\、node_modules\、dist\、src-tauri\target\）
+- git 仓库初始化（git init -b main）与首次提交 2588e7b（经用户批准；.gitignore 含 .zcode/）
 - 后端最小 IPC：`ping` command 打通前后端；`tauri.conf.json`（identifier com.calendartodo.app、bundle.active=false）、capabilities、Windows 图标全套（占位图标，源图 `src-tauri/icons/app-icon.png`）
 - 开发机环境：配置 cargo 国内镜像（`~/.cargo/config.toml`，rsproxy 稀疏索引）以解决 crates.io 下载过慢问题
 
 ### 验收
 - `npm run build` / `vitest run` / `cargo test` / `cargo clippy --all-targets` / `cargo fmt` 全部通过；`npm run tauri dev` 窗口成功创建（MainWindowTitle=日历待办工具）
 - 待人工确认：窗口内页面显示「后端返回：pong」
+
+
+## 2026-09-03（开发阶段 · P1 数据层）
+
+### 新增
+- 依赖：`rusqlite`（0.32，`bundled` 特性；决策 D3 既定，一期零网络 crate）
+- `src-tauri/src/store/`：
+  - `schema.rs`：`schema_migrations` 幂等迁移（空表按 0 处理），v1 建一期 6 表（categories / items / field_defs / item_field_values / app_settings / schema_migrations）+ 3 索引；`items.created_at`（待办同刻按创建时间排序所需）
+  - `mod.rs`：`Db`（Mutex 单连接）、`open`（建目录+外键+迁移）、`list_calendar_items`（窗口交集 start_date<=view_end AND end_date>=view_start）、`list_todo_items`（COALESCE 9999-12-31 沉底 + created_at 兜底）
+  - `validation.rs`：分类名/颜色/标题/日期时刻成对/结束不早于开始 校验（中文提示，供 IPC 透传）
+- 技术方案 v1.3：3.1 items 补 `created_at`；`app_settings` 明确一期建表并移入 3.1
+
+### 验收
+- `cargo test` 12 passed（迁移幂等/建表、归属分集、窗口交集与分类过滤、同刻 created_at 兜底、校验矩阵）；`cargo clippy --all-targets` 零警告；`cargo fmt` 干净；`cargo build` 通过

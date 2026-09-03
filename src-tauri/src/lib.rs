@@ -1,7 +1,10 @@
 //! 日历待办工具 · Rust 核心入口
 //!
 //! P0：最小骨架 + IPC 打通（ping）。
-//! 后续批次按 `doc/开发批次计划.md` 添加 commands / store / undo 等模块。
+//! P1：数据层 store（schema 迁移 / 归属与排序查询 / 校验）。
+//! 后续批次按 `doc/开发批次计划.md` 添加 commands / undo 等模块。
+
+pub mod store;
 
 /// P0 IPC 冒烟：前后端打通验证。
 #[tauri::command]

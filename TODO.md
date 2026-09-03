@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P1 数据层（待开始，P0 已完成）**。业务代码开发按 `doc/开发批次计划.md` 分批推进（P0~P9），批次进度与状态以本文件为准。
+**开发阶段 · P2 分类模块（待开始，P0/P1 已完成）**。业务代码开发按 `doc/开发批次计划.md` 分批推进（P0~P9），批次进度与状态以本文件为准。
 
 ## 已完成
 
@@ -21,13 +21,14 @@
 - [x] 原型迭代（评审走查）：layoutWeek 与 +N 浮层排序按开始时间对齐 A2 规则；日历格 hover「+」快捷新建入口（PRD 6.3 v1.5 / TC-IT-012）
 - [x] 原型迭代（走查反馈）：日历格快捷入口扩展至总览页——总览新增弹窗带所属分类下拉（默认第一分类），分类/未分类页不显示该字段（PRD 6.3 v1.6 / TC-CL-007、TC-IT-012 修订）
 - [x] `doc/开发批次计划.md` 落档：P0~P9 批次范围/验收/交接约定（2026-09-02）
-- [x] **P0 工程初始化完成**（2026-09-02）：Tauri2+React18+TS+vitest+zustand 骨架；IPC ping 打通；图标/配置/capabilities 就位。验收：npm run build / vitest run / cargo test / clippy / fmt 全绿，tauri dev 窗口已起（IPC pong 待用户人工确认）
+- [x] **P0 工程初始化完成**（2026-09-02）：骨架/IPC ping/图标配置就位；三绿+clippy+fmt；tauri dev 起窗；pong 已人工确认；git init + 首次提交 `2588e7b`
 
 ## 下一步（按批次推进，范围/验收见 `doc/开发批次计划.md`）
 
 - [x] **P0 工程初始化**：Tauri 2 + React 18 + TS + vitest + zustand（D12）；`.gitignore` 就位；IPC ping 打通。验收：三绿 + clippy/fmt + `tauri dev` 起窗（pong 待人工确认）
-- [ ] **P0 收口动作（待用户批准）**：`git init` + 首次提交（`.gitignore` 已备）——经用户指示暂缓，等用户明确后再做；`webview2\` 捆绑在 P9 落实
-- [ ] **P1 数据层**：schema_migrations v1 全表 + store 单连接 Mutex + 归属/COALESCE 排序查询 + 校验入口 + 单测
+- [x] **P0 收口动作**：`git init -b main` + 首次提交 `2588e7b chore: P0 工程初始化…`（2026-09-02，经用户批准）；`.gitignore` 已含 `data\`、`node_modules\`、`dist\`、`src-tauri\target\`、`.zcode\`
+- [ ] `webview2\` 固定版运行时捆绑（D11）：在 P9 打包阶段落实
+- [x] **P1 数据层完成**（2026-09-03）：schema_migrations 幂等迁移（v1 建 6 表+3 索引+items.created_at）；Db(Mutex) open/迁移；list_calendar_items（窗口交集）/list_todo_items（COALESCE 沉底）查询；validation 校验；`cargo test` 12 passed、clippy 零警告
 - [ ] **P2 分类模块**：标签栏/色盘/分类 CRUD/删除二选一/未分类与总览特例（TC-CL）
 - [ ] **P3 事项模块**：CRUD/归属迁移/日历待办查询/总览可编辑删除（TC-IT）
 - [ ] **P4 日历视图**：周月网格/layout 纯函数+vitest/横条泳道/+N/格内「+」快捷新建（TC-CAL）
@@ -40,6 +41,6 @@
 
 ## 给下次对话的提醒
 
-- 文档基线：**PRD v1.6 / 技术方案 v1.2 / 测试用例 85 条（回归最小集 17 条）**；技术方案 v1.5/v1.6 为纯 UI 交互变更（日历格快捷入口），不影响架构故未升版；业务规则唯一权威是 PRD 第 5 章。
+- 文档基线：**PRD v1.6 / 技术方案 v1.3 / 测试用例 85 条（回归最小集 17 条）**；技术方案 v1.5/v1.6 为纯 UI 交互变更（未升架构版），v1.3 为 P1 数据字典补全；业务规则唯一权威是 PRD 第 5 章。
 - 每批开工先读 `doc/开发批次计划.md` 对应批次；批次收口按「批次完成定义」执行（含刷新本文件与 CHANGELOG）。
 - 改业务规则先改测试用例再改码；宣称完成前跑回归最小集（AGENTS 第 9 节）。
