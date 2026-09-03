@@ -186,3 +186,37 @@ body {
 .iform .frow input:focus, .iform .frow textarea:focus, .iform .frow select:focus { outline: none; border-color: var(--accent); }
 .ferr { color: var(--danger); font-size: 12px; margin-top: 4px; }
 .btn-danger.left { margin-right: auto; }
+/* ===== P4：日历视图 ===== */
+.calwrap { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 10px 10px 0; background: var(--panel); border-radius: var(--radius); overflow: auto; position: relative; }
+.calhead { display: grid; grid-template-columns: repeat(7, 1fr); color: var(--muted); font-size: 12px; border-bottom: 1px solid var(--border); }
+.calhead > div { padding: 7px 0; text-align: center; }
+.calgrid { flex: 1; display: flex; flex-direction: column; }
+.weekrow { position: relative; display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--border); min-height: 0; }
+.weekrow:last-child { border-bottom: none; }
+.daycell { position: relative; border-right: 1px solid var(--border); min-height: 100%; overflow: hidden; }
+.daycell:nth-child(7) { border-right: none; }
+.daycell .dnum { position: absolute; top: 4px; left: 8px; font-size: 12px; color: var(--text); z-index: 1; }
+.daycell.other { background: #fafbfc; }
+.daycell.other .dnum { color: #c3c9d1; }
+.daycell.today { background: #eaf3ff; }
+.daycell.today .dnum { color: var(--accent); font-weight: 700; }
+.celladd { position: absolute; top: 3px; right: 6px; z-index: 4; width: 18px; height: 18px; line-height: 15px; text-align: center; border-radius: 50%; background: #fff; border: 1px solid var(--border); color: var(--accent); font-size: 14px; font-weight: 700; cursor: pointer; opacity: 0; transition: opacity 0.12s; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); }
+.daycell:hover .celladd { opacity: 1; }
+.celladd:hover { background: #e8f0fe; border-color: var(--accent); }
+.barlayer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.bar { position: absolute; height: var(--bar-h); border-radius: 3px; color: #fff; font-size: 12px; display: flex; align-items: center; padding: 0 6px; overflow: hidden; white-space: nowrap; pointer-events: auto; cursor: pointer; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18); }
+.bar:hover { filter: brightness(1.08); }
+.morechip { position: absolute; bottom: 4px; right: 6px; z-index: 3; font-size: 11px; color: var(--accent); background: #eaf3ff; border-radius: 8px; padding: 0 7px; cursor: pointer; }
+.morechip:hover { background: #d8e9ff; }
+.loading-mask { position: absolute; inset: 0; background: rgba(244, 245, 247, 0.5); display: flex; align-items: center; justify-content: center; color: var(--muted); z-index: 5; }
+.nav-btn { border: 1px solid var(--border); background: #fff; border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 16px; line-height: 1; color: var(--text); }
+.nav-btn:hover { background: #f0f3f8; }
+.today-btn { margin-left: 6px; }
+.seg { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; margin-left: 10px; }
+.seg button { border: none; background: #fff; padding: 5px 12px; cursor: pointer; color: var(--muted); }
+.seg button.on { background: #e8f0fe; color: var(--accent); font-weight: 600; }
+.cal-title { margin-left: 12px; }
+.dl-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 6px; cursor: pointer; }
+.dl-row:hover { background: #f0f3f8; }
+.dl-title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-time { color: var(--muted); font-size: 12px; }

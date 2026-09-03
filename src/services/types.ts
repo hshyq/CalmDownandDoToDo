@@ -13,6 +13,26 @@ export const OVERVIEW = "overview" as const;
 export type TabId = number | typeof OVERVIEW;
 
 export type DeleteMode = "cascade" | "move_to_uncategorized";
+/** 日历查询结果（对应 store::CalendarItem；起止日期均非空） */
+export interface CalendarItem {
+  id: number;
+  category_id: number;
+  title: string;
+  start_date: string;
+  start_time: string | null;
+  end_date: string;
+  end_time: string | null;
+}
+
+export function isCalendarItemArr(v: unknown): v is CalendarItem[] {
+  if (!Array.isArray(v)) return false;
+  return v.every((x) => {
+    if (typeof x !== "object" || x === null) return false;
+    const o = x as Record<string, unknown>;
+    return typeof o.id === "number" && typeof o.title === "string" && typeof o.start_date === "string";
+  });
+}
+
 /** 事项（对应 store::items::Item；null=未填） */
 export interface Item {
   id: number;

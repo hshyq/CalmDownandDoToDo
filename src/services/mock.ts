@@ -1,5 +1,5 @@
 // 浏览器预览（非 Tauri）时的分类模拟数据，语义与后端 seed 一致（PRD 4.1）。
-import type { Category, DeleteMode, Item, ItemDraft } from "./types";
+import type { CalendarItem, Category, DeleteMode, Item, ItemDraft } from "./types";
 
 const seed: Category[] = [
   { id: 1, name: "生活", color: "#34B96F", sort_order: 0, kind: "normal" },
@@ -81,4 +81,18 @@ export const mockItemApi = {
   async remove(id: number): Promise<void> {
     items = items.filter((i) => i.id !== id);
   },
+  async calendar(viewStart: string, viewEnd: string, categoryId: number | null): Promise<CalendarItem[]> {
+    return items
+      .filter((it) => it.start_date && it.end_date &&
+        it.start_date <= viewEnd && it.end_date >= viewStart &&
+        (categoryId === null || it.category_id === categoryId))
+      .map((it) => ({ id: it.id, category_id: it.category_id, title: it.title,
+        start_date: it.start_date!, start_time: it.start_time, end_date: it.end_date!, end_time: it.end_time }));
+  },
+  async getDetail(id: number): Promise<Item> {
+    const it = items.find((x) => x.id === id);
+    if (!it) throw new Error("事项不存在");
+    return { ...it };
+  },
+
 };

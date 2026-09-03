@@ -61,6 +61,17 @@ pub fn get_item_detail(db: State<'_, Db>, id: i64) -> Result<Item, String> {
 }
 
 #[tauri::command]
+pub fn list_calendar_items(
+    db: State<'_, Db>,
+    view_start: String,
+    view_end: String,
+    category_id: Option<i64>,
+) -> Result<Vec<crate::store::CalendarItem>, String> {
+    db.list_calendar_items(&view_start, &view_end, category_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 pub fn list_items(db: State<'_, Db>, category_id: Option<i64>) -> Result<Vec<Item>, String> {
     db.list_items(category_id).map_err(|e| e.to_string())
 }

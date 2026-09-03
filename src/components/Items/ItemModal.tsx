@@ -7,7 +7,9 @@ import type { Category, Item } from "../../services/types";
 interface Props {
   item: Item | null; // null=新增
   categories: Category[];
-  defaultCategoryId: number; // 新增默认=当前分类（总览无新增入口，故必有值）
+  defaultCategoryId: number; // 新增默认=当前分类；总览格「+」时传第一个分类
+  allowCategoryPick?: boolean; // 总览页新增无默认分类 → 弹窗显示所属分类下拉（PRD 6.3 v1.6）
+  presetStartDate?: string; // 日历格「+」预填开始日期（PRD 6.3）
   onClose: () => void;
   onSaved: (msg: string) => void;
   onDeleted: () => void;
@@ -19,21 +21,21 @@ interface FormState {
   sd: string; st: string; ed: string; et: string; dd: string; dt: string;
 }
 
-function empty(item: Item | null): FormState {
+function empty(item: Item | null, presetStartDate = ""): FormState {
   return {
     title: item?.title ?? "",
     description: item?.description ?? "",
-    sd: item?.start_date ?? "", st: item?.start_time ?? "",
+    sd: item?.start_date ?? presetStartDate, st: item?.start_time ?? "",
     ed: item?.end_date ?? "", et: item?.end_time ?? "",
     dd: item?.due_date ?? "", dt: item?.due_time ?? "",
   };
 }
 
-export default function ItemModal({ item, categories, defaultCategoryId, onClose, onSaved, onDeleted }: Props) {
+export default function ItemModal({ item, categories, defaultCategoryId, allowCategoryPick = false, presetStartDate = "", onClose, onSaved, onDeleted }: Props) {
   const { createItem, updateItem, deleteItem } = useAppStore();
   const isEdit = item !== null;
   const [catId, setCatId] = useState<number>(isEdit ? item!.category_id : defaultCategoryId);
-  const [f, setF] = useState<FormState>(empty(item));
+  const [f, setF] = useState<FormState>(empty(item, presetStartDate));
   const [err, setErr] = useState("");
   const [confirmDel, setConfirmDel] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -122,7 +124,7 @@ export default function ItemModal({ item, categories, defaultCategoryId, onClose
       }
     >
       <div className="iform">
-        {isEdit ? (
+        {isEdit || allowCategoryPick ? (
           <div className="frow">
             <label>所属分类</label>
             <select value={catId} onChange={(e) => setCatId(Number(e.target.value))}>
