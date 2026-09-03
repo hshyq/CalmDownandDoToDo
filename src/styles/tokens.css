@@ -1,0 +1,14 @@
+/* 设计 token（原型 :root 变量搬入，P2 起步；后续按需扩展） */
+:root {
+  --bg: #f4f5f7;
+  --panel: #ffffff;
+  --border: #e3e6ea;
+  --text: #2b2f36;
+  --muted: #8a919c;
+  --accent: #4f8ef7;
+  --danger: #e5534b;
+  --radius: 8px;
+  --shadow: 0 8px 28px rgba(30, 40, 60, 0.16);
+  --bar-h: 20px;
+  --lane-step: 22px;
+}

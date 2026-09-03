@@ -69,3 +69,16 @@
 
 ### 验收
 - `cargo test` 12 passed（迁移幂等/建表、归属分集、窗口交集与分类过滤、同刻 created_at 兜底、校验矩阵）；`cargo clippy --all-targets` 零警告；`cargo fmt` 干净；`cargo build` 通过
+
+
+## 2026-09-03（开发阶段 · P2 分类模块）
+
+### 新增
+- 后端：`store/categories.rs`（Category/DeleteMode、首次启动种子 ensure_seeded、list/create/rename/set_color/delete 二选一、count；6 项单测）；`commands/categories.rs`（5 个 IPC）；`lib.rs` setup 打开 `data\calendar.db` 并 `manage(Db)`，注册分类命令
+- 前端：标签栏与分类管理（总览固定顶/普通分类/未分类固定底/⚙设置占位、⋮菜单=改色/重命名/删除、删除二选一弹窗、11×6 色盘+自定义、新建分类默认取色盘最少用色）；`stores/appStore.ts`（zustand）、`services/ipc.ts|types.ts|mock.ts`、`features/color/palette.ts`（纯函数+4 单测）、`styles/tokens.css`
+- 修复：vite dev watch 忽略 `src-tauri/target`（tauri dev 编译占用 exe 导致 EBUSY）
+
+### 验收
+- 后端 `cargo test` 18 passed、clippy 零警告；前端 `vitest` 5 passed、`npm run build` 通过；`tauri dev` 起窗正常、`data\calendar.db` 自动创建
+- **用户手测通过**：TC-CL-001~009 全部验收（2026-09-03）
+- **决策 A**：删除分类「移入未分类」时字段模板与其值一并清除（FK 级联），事项标准字段完整保留——PRD v1.7、TC-CL-005、技术方案 3.1 已同步

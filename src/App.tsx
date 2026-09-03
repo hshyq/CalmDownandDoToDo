@@ -1,33 +1,34 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import TabBar from "./components/TabBar/TabBar";
+import { useAppStore } from "./stores/appStore";
+import { OVERVIEW } from "./services/types";
 
-/** P0 冒烟页：三栏骨架占位 + 前后端 IPC 打通验证（ping） */
 export default function App() {
-  const [ping, setPing] = useState<string>("检测中…");
+  const { categories, activeTab, ready, load } = useAppStore();
 
   useEffect(() => {
-    const inTauri = "__TAURI_INTERNALS__" in window;
-    if (!inTauri) {
-      setPing("浏览器预览模式（IPC 仅在 Tauri 窗口内可用）");
-      return;
-    }
-    import("@tauri-apps/api/core")
-      .then(({ invoke }) => invoke<string>("ping"))
-      .then((v) => setPing(`后端返回：${v}`))
-      .catch((e) => setPing(`IPC 失败：${String(e)}`));
-  }, []);
+    load().catch(() => {
+      /* 加载失败：TabBar 操作会给出友好提示；此处避免未处理 Promise */
+    });
+  }, [load]);
+
+  const currentName =
+    activeTab === OVERVIEW
+      ? "总览"
+      : (categories.find((c) => c.id === activeTab)?.name ?? "…");
 
   return (
-    <div style={{ display: "flex", height: "100%" }}>
-      <aside style={{ width: 160, flex: "none", borderRight: "1px solid #e3e6ea", background: "#fff", padding: 8 }}>
-        标签栏（P2 实现）
-      </aside>
-      <main style={{ flex: 1, padding: 12 }}>
-        <h1 style={{ fontSize: 18 }}>日历待办工具</h1>
-        <p style={{ marginTop: 12 }}>P0 工程骨架就绪 · {ping}</p>
+    <div className="app">
+      <TabBar />
+      <main className="main">
+        <div className="toolbar">
+          <span className="title">{currentName}</span>
+        </div>
+        <div className="placeholder">
+          {ready ? "日历区将在 P4 实现" : "正在加载…"}
+        </div>
       </main>
-      <aside style={{ width: 280, flex: "none", borderLeft: "1px solid #e3e6ea", background: "#fff", margin: "10px 10px 10px 0", borderRadius: 8, padding: 10 }}>
-        待办区（P5 实现）
-      </aside>
+      <aside className="todo-pane">待办区将在 P5 实现</aside>
     </div>
   );
 }

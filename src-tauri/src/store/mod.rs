@@ -3,6 +3,7 @@
 //! 职责：连接管理（Mutex 单连接，决策 D3/D7）、schema 迁移、归属/排序查询。
 //! 归属规则不落库，由查询条件表达（PRD 5.1/技术方案 3.1）。
 
+pub mod categories;
 pub mod schema;
 pub mod validation;
 
@@ -23,6 +24,7 @@ const DB_FILE: &str = "calendar.db";
 /// store 统一错误：内部使用，IPC 层负责转成界面友好提示。
 #[derive(Debug)]
 pub enum Error {
+    Business(String),
     Io(std::io::Error),
     Sqlite(rusqlite::Error),
     Lock(String),
@@ -31,6 +33,7 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Error::Business(msg) => write!(f, "{msg}"),
             Error::Io(e) => write!(f, "数据目录操作失败：{e}"),
             Error::Sqlite(e) => write!(f, "数据库操作失败：{e}"),
             Error::Lock(msg) => write!(f, "{msg}"),
@@ -99,6 +102,7 @@ impl Db {
         let mut guard = self.lock()?;
         guard.execute_batch("PRAGMA foreign_keys = ON;")?;
         schema::migrate(&mut guard)?;
+        categories::ensure_seeded(&mut guard)?;
         Ok(())
     }
 
@@ -166,6 +170,44 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    // ---- 分类（P2；SQL 实现见 store::categories，写操作 P7 接入 undo） ----
+
+    pub fn list_categories(&self) -> Result<Vec<categories::Category>> {
+        let guard = self.lock()?;
+        categories::list(&guard)
+    }
+
+    pub fn create_category(&self, name: &str, color: &str) -> Result<categories::Category> {
+        let guard = self.lock()?;
+        categories::create(&guard, name, color)
+    }
+
+    pub fn rename_category(&self, id: i64, name: &str) -> Result<()> {
+        let guard = self.lock()?;
+        categories::rename(&guard, id, name)
+    }
+
+    pub fn set_category_color(&self, id: i64, color: &str) -> Result<()> {
+        let guard = self.lock()?;
+        categories::set_color(&guard, id, color)
+    }
+
+    /// 分类下事项数（删除分类二选一弹窗判断用，TC-CL-003~005）。
+    pub fn count_items_in_category(&self, category_id: i64) -> Result<i64> {
+        let guard = self.lock()?;
+        let n = guard.query_row(
+            "SELECT COUNT(*) FROM items WHERE category_id = ?1",
+            [category_id],
+            |r| r.get(0),
+        )?;
+        Ok(n)
+    }
+
+    pub fn delete_category(&self, id: i64, mode: categories::DeleteMode) -> Result<()> {
+        let mut guard = self.lock()?;
+        categories::delete(&mut guard, id, mode)
     }
 }
 

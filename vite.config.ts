@@ -8,6 +8,10 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    watch: {
+      // 避免监听构建产物导致 EBUSY（tauri dev 编译时占用 exe）
+      ignored: ["**/src-tauri/target/**", "**/node_modules/**", "**/dist/**"],
+    },
   },
   envPrefix: ["VITE_", "TAURI_"],
   build: {
