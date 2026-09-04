@@ -51,8 +51,19 @@ pub fn run() {
                 .parent()
                 .ok_or_else(|| std::io::Error::other("无法定位可执行文件目录"))?
                 .join("data");
-            let db = crate::store::Db::open(&data_dir)
-                .map_err(|e| std::io::Error::other(format!("初始化数据目录失败：{e}")))?;
+            // 数据目录不可写 → 弹提示引导移至可写目录（TC-BAK-005），随后退出
+            let db = match crate::store::Db::open(&data_dir) {
+                Ok(db) => db,
+                Err(e) => {
+                    use tauri_plugin_dialog::DialogExt;
+                    let _ = app
+                        .dialog()
+                        .message("数据目录不可写，无法保存数据。\n请把程序移动到可写目录（如桌面或文档）后重新打开。")
+                        .title("无法启动")
+                        .blocking_show();
+                    return Err(std::io::Error::other(format!("初始化数据目录失败：{e}")).into());
+                }
+            };
             app.manage(db);
             app.manage(UndoStack::new(&data_dir));
             Ok(())

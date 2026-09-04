@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P8 备份（代码完成：导出/导入/撤销已实现；待用户手测 TC-BAK-001~006 收口）**
+**开发阶段 · P9 一期收尾（代码/打包/文档就绪；待用户跑回归最小集 17 条后提交收口）**
 
 ## 已完成
 
@@ -42,8 +42,10 @@
   - [x] 前端：undoStore 按钮态/事件监听、工具栏 ↶↷ 按钮、Ctrl+Z/Y 快捷键（输入框内不触发）、撤销后跨面板刷新
   - [x] D11 WebView2 固定版检测：exe 同目录 webview2\ 存在则设 WEBVIEW2_BROWSER_EXECUTABLE_FOLDER（打包部分 P9 落实）
   - [x] D9 单实例互斥：经用户确认引入官方 tauri-plugin-single-instance v2.4.4；第二实例自动退出并聚焦已有窗口；commit a9a8003
-- [ ] **P8 备份·代码完成**（2026-09-04，待手测 TC-BAK-001~006）：store/backup.rs（整库 dump/导入 + 语义校验 TC-BAK-006 + 整库替换 + 默认导出路径 data\backups）；undo 增 Import 命令（导入前整库快照落 data\undo_tmp，D10，重启清理）；commands default_backup_path()/export(path)/import(path)（经官方 tauri-plugin-dialog，用户自选目录，已按用户要求调整）；前端 ⚙ 设置弹窗（数据备份：另存为对话框导出 + 打开对话框导入 + 二次确认 + 导入后刷新 + 可撤销）。cargo 47 tests、clippy/fmt 0、vitest 25、build/tauri dev 正常
-- [ ] **P9 一期收尾**：回归最小集 17 条/全量测试/便携打包/README/文档刷新（DoD）
+- [x] **P8 备份完成并提交**（2026-09-04，用户验收通过；commit 9c09fd0）：store/backup.rs、undo Import（D10 落盘）、commands default_backup_path/export/import、⚙ 设置弹窗经官方 tauri-plugin-dialog 选目录/文件（应验收反馈调整）
+- [ ] **P9 一期收尾（进行中）**：
+  - [x] TC-BAK-005 启动只读目录提示（dialog）；README 正式版；release exe 便携目录（target\release\日历待办工具 v0.1.0\，双击验证通过）；CHANGELOG/PROJECT_MAP/TODO 终态
+  - [ ] 用户最终回归最小集 17 条通过 → 提交 P9 → 一期发布
 - [ ] 二期（另行推进）：托盘常驻、提醒设置、SMTP 直发、同步与过期汇总弹窗
 
 ## 给下次对话的提醒
