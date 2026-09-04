@@ -150,3 +150,22 @@ export const undoApi = {
   },
 };
 
+
+
+
+/** 备份 IPC（PRD 6.8：路径由 tauri-plugin-dialog 提供；导入整库替换计入撤销栈）。 */
+export const backupApi = {
+  /** 默认导出路径（data\backups\日历待办备份_<时间>.json），供「另存为」默认文件名。 */
+  async defaultPath(): Promise<string> {
+    const v = await call<unknown>("default_backup_path");
+    return typeof v === "string" ? v : "";
+  },
+  /** 导出备份到指定路径。 */
+  async export(path: string): Promise<void> {
+    await call<void>("export_backup", { path });
+  },
+  /** 导入备份（整库替换；导入前状态可撤销）。 */
+  async import(path: string): Promise<void> {
+    await call<void>("import_backup", { path });
+  },
+};

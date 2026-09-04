@@ -290,3 +290,20 @@ body {
 .undobtn { width: 30px; height: 28px; padding: 0 8px; font-size: 15px; line-height: 1; margin-left: 4px; }
 .undobtn:disabled { opacity: 0.35; cursor: default; }
 .undobtn:disabled:hover { background: none; }
+
+/* ===== P8：设置弹窗（数据备份） ===== */
+.set-wrap { display: flex; min-height: 240px; }
+.set-tabs { width: 150px; flex: none; border-right: 1px solid var(--border); padding: 8px 6px; }
+.set-tabs button {
+  display: flex; align-items: center; gap: 6px; width: 100%; text-align: left;
+  padding: 8px 10px; border-radius: 6px; border: none; background: none; color: var(--text);
+  cursor: pointer; font: inherit;
+}
+.set-tabs button:hover { background: #f0f3f8; }
+.set-tabs button.on { background: #e8f0fe; font-weight: 600; }
+.set-tabs .badge {
+  font-size: 10px; background: #eef1f5; color: var(--muted); border-radius: 8px; padding: 0 6px;
+}
+.set-body { flex: 1; padding: 14px 16px; }
+.set-actions { display: flex; gap: 10px; }
+.set-body .note { color: var(--muted); font-size: 12px; line-height: 1.9; margin-top: 14px; }

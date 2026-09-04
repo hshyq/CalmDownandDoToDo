@@ -43,6 +43,7 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             // 数据目录 = exe 同目录 data\（红线 6；运行期解析，禁止硬编码）
             let data_dir = std::env::current_exe()
@@ -53,11 +54,14 @@ pub fn run() {
             let db = crate::store::Db::open(&data_dir)
                 .map_err(|e| std::io::Error::other(format!("初始化数据目录失败：{e}")))?;
             app.manage(db);
-            app.manage(UndoStack::new());
+            app.manage(UndoStack::new(&data_dir));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             ping,
+            commands::backup::default_backup_path,
+            commands::backup::export_backup,
+            commands::backup::import_backup,
             commands::categories::list_categories,
             commands::categories::create_category,
             commands::categories::rename_category,

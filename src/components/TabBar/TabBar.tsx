@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Modal from "../Modal/Modal";
+import SettingsDialog from "../Settings/SettingsDialog";
 import ColorPicker from "./ColorPicker";
 import { useAppStore } from "../../stores/appStore";
 import { categoryApi } from "../../services/ipc";
@@ -25,6 +26,7 @@ export default function TabBar() {
   const [dlg, setDlg] = useState<Dialog | null>(null);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
+  const [showSettings, setShowSettings] = useState(false);
   const [nameInput, setNameInput] = useState("");
 
   const showToast = (msg: string) => {
@@ -165,7 +167,7 @@ export default function TabBar() {
       <div className="tab-divider" />
       <div className="tab-bottom">
         {tabRow(uncat, "bottom")}
-        <button type="button" className="btn-settings" onClick={() => showToast("设置页将在后续批次开放")}>
+        <button type="button" className="btn-settings" onClick={() => setShowSettings(true)}>
           ⚙ 设置
         </button>
       </div>
@@ -192,6 +194,7 @@ export default function TabBar() {
       ) : null}
 
       {dlg ? renderDialog() : null}
+      {showSettings ? <SettingsDialog onClose={() => setShowSettings(false)} /> : null}
       {toast ? <div className="toast">{toast}</div> : null}
     </aside>
   );

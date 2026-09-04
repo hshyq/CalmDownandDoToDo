@@ -3,6 +3,7 @@
 //! 职责：连接管理（Mutex 单连接，决策 D3/D7）、schema 迁移、归属/排序查询。
 //! 归属规则不落库，由查询条件表达（PRD 5.1/技术方案 3.1）。
 
+pub mod backup;
 pub mod categories;
 pub mod fieldconvert;
 pub mod fields;
@@ -14,10 +15,8 @@ pub mod values;
 
 use std::fmt;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-#[cfg(test)]
-use std::path::PathBuf;
 use std::sync::Mutex;
 
 use rusqlite::Connection;
@@ -88,6 +87,7 @@ pub struct TodoItem {
 /// SQLite 单连接（Mutex 串行化，单用户桌面场景足够）。
 pub struct Db {
     conn: Mutex<Connection>,
+    data_dir: PathBuf,
 }
 
 impl Db {
@@ -97,6 +97,7 @@ impl Db {
         let conn = Connection::open(data_dir.join(DB_FILE))?;
         let mut db = Db {
             conn: Mutex::new(conn),
+            data_dir: data_dir.to_path_buf(),
         };
         db.initialize()?;
         Ok(db)
@@ -115,6 +116,11 @@ impl Db {
         self.conn
             .lock()
             .map_err(|_| Error::Lock("数据库连接已被占用".to_string()))
+    }
+
+    /// 运行期数据目录（exe 同目录 data\；导出备份默认放 data\backups）。
+    pub fn data_dir(&self) -> &Path {
+        &self.data_dir
     }
 
     /// 日历集合：窗口交集 `start_date <= view_end AND end_date >= view_start`。
@@ -356,6 +362,23 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
     pub fn set_field_sort(&self, id: i64, sort_order: i64) -> Result<()> {
         let mut guard = self.lock()?;
         snapshot::set_field_sort(&mut guard, id, sort_order)
+    }
+
+    // ---- P8：备份导出/导入（SQL 实现见 store::backup） ----
+
+    pub fn dump_json(&self) -> Result<String> {
+        let guard = self.lock()?;
+        backup::dump(&guard).map(|v| v.to_string())
+    }
+
+    pub fn next_backup_path(&self) -> Result<PathBuf> {
+        let guard = self.lock()?;
+        backup::default_export_path(&self.data_dir, &guard)
+    }
+
+    pub fn import_json(&self, text: &str) -> Result<()> {
+        let mut guard = self.lock()?;
+        backup::import(&mut guard, text)
     }
 }
 

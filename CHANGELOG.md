@@ -780,3 +780,16 @@
 - `cargo test` 43 passed（+9）、clippy/fmt 零告警；`vitest` 25 passed、`npm run build` 通过；`tauri dev` 起窗正常
 - **用户验收通过**：TC-UNDO-001~009（撤销/重做/上限/重做栈清空/输入框内不触发等）
 - 单实例自动验证：第二实例 exit=0 拦截生效；TC-ENV-001 待用户双击手测确认
+
+## 2026-09-04（开发阶段 · P8 备份）
+
+### 新增
+- `store/backup.rs`：整库 dump（分类/字段定义/事项[含字段值]/设置 + format_version/exported_at，不含授权码）与导入（格式版本校验、语义校验 TC-BAK-006：标题/日期成对/结束不早于开始/单选多选值命中选项，事务内整库替换）+ 默认导出路径函数 `data\backups\日历待办备份_<时间>.json` + 3 测试
+- `undo`：新增 Import 命令——导入前整库快照落 `data\undo_tmp`（D10，内存只存路径，命令丢弃/重启清理），撤销=恢复导入前状态、重做=重放导入内容；UndoStack 启动清空 undo_tmp
+- `commands/backup.rs`：`default_backup_path()` / `export_backup(path)` / `import_backup(path)`；导出/导入路径经官方 `tauri-plugin-dialog`（用户另存为自选目录、打开选文件；经用户确认引入），技术方案 5.4 IPC 表同步
+- 前端 ⚙ 设置弹窗 `components/Settings/SettingsDialog.tsx`（数据备份：另存为对话框导出[默认文件名含日期] / 打开对话框导入 + 二次确认「将覆盖当前全部数据」+ 导入后分类/事项刷新并 bump，可 Ctrl+Z 撤销导入）；`services/ipc.ts` backupApi
+### 验收
+- `cargo test` 47 passed（+4）、clippy/fmt 零告警；`vitest` 25 passed、`npm run build` 通过；`tauri dev` 起窗正常
+- **待用户手测**：TC-BAK-001~006（导出内容与文件名、导入二次确认、导入后 Ctrl+Z 恢复、损坏/语义违规拒绝）
+- 说明：TC-BAK-005（只读目录启动提示）属启动健壮性，P9 收尾评估；导出/导入均经系统对话框由用户选择目录/文件（应验收反馈调整，未提交）
+

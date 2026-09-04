@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P7 撤销/重做与进程（代码完成：撤销部分用户验收通过；D9 单实例已实现并自动验证，TC-ENV-001 待双击手测确认）**
+**开发阶段 · P8 备份（代码完成：导出/导入/撤销已实现；待用户手测 TC-BAK-001~006 收口）**
 
 ## 已完成
 
@@ -36,13 +36,13 @@
 - [x] **P6 自定义字段·后端完成**（2026-09-03）：store/fieldconvert（FieldType/JSON 编解码/矩阵 convert_value+7 穷举测试）、store/fields（CRUD/set_options 过滤/change_type 迁移/move_field +6 测试）、store/values（set/list）；commands/fields（8 IPC）+ items draft fieldValues；34 cargo tests、clippy 0；提交 1d0cbe7
 - [x] **P6 前端·代码完成**（2026-09-04，待手测 TC-FLD-001~017）：字段管理弹窗（增删改名/改类型确认/选项维护/排序）、ItemModal 六类型字段区（值加载/保存合并、切分类按模板过滤展示、PRD 4.3）、types/ipc 扩展与 fieldApi、FieldEditor 控件、features/fields 值编解码纯函数（+8 vitest）；vitest 25/build 通过/tauri dev 起窗正常。mock 未扩展字段（预览非验收路径，视图直连真实 IPC）
 - [x] **P6 前端验收通过并提交**（2026-09-04，用户手测 TC-FLD-001~017 通过）：修复字段值载荷命名（FieldValuePayload 后端 serde camelCase → fieldDefId）；commit 0d88ab7
-- [x] **P7 撤销/重做+进程完成**（2026-09-04；撤销部分用户验收通过，D9/D11 实现完毕）：
+- [x] **P7 撤销/重做+进程完成并提交**（2026-09-04，用户验收通过；commit a9a8003）：
   - [x] store::snapshot 快照/恢复原语 + undo 双栈（上限 10、重启清空）+ 命令枚举（+9 cargo 测试，共 43）
   - [x] commands 全部写操作入栈（分类/事项/字段增删改、级联删除、排序）+ 字段复合 save_field（一次保存=一步撤销）+ undo/redo/depth IPC + undo-depth 事件
   - [x] 前端：undoStore 按钮态/事件监听、工具栏 ↶↷ 按钮、Ctrl+Z/Y 快捷键（输入框内不触发）、撤销后跨面板刷新
   - [x] D11 WebView2 固定版检测：exe 同目录 webview2\ 存在则设 WEBVIEW2_BROWSER_EXECUTABLE_FOLDER（打包部分 P9 落实）
-  - [x] D9 单实例互斥：经用户确认引入官方 tauri-plugin-single-instance v2.4.4；第二实例自动退出并聚焦已有窗口（自动验证拦截生效）；TC-ENV-001 待用户双击手测
-- [ ] **P8 备份**：导出导入/语义校验/二次确认/导入快照(D10)（TC-BAK）
+  - [x] D9 单实例互斥：经用户确认引入官方 tauri-plugin-single-instance v2.4.4；第二实例自动退出并聚焦已有窗口；commit a9a8003
+- [ ] **P8 备份·代码完成**（2026-09-04，待手测 TC-BAK-001~006）：store/backup.rs（整库 dump/导入 + 语义校验 TC-BAK-006 + 整库替换 + 默认导出路径 data\backups）；undo 增 Import 命令（导入前整库快照落 data\undo_tmp，D10，重启清理）；commands default_backup_path()/export(path)/import(path)（经官方 tauri-plugin-dialog，用户自选目录，已按用户要求调整）；前端 ⚙ 设置弹窗（数据备份：另存为对话框导出 + 打开对话框导入 + 二次确认 + 导入后刷新 + 可撤销）。cargo 47 tests、clippy/fmt 0、vitest 25、build/tauri dev 正常
 - [ ] **P9 一期收尾**：回归最小集 17 条/全量测试/便携打包/README/文档刷新（DoD）
 - [ ] 二期（另行推进）：托盘常驻、提醒设置、SMTP 直发、同步与过期汇总弹窗
 
@@ -51,3 +51,4 @@
 - 文档基线：**PRD v1.6 / 技术方案 v1.3 / 测试用例 85 条（回归最小集 17 条）**；技术方案 v1.5/v1.6 为纯 UI 交互变更（未升架构版），v1.3 为 P1 数据字典补全；业务规则唯一权威是 PRD 第 5 章。
 - 每批开工先读 `doc/开发批次计划.md` 对应批次；批次收口按「批次完成定义」执行（含刷新本文件与 CHANGELOG）。
 - 改业务规则先改测试用例再改码；宣称完成前跑回归最小集（AGENTS 第 9 节）。
+

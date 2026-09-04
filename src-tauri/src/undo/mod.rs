@@ -1,8 +1,10 @@
-//! undo —— 撤销/重做双栈（PRD 6.7 / 技术方案 5.3：上限 10 步，重启清空；D10 快照不落库、授权码不进入）。
-//!
-//! 命令只保存「受影响行变更前后」的数据快照（store::snapshot），执行时经 Db 访问 SQLite，
-//! 因此命令本身可 Send。新增/撤销/重做都会清空/推进对应栈，深度变化由命令层 emit 给前端。
+//! undo —— 撤销/重做双栈（PRD 6.7 / 技术方案 5.3：上限 10 步，重启清空）。
+//! 行级/级联操作用快照（store::snapshot）；整库导入快照按 D10 落 `data\undo_tmp` 临时文件
+//! （内存只存路径，重启清理；一期无 mail_config，导入/快照均不含授权码）。
 
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 
 use crate::store::categories::{Category, DeleteMode};
@@ -14,6 +16,23 @@ pub trait Command: Send {
     fn apply(&self, db: &Db) -> Result<()>;
     fn revert(&self, db: &Db) -> Result<()>;
     fn describe(&self) -> String;
+}
+
+/// 撤销临时文件句柄：离开撤销栈（丢弃/重启）时自动删除（D10）。
+pub struct TmpFile {
+    path: PathBuf,
+}
+
+impl TmpFile {
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+}
+
+impl Drop for TmpFile {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
+    }
 }
 
 /// 具体命令（enum 化，避免大量零散 struct；数据均为快照，Send）。
@@ -50,6 +69,8 @@ pub enum UndoCmd {
         before: Vec<(i64, i64)>,
         after: Vec<(i64, i64)>,
     },
+    /// 备份导入：revert=恢复导入前整库快照（落盘 undo_tmp，D10）；apply=重放导入内容。
+    Import { before: TmpFile, import: String },
 }
 
 impl Command for UndoCmd {
@@ -70,6 +91,7 @@ impl Command for UndoCmd {
                 }
                 Ok(())
             }
+            UndoCmd::Import { before: _, import } => db.import_json(import),
         }
     }
 
@@ -90,6 +112,10 @@ impl Command for UndoCmd {
                 }
                 Ok(())
             }
+            UndoCmd::Import { before, import: _ } => {
+                let text = fs::read_to_string(before.path()).map_err(crate::store::Error::Io)?;
+                db.import_json(&text)
+            }
         }
     }
 
@@ -105,6 +131,7 @@ impl Command for UndoCmd {
             UndoCmd::FieldUpdate { .. } => "修改字段".into(),
             UndoCmd::FieldDelete { .. } => "删除字段".into(),
             UndoCmd::FieldSort { .. } => "调整字段排序".into(),
+            UndoCmd::Import { .. } => "导入备份".into(),
         }
     }
 }
@@ -112,24 +139,46 @@ impl Command for UndoCmd {
 /// 撤销栈上限（PRD 6.7：最多 10 步，超出丢弃最旧）。
 const MAX_STEPS: usize = 10;
 
-#[derive(Default)]
 struct StackInner {
     undo: Vec<Box<dyn Command>>,
     redo: Vec<Box<dyn Command>>,
 }
 
 /// 双栈（撤销 + 重做）；线程安全，由 Tauri manage 全局共享。
-#[derive(Default)]
 pub struct UndoStack {
     inner: Mutex<StackInner>,
+    /// `data\undo_tmp`（D10：整库快照落盘目录，重启清空）。
+    tmp_dir: PathBuf,
+    file_seq: AtomicUsize,
 }
 
 impl UndoStack {
-    pub fn new() -> Self {
-        Self::default()
+    /// data_dir 为运行期数据目录（exe 同目录 `data\`）；启动即清空上次残留的 undo_tmp。
+    pub fn new(data_dir: &Path) -> Self {
+        let tmp_dir = data_dir.join("undo_tmp");
+        let _ = fs::remove_dir_all(&tmp_dir);
+        let _ = fs::create_dir_all(&tmp_dir);
+        UndoStack {
+            inner: Mutex::new(StackInner {
+                undo: Vec::new(),
+                redo: Vec::new(),
+            }),
+            tmp_dir,
+            file_seq: AtomicUsize::new(0),
+        }
     }
 
-    /// 新操作入栈：清空重做栈；超出上限丢弃最旧一步。
+    /// 写整库快照到 undo_tmp，返回临时文件句柄（随命令生命周期删除）。
+    pub fn write_tmp(&self, prefix: &str, content: &str) -> std::io::Result<TmpFile> {
+        let n = self.file_seq.fetch_add(1, Ordering::SeqCst);
+        let path = self
+            .tmp_dir
+            .join(format!("{prefix}_{}_{n}.json", std::process::id()));
+        fs::write(&path, content)?;
+        Ok(TmpFile { path })
+    }
+
+    /// 新操作入栈：清空重做栈；超出上限丢弃最旧一步（其临时文件随 Drop 删除）。
     pub fn push(&self, cmd: Box<dyn Command>) {
         let mut inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         inner.undo.push(cmd);
@@ -175,13 +224,14 @@ mod tests {
     use super::*;
     use crate::store::items;
 
-    fn db() -> Db {
-        use std::sync::atomic::{AtomicUsize, Ordering};
+    fn tmp_dir(tag: &str) -> PathBuf {
         static SEQ: AtomicUsize = AtomicUsize::new(0);
         let n = SEQ.fetch_add(1, Ordering::SeqCst);
-        let dir = std::env::temp_dir().join(format!("undo_test_{}_{n}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        Db::open(&dir).expect("打开库")
+        std::env::temp_dir().join(format!("undo_{tag}_{}_{n}", std::process::id()))
+    }
+
+    fn db(dir: &Path) -> Db {
+        Db::open(dir).expect("打开库")
     }
 
     fn work_id(db: &Db) -> i64 {
@@ -209,13 +259,13 @@ mod tests {
 
     #[test]
     fn undo_redo_item_create_and_delete() {
-        let db = db();
+        let dir = tmp_dir("icd");
+        let db = db(&dir);
+        let stack = UndoStack::new(&dir);
         let cat = work_id(&db);
 
-        // 新增事项 → 撤销消失 → 重做恢复
         let it = db.create_item(&mk_item(cat, "写周报")).expect("新增");
         let snap = db.snapshot_item(it.id).expect("快照").expect("存在");
-        let stack = UndoStack::new();
         stack.push(Box::new(UndoCmd::ItemCreate {
             snap: Box::new(snap),
         }));
@@ -229,10 +279,9 @@ mod tests {
         stack.redo(&db).expect("重做");
         assert_eq!(db.get_item(it.id).expect("读").title, "写周报");
 
-        // 删除事项 → 撤销恢复 → 重做再删除
         let snap2 = db.snapshot_item(it.id).expect("快照2").expect("存在");
         db.delete_item(it.id).expect("删除");
-        let stack2 = UndoStack::new();
+        let stack2 = UndoStack::new(&dir);
         stack2.push(Box::new(UndoCmd::ItemDelete {
             snap: Box::new(snap2),
         }));
@@ -244,9 +293,10 @@ mod tests {
 
     #[test]
     fn cap_at_ten_drops_oldest() {
-        let db = db();
+        let dir = tmp_dir("cap");
+        let db = db(&dir);
+        let stack = UndoStack::new(&dir);
         let cat = work_id(&db);
-        let stack = UndoStack::new();
         for i in 0..12 {
             let it = db
                 .create_item(&mk_item(cat, &format!("事项{i}")))
@@ -257,7 +307,6 @@ mod tests {
             }));
         }
         assert_eq!(stack.depth().0, 10);
-        // 依次撤销应只作用最近 10 步（最早的 2 条不再可撤销）
         for _ in 0..10 {
             assert!(stack.undo(&db).expect("撤销").is_some());
         }
@@ -267,18 +316,18 @@ mod tests {
 
     #[test]
     fn new_operation_clears_redo() {
-        let db = db();
+        let dir = tmp_dir("clear");
+        let db = db(&dir);
+        let stack = UndoStack::new(&dir);
         let cat = work_id(&db);
         let it = db.create_item(&mk_item(cat, "A")).expect("新增");
         let snap = db.snapshot_item(it.id).expect("快照").expect("存在");
-        let stack = UndoStack::new();
         stack.push(Box::new(UndoCmd::ItemCreate {
             snap: Box::new(snap),
         }));
         stack.undo(&db).expect("撤销");
         assert_eq!(stack.depth(), (0, 1));
 
-        // 新操作 → 重做栈清空
         let it2 = db.create_item(&mk_item(cat, "B")).expect("新增");
         let snap2 = db.snapshot_item(it2.id).expect("快照2").expect("存在");
         stack.push(Box::new(UndoCmd::ItemCreate {
@@ -289,16 +338,15 @@ mod tests {
 
     #[test]
     fn undo_category_update_and_delete_cascade() {
-        let db = db();
-        // 改名 + 改色分别撤销
+        let dir = tmp_dir("cat");
+        let db = db(&dir);
         let c = db.create_category("临时", "#111111").expect("建分类");
-        let before = c.clone();
         let mut after = c.clone();
         after.name = "临时2".into();
-        let stack = UndoStack::new();
+        let stack = UndoStack::new(&dir);
         stack.push(Box::new(UndoCmd::CategoryUpdate {
-            before: before.clone(),
-            after: after.clone(),
+            before: c.clone(),
+            after,
         }));
         stack.undo(&db).expect("撤销改名");
         assert_eq!(
@@ -311,14 +359,13 @@ mod tests {
             "临时"
         );
 
-        // 级联删除分类恢复（含事项与字段值）
         let field = db.create_field(c.id, "备注", "text", None).expect("建字段");
         let it = db.create_item(&mk_item(c.id, "事项")).expect("新增");
         db.set_item_field_values(it.id, vec![(field.id, Some("\"v\"".to_string()))])
             .expect("写值");
         let snap = db.snapshot_category(c.id).expect("快照").expect("存在");
         db.delete_category(c.id, DeleteMode::Cascade).expect("删除");
-        let stack2 = UndoStack::new();
+        let stack2 = UndoStack::new(&dir);
         stack2.push(Box::new(UndoCmd::CategoryDelete {
             snap: Box::new(snap),
             mode: DeleteMode::Cascade,
@@ -330,5 +377,43 @@ mod tests {
             db.list_item_field_values(it.id).expect("值"),
             vec![(field.id, Some("\"v\"".to_string()))]
         );
+    }
+
+    #[test]
+    fn import_undo_restores_before_state() {
+        let dir = tmp_dir("imp");
+        let db = db(&dir);
+        let stack = UndoStack::new(&dir);
+        let work = work_id(&db);
+
+        // 导入前状态：只有种子分类
+        let before_text = db.dump_json().expect("导入前整库快照");
+
+        // 构造导入文件：含一条事项 X；随后把库恢复到导入前（种子）
+        let x = db.create_item(&mk_item(work, "X")).expect("新增");
+        let import_json = db.dump_json().expect("导出导入文件");
+        db.delete_item(x.id).expect("删除 X");
+        assert!(db.get_item(x.id).is_err());
+
+        // 执行导入（覆盖为导入文件内容：种子 + X）
+        db.import_json(&import_json).expect("导入");
+        assert!(db.get_item(x.id).is_ok());
+
+        // 入栈：before=导入前快照（落盘 undo_tmp），import=原文件内容
+        let before_file = stack
+            .write_tmp("before_import", &before_text)
+            .expect("写临时快照");
+        stack.push(Box::new(UndoCmd::Import {
+            before: before_file,
+            import: import_json,
+        }));
+
+        // 撤销 → 恢复导入前状态（X 消失）
+        stack.undo(&db).expect("撤销导入");
+        assert!(db.get_item(x.id).is_err());
+
+        // 重做 → 再次应用导入内容（X 恢复）
+        stack.redo(&db).expect("重做导入");
+        assert!(db.get_item(x.id).is_ok());
     }
 }
