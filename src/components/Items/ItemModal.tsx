@@ -1,8 +1,13 @@
-// 事项 新增/编辑 弹窗（标准字段；自定义字段区在 P6 引入，编辑可换分类 PRD 6.4）。
-import { useState } from "react";
+// 事项 新增/编辑 弹窗：标准字段 + P6 自定义字段区（PRD 4.3/6.3/6.4）。
+// 字段区按当前所属分类模板渲染；切分类旧值保留在库中不再显示，切回恢复（PRD 4.3）。
+import { useEffect, useState } from "react";
 import Modal from "../Modal/Modal";
+import FieldEditor from "../fields/FieldEditor";
 import { useAppStore } from "../../stores/appStore";
-import type { Category, Item } from "../../services/types";
+import { fieldApi } from "../../services/ipc";
+import { buildFieldPayloads, decodeFieldValue } from "../../features/fields/value";
+import type { FieldEditValue } from "../../features/fields/value";
+import type { Category, FieldDef, Item } from "../../services/types";
 
 interface Props {
   item: Item | null; // null=新增
@@ -40,6 +45,63 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
   const [confirmDel, setConfirmDel] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // —— P6 自定义字段状态 ——
+  const [defs, setDefs] = useState<FieldDef[]>([]);
+  const [defLoading, setDefLoading] = useState(false);
+  const [valsMap, setValsMap] = useState<Map<number, string | null>>(new Map());
+  const [valsReady, setValsReady] = useState(!isEdit);
+  const [fv, setFv] = useState<Record<number, FieldEditValue>>({});
+
+  // 编辑时加载该事项全部字段值（跨分类保留；展示层按当前模板过滤，PRD 4.3）
+  useEffect(() => {
+    if (!isEdit) return;
+    let alive = true;
+    fieldApi.listItemValues(item!.id)
+      .then((rows) => {
+        if (!alive) return;
+        setValsMap(new Map(rows.map((r) => [r.field_def_id, r.value_json])));
+      })
+      .catch((e) => {
+        if (alive) setErr(e instanceof Error ? e.message : "加载字段值失败，请重试");
+      })
+      .finally(() => {
+        if (alive) setValsReady(true);
+      });
+    return () => { alive = false; };
+  }, [isEdit, item]);
+
+  // 分类变化 → 按新分类模板加载字段定义（新增：无历史值）
+  useEffect(() => {
+    let alive = true;
+    setDefLoading(true);
+    fieldApi.list(catId)
+      .then((ds) => {
+        if (alive) setDefs(ds);
+      })
+      .catch((e) => {
+        if (alive) setErr(e instanceof Error ? e.message : "加载字段模板失败，请重试");
+        if (alive) setDefs([]);
+      })
+      .finally(() => {
+        if (alive) setDefLoading(false);
+      });
+    return () => { alive = false; };
+  }, [catId]);
+
+  // 模板与值就绪后，按当前模板重建编辑值（未填=空，空字符串/空数组在编码时置 null）
+  useEffect(() => {
+    if (!valsReady) return;
+    const next: Record<number, FieldEditValue> = {};
+    for (const d of defs) {
+      const raw = valsMap.get(d.id);
+      if (raw !== undefined && raw !== null) {
+        const decoded = decodeFieldValue(d.type, raw);
+        if (decoded !== null) next[d.id] = decoded;
+      }
+    }
+    setFv(next);
+  }, [defs, valsReady, valsMap, catId]);
+
   const set = (k: keyof FormState, v: string) => setF((prev) => ({ ...prev, [k]: v }));
 
   const validate = (): string | null => {
@@ -66,6 +128,8 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
       endTime: f.et || null,
       dueDate: f.dd || null,
       dueTime: f.dt || null,
+      // P6：仅覆盖当前分类模板字段；切分类不传旧分类字段 → 库中旧值保留（PRD 4.3）
+      fieldValues: defs.length > 0 ? buildFieldPayloads(defs, fv) : undefined,
     };
     try {
       if (isEdit) {
@@ -145,6 +209,27 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
         {field("开始时间", "sd", "st")}
         {field("结束时间", "ed", "et")}
         {field("截止时间", "dd", "dt")}
+
+        <div className="fsec">
+          <div className="sec-t">自定义字段（随所属分类的模板变化）</div>
+          {defLoading ? (
+            <div className="iempty">字段加载中…</div>
+          ) : defs.length === 0 ? (
+            <div className="iempty">该分类暂无自定义字段（可在工具栏「字段管理」中添加）</div>
+          ) : (
+            defs.map((d) => (
+              <div key={d.id} className="frow fv-row">
+                <label>{d.name}</label>
+                <FieldEditor
+                  field={d}
+                  value={fv[d.id] ?? (d.type === "multi_choice" ? [] : "")}
+                  onChange={(v) => setFv((prev) => ({ ...prev, [d.id]: v }))}
+                />
+              </div>
+            ))
+          )}
+        </div>
+
         {err ? <div className="ferr">{err}</div> : null}
       </div>
       {confirmDel ? (

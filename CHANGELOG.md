@@ -741,3 +741,28 @@
 ### 验收
 - 前端 `vitest` 17 passed、`npm run build` 通过；后端 21 passed、clippy 零警告；`tauri dev` 起窗正常
 - **用户手测通过**：TC-DUE-001~008 / TC-FLD-014（2026-09-03）；期间修复 .todo-pane 宽度塌缩（占位样式 align-items:center 残留）并补贯穿竖线；提交 d0ab2be
+
+## 2026-09-03（开发阶段 · P6 自定义字段 · 后端）
+
+### 新增
+- `store/fieldconvert/mod.rs`：六类型枚举、value_json 编解码、`(from,to)` 表驱动转换矩阵（PRD 6.6）+ 7 组穷举测试
+- `store/fields.rs`：字段 CRUD、新建校验（单选/多选必带选项）、set_options 失效项过滤（TC-FLD-012/013）、change_type 事务内迁移历史值并生成选项（文本/数字/日期→单选/多选按历史去重）、move_field 上移下移 + 6 测试
+- `store/values.rs`：事项字段值 upsert/list（切分类不删其它分类值，PRD 4.3）
+- `commands/fields.rs`：list/create/rename/delete/set_field_options/change_field_type/move_field/list_item_field_values 8 个 IPC；items ItemDraft 增加 fieldValues 并在 create/update 保存
+### 验收
+- `cargo test` 34 passed、clippy 零警告
+- 前端字段管理 UI 与事项弹窗字段区（TC-FLD 手测）下一步继续
+## 2026-09-04（开发阶段 · P6 自定义字段 · 前端）
+
+### 新增
+- `services/types.ts`：FieldType/FIELD_TYPE_LABELS/FieldDef/FieldValueRow/FieldValuePayload 类型与守卫；`ItemDraft.fieldValues`（仅覆盖当前分类模板字段，PRD 4.3）
+- `services/ipc.ts`：fieldApi（list/create/rename/remove/setOptions/changeType/move/listItemValues 8 命令）
+- `features/fields/value.ts`：字段值 JSON 编解码/选项解析/载荷构建纯函数（与后端 fieldconvert 对齐）+ 8 vitest
+- `components/fields/FieldEditor.tsx`：六类型录入控件（文本/多行/数字/日期/单选/多选复选组）
+- `components/fields/FieldManager.tsx`：字段管理弹窗（列表/↑↓排序/新增/改名/改类型确认/选项维护/删除二次确认「将丢失该字段下所有已填写数据」；非选项→选项零丢失提示）
+- `ItemModal.tsx`：自定义字段区（按当前分类模板实时渲染、编辑时加载并保存字段值、切分类旧值保留展示层按模板过滤）
+- `CalendarView.tsx`：分类/未分类页工具栏「字段管理」入口（总览无，PRD 6.5）
+- `global.css`：字段区与字段管理弹窗样式（对齐原型）
+### 验收
+- `vitest` 25 passed（+8 字段值纯函数）、`npm run build` 通过、clippy/fmt 零告警（后端未改）、`tauri dev` 起窗正常
+- **待用户手测**：TC-FLD-001~017（字段管理增删改/类型转换/选项维护、事项弹窗字段值保存与切分类保留、总览无字段模板、日历/待办仍只显示标题）

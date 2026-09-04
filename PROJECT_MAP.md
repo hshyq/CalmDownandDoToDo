@@ -11,6 +11,7 @@
 > **P4 已落地**（2026-09-03，代码完成待手测 TC-CAL）：注册 `list_calendar_items` IPC；前端 `features/calendar/`（dates.ts/layout.ts 纯函数 + 10 vitest）、`components/Calendar/CalendarView.tsx`（周/月、补齐、今日高亮、横条泳道/跨格、+N 浮层、格内「+」预填日期、总览选分类）；ItemModal presetStartDate；ItemsView 过渡列表退役。vitest 15 passed、build/tauri dev 正常。
 >
 > **P5 已落地**（2026-09-03，代码完成待手测 TC-DUE）：注册 `list_todo_items` IPC；前端 `features/todo/group.ts`（分组纯函数+2 vitest）、`components/Todo/TodoPanel.tsx`（时间轴分组/折叠/虚拟滚动/条目色块点击编辑）；appStore dataVersion/bump 跨面板刷新。vitest 17 passed、build/tauri dev 正常。
+> **P6 已落地**（2026-09-04，代码完成待手测 TC-FLD）：后端 `store/fieldconvert/`（FieldType/JSON 编解码/`(from,to)` 矩阵 + 7 穷举测试）、`store/fields.rs`（CRUD/set_options 过滤/change_type 迁移/move_field）、`store/values.rs`（set/list）、`commands/fields.rs` 8 IPC（commit 1d0cbe7）；前端 `services/types.ts|ipc.ts`（FieldDef/FieldType/FieldValueRow/FieldValuePayload + fieldApi）、`features/fields/value.ts`（字段值 JSON 编解码/选项解析纯函数 + 8 vitest）、`components/fields/FieldEditor.tsx`（六类型控件）、`components/fields/FieldManager.tsx`（增删改名/改类型确认/选项维护/↑↓排序）、`ItemModal` 字段区（按当前分类模板加载、值加载/保存合并、切分类实时刷新，PRD 4.3）、`CalendarView` 工具栏「字段管理」入口、`global.css` 字段区/管理样式。vitest 25 passed、build 通过、tauri dev 起窗正常。
 >
 > **P3 已落地**（2026-09-03，代码完成待手测 TC-IT）：后端 `store/items.rs`（Item/NewItem、全字段校验 create/update/delete/get/list + 3 单测）与 `commands/items.rs`（ItemDraft camelCase、6 个 IPC）；前端 `components/Items/`（ItemModal 新增/编辑/删除、ItemsView 过渡列表分组「日历/待办」）、types/ipc/mock 扩展、appStore 事项操作。后端 cargo test 21 passed、前端 vitest 5 passed、clippy 零警告、vite build/tauri dev 正常。
 
@@ -37,31 +38,27 @@
 ├─ src/                       前端（React 18 + TypeScript）
 │  ├─ main.tsx                入口：挂载 App、注册全局快捷键（Ctrl+Z/Y）
 │  ├─ App.tsx                 根组件：三栏布局骨架（标签栏│日历│待办）
-│  ├─ components/             通用展示组件
-│  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮设置菜单/⚙设置入口
-│  │  ├─ Modal/               弹窗基座 + 确认对话框（删除二次确认等）
-│  │  └─ VirtualList/         待办列表虚拟滚动
-│  ├─ features/
-│  │  ├─ calendar/            日历区
-│  │  │  ├─ MonthGrid.tsx     月视图网格（周一起始、前后月补齐、今日高亮）
-│  │  │  ├─ WeekGrid.tsx      周视图（1 行 × 7 列）
-│  │  │  ├─ EventBar.tsx      横条渲染（标题、分类色圆角、截断+悬停）
-│  │  │  ├─ layout.ts         横条布局纯函数：截断/分段/泳道/+N（vitest 单测）
-│  │  │  └─ DayOverlay.tsx    「+N」当日事项浮层
-│  │  ├─ todo/
-│  │  │  ├─ TodoPanel.tsx     待办区容器（按当前标签页过滤）
-│  │  │  └─ Timeline.tsx      纵向时间轴：空心圆点、年月分组、折叠展开
-│  │  └─ fields/
-│     │  └─ FieldEditor.tsx   自定义字段渲染与录入（六种类型控件）
+│  ├─ components/             组件（按模块目录组织）
+│  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 色盘
+│  │  ├─ Modal/               弹窗基座（遮罩/头部/底部）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建）
+│  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区）
+│  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动）
+│  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗
+│  ├─ features/               纯函数 + vitest 单测
+│  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局纯函数）
+│  │  ├─ todo/                group.ts（待办分组纯函数）
+│  │  ├─ color/               palette.ts（色盘选取纯函数）
+│  │  └─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
 │  ├─ stores/
-│  │  ├─ appStore.ts          当前标签页、周/月视图、待办折叠状态（会话级）
-│  │  └─ undoStore.ts         撤销/重做按钮态（镜像 Rust undo_depth）
+│  │  └─ appStore.ts          分类/事项/标签页状态 + dataVersion（跨面板刷新）
 │  ├─ services/
-│  │  ├─ ipc.ts               invoke 封装与错误转换（技术错误→友好中文提示）
-│  │  └─ types.ts             与 Rust 结构体对齐的 TS 类型（禁止 any）
+│  │  ├─ ipc.ts               invoke 封装：categoryApi/itemApi/fieldApi（错误转中文提示）
+│  │  ├─ types.ts             与 Rust 对齐的 TS 类型（Category/Item/FieldDef/FieldValue 等）
+│  │  └─ mock.ts              浏览器预览分类/事项模拟（验收走 tauri dev 真实 IPC）
 │  └─ styles/
-│     └─ tokens.css           设计 token：分类色盘（11×6+自定义）/间距/圆角/字号
-│
+│     ├─ tokens.css           设计 token（分类色盘/间距/圆角/字号）
+│     └─ global.css           全局样式（三栏骨架/弹窗/日历/待办/字段区与字段管理）
 ├─ src-tauri/                 Rust 核心
 │  ├─ tauri.conf.json         窗口配置；bundle.targets=["none"]（单便携 exe）
 │  ├─ Cargo.toml              一期不引入任何网络依赖 crate
@@ -106,6 +103,8 @@
 | 待办排序、99991231 沉底 | `src-tauri/src/store/mod.rs`（COALESCE 查询） | 对照 TC-DUE-001~004 |
 | 日历/待办归属规则 | 不在代码某处——由查询条件表达（`start_date`/`end_date` 判空） | 对照 TC-IT-001~007 |
 | 字段类型转换矩阵 | `src-tauri/src/commands/fields.rs`（(from,to) 表驱动） | 对照 TC-FLD-004~017；先看 PRD 6.6 |
+| 字段管理弹窗 / 事项字段区 | `src/components/fields/FieldManager.tsx`、`FieldEditor.tsx`、`ItemModal.tsx` | 对照 TC-FLD-001~017、PRD 4.3/6.5/6.6；切分类按模板过滤 |
+| 字段值 JSON 编解码 / 选项解析 | `src/features/fields/value.ts`（纯函数） | 与后端 fieldconvert 对齐；改编码先补 vitest |
 | 撤销/重做 | `src-tauri/src/undo/`（栈与快照） | 对照 TC-UNDO-001~009 |
 | 分类色盘 / 颜色 token | `src/styles/tokens.css` | 与原型一致 |
 | 分类删除二选一 | `commands/categories.rs` delete(mode) | 对照 TC-CL-003~006 |

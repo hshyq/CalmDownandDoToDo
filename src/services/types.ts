@@ -78,6 +78,8 @@ export interface ItemDraft {
   endTime: string | null;
   dueDate: string | null;
   dueTime: string | null;
+  /** 当前分类模板字段值（P6：仅覆盖当前模板字段，切分类不迁移旧值，PRD 4.3） */
+  fieldValues?: FieldValuePayload[];
 }
 
 /** 日历归属：起止日期都填（PRD 5.1） */
@@ -111,4 +113,76 @@ export function isCategory(v: unknown): v is Category {
 
 export function isCategoryArray(v: unknown): v is Category[] {
   return Array.isArray(v) && v.every(isCategory);
+}
+
+// ===== P6 自定义字段（PRD 4.3/6.5/6.6；与 store::fields::FieldDef / fieldconvert 对齐） =====
+
+/** 六种字段类型（对应 FieldType::as_str） */
+export type FieldType =
+  | "text"
+  | "multiline"
+  | "number"
+  | "date"
+  | "single_choice"
+  | "multi_choice";
+
+/** 字段类型中文名（原型 TYPE_LABEL） */
+export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
+  text: "单行文本",
+  multiline: "多行文本",
+  number: "数字",
+  date: "日期",
+  single_choice: "单选",
+  multi_choice: "多选",
+};
+
+/** 字段模板（对应 store::fields::FieldDef；options_json 为 JSON 数组文本，仅单选/多选有） */
+export interface FieldDef {
+  id: number;
+  category_id: number;
+  name: string;
+  type: FieldType;
+  options_json: string | null;
+  sort_order: number;
+}
+
+export function isFieldDef(v: unknown): v is FieldDef {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.id === "number" &&
+    typeof o.category_id === "number" &&
+    typeof o.name === "string" &&
+    typeof o.type === "string" &&
+    (o.type === "text" || o.type === "multiline" || o.type === "number" ||
+      o.type === "date" || o.type === "single_choice" || o.type === "multi_choice") &&
+    (o.options_json === null || typeof o.options_json === "string") &&
+    typeof o.sort_order === "number"
+  );
+}
+
+export function isFieldDefArray(v: unknown): v is FieldDef[] {
+  return Array.isArray(v) && v.every(isFieldDef);
+}
+
+/** 事项字段值行（对应 commands::fields::FieldValueRow；value_json 为 JSON 文本，null=无值） */
+export interface FieldValueRow {
+  field_def_id: number;
+  value_json: string | null;
+}
+
+export function isFieldValueRowArray(v: unknown): v is FieldValueRow[] {
+  if (!Array.isArray(v)) return false;
+  return v.every((x) => {
+    if (typeof x !== "object" || x === null) return false;
+    const o = x as Record<string, unknown>;
+    return typeof o.field_def_id === "number" &&
+      (o.value_json === null || typeof o.value_json === "string");
+  });
+}
+
+/** 事项新增/编辑载荷中的字段值（对应 commands::items::FieldValuePayload；后端 serde camelCase，故字段名为 fieldDefId；value=value_json 文本，null=清空） */
+export interface FieldValuePayload {
+  fieldDefId: number;
+  value: string | null;
 }

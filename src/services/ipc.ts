@@ -1,13 +1,13 @@
 // IPC 封装：invoke + 错误统一转中文友好提示（AGENTS 第 5 节）。
 import { invoke } from "@tauri-apps/api/core";
-import type { CalendarItem, Category, DeleteMode, Item, ItemDraft, TodoItem } from "./types";
+import type { CalendarItem, Category, DeleteMode, FieldDef, FieldValueRow, Item, ItemDraft, TodoItem } from "./types";
 import {
   isCalendarItemArr,
   isCategory,
   isCategoryArray,
   isItem,
   isItemArray,
-  isTodoItemArr,
+  isTodoItemArr,  isFieldDef,  isFieldDefArray,  isFieldValueRowArray,
 } from "./types";
 
 /** 当前是否运行在 Tauri 窗口内（浏览器预览时走 mock）。 */
@@ -86,5 +86,46 @@ export const itemApi = {
   },
   async remove(id: number): Promise<void> {
     await call<void>("delete_item", { id });
+  },
+};
+
+
+/** 自定义字段 IPC（对应 commands::fields，PRD 4.3/6.5/6.6；命令参数经 Tauri camelCase→snake_case 转换）。 */
+export const fieldApi = {
+  /** 分类字段模板（按 sort_order 升序）。 */
+  async list(categoryId: number): Promise<FieldDef[]> {
+    const v = await call<unknown>("list_fields", { categoryId });
+    if (!isFieldDefArray(v)) throw new Error("字段数据格式异常");
+    return v;
+  },
+  /** 新建字段；单选/多选必须带非空 options。 */
+  async create(categoryId: number, name: string, fieldType: string, options: string[] | null): Promise<FieldDef> {
+    const v = await call<unknown>("create_field", { categoryId, name, fieldType, options });
+    if (!isFieldDef(v)) throw new Error("字段数据格式异常");
+    return v;
+  },
+  async rename(id: number, name: string): Promise<void> {
+    await call<void>("rename_field", { id, name });
+  },
+  async remove(id: number): Promise<void> {
+    await call<void>("delete_field", { id });
+  },
+  /** 编辑选项列表（单选/多选）：不在新选项内的已填值被清空（PRD 6.5）。 */
+  async setOptions(id: number, options: string[]): Promise<void> {
+    await call<void>("set_field_options", { id, options });
+  },
+  /** 修改类型：按 6.6 矩阵迁移历史值（计入撤销栈）。 */
+  async changeType(id: number, fieldType: string): Promise<void> {
+    await call<void>("change_field_type", { id, fieldType });
+  },
+  /** 上移/下移（direction: "up" | "down"）。 */
+  async move(id: number, direction: "up" | "down"): Promise<void> {
+    await call<void>("move_field", { id, direction });
+  },
+  /** 某事项全部字段值（跨分类保留，PRD 4.3；展示层按当前分类模板过滤）。 */
+  async listItemValues(itemId: number): Promise<FieldValueRow[]> {
+    const v = await call<unknown>("list_item_field_values", { itemId });
+    if (!isFieldValueRowArray(v)) throw new Error("字段值数据格式异常");
+    return v;
   },
 };

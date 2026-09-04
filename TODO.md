@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P6 自定义字段（进行中，P0~P5 已完成）**。业务代码开发按 `doc/开发批次计划.md` 分批推进（P0~P9），批次进度与状态以本文件为准。
+**开发阶段 · P6 自定义字段（前后端代码完成；待用户手测 TC-FLD-001~017 验收后收口）**
 
 ## 已完成
 
@@ -33,7 +33,8 @@
 - [x] **P3 事项模块完成**（2026-09-03）：后端 store::items + commands::items（21 测试/clippy 0）；前端 ItemModal/ItemsView（vitest 5/build/tauri dev 正常）。**手测 TC-IT-001~012 通过**；提交 3238635
 - [x] **P4 日历视图完成**（2026-09-03）：list_calendar_items IPC；dates/layout 纯函数+10 vitest；CalendarView 周月/补齐/今日/横条泳道跨格/+N/格内「+」预填/总览选分类。**手测 TC-CAL-001~012 通过**；提交 b2e377a
 - [x] **P5 待办视图完成**（2026-09-03）：list_todo_items IPC；group 分组纯函数（17 vitest）；TodoPanel 时间轴/折叠/虚拟滚动/色块；dataVersion 跨面板刷新。**手测 TC-DUE-001~008 / TC-FLD-014 通过**；修复 .todo-pane 宽度塌缩（align-items 覆盖）并补贯穿竖线；提交 d0ab2be
-- [ ] **P6 自定义字段**：字段管理/六控件/转换矩阵表驱动+cargo test（TC-FLD）
+- [x] **P6 自定义字段·后端完成**（2026-09-03）：store/fieldconvert（FieldType/JSON 编解码/矩阵 convert_value+7 穷举测试）、store/fields（CRUD/set_options 过滤/change_type 迁移/move_field +6 测试）、store/values（set/list）；commands/fields（8 IPC）+ items draft fieldValues；34 cargo tests、clippy 0；提交 1d0cbe7
+- [x] **P6 前端·代码完成**（2026-09-04，待手测 TC-FLD-001~017）：字段管理弹窗（增删改名/改类型确认/选项维护/排序）、ItemModal 六类型字段区（值加载/保存合并、切分类按模板过滤展示、PRD 4.3）、types/ipc 扩展与 fieldApi、FieldEditor 控件、features/fields 值编解码纯函数（+8 vitest）；vitest 25/build 通过/tauri dev 起窗正常。mock 未扩展字段（预览非验收路径，视图直连真实 IPC）
 - [ ] **P7 撤销重做+进程**：undo 栈/Ctrl+Z·Y/单实例(D9)/WebView2 检测(D11)（TC-UNDO/TC-ENV）
 - [ ] **P8 备份**：导出导入/语义校验/二次确认/导入快照(D10)（TC-BAK）
 - [ ] **P9 一期收尾**：回归最小集 17 条/全量测试/便携打包/README/文档刷新（DoD）
