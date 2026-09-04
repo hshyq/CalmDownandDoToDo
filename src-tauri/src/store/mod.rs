@@ -8,6 +8,7 @@ pub mod fieldconvert;
 pub mod fields;
 pub mod items;
 pub mod schema;
+pub mod snapshot;
 pub mod validation;
 pub mod values;
 
@@ -209,6 +210,11 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
         Ok(n)
     }
 
+    pub fn get_category(&self, id: i64) -> Result<categories::Category> {
+        let guard = self.lock()?;
+        categories::get(&guard, id)
+    }
+
     pub fn delete_category(&self, id: i64, mode: categories::DeleteMode) -> Result<()> {
         let mut guard = self.lock()?;
         categories::delete(&mut guard, id, mode)
@@ -240,6 +246,18 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
     pub fn delete_field(&self, id: i64) -> Result<()> {
         let guard = self.lock()?;
         fields::delete(&guard, id)
+    }
+
+    /// P7：一次字段编辑保存（改名/改类型/选项），由 commands 组装撤销快照。
+    pub fn save_field_edit(
+        &self,
+        id: i64,
+        name: &str,
+        new_type: Option<&str>,
+        options: Option<&[String]>,
+    ) -> Result<()> {
+        let mut guard = self.lock()?;
+        fields::save_edit(&mut guard, id, name, new_type, options)
     }
 
     pub fn set_field_options(&self, id: i64, options: Vec<String>) -> Result<()> {
@@ -296,6 +314,48 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
     pub fn list_items(&self, category_id: Option<i64>) -> Result<Vec<items::Item>> {
         let guard = self.lock()?;
         items::list(&guard, category_id)
+    }
+
+    // ---- P7：撤销快照与恢复原语（SQL 实现见 store::snapshot，push 由命令层负责） ----
+
+    pub fn snapshot_item(&self, id: i64) -> Result<Option<snapshot::ItemSnapshot>> {
+        let guard = self.lock()?;
+        snapshot::snapshot_item(&guard, id)
+    }
+
+    pub fn restore_item(&self, snap: &snapshot::ItemSnapshot) -> Result<()> {
+        let mut guard = self.lock()?;
+        snapshot::restore_item(&mut guard, snap)
+    }
+
+    pub fn snapshot_field(&self, id: i64) -> Result<Option<snapshot::FieldSnapshot>> {
+        let guard = self.lock()?;
+        snapshot::snapshot_field(&guard, id)
+    }
+
+    pub fn restore_field(&self, snap: &snapshot::FieldSnapshot) -> Result<()> {
+        let mut guard = self.lock()?;
+        snapshot::restore_field(&mut guard, snap)
+    }
+
+    pub fn snapshot_category(&self, id: i64) -> Result<Option<snapshot::CategorySnapshot>> {
+        let guard = self.lock()?;
+        snapshot::snapshot_category(&guard, id)
+    }
+
+    pub fn restore_category(&self, snap: &snapshot::CategorySnapshot) -> Result<()> {
+        let mut guard = self.lock()?;
+        snapshot::restore_category(&mut guard, snap)
+    }
+
+    pub fn restore_category_row(&self, cat: &categories::Category) -> Result<()> {
+        let mut guard = self.lock()?;
+        snapshot::restore_category_row(&mut guard, cat)
+    }
+
+    pub fn set_field_sort(&self, id: i64, sort_order: i64) -> Result<()> {
+        let mut guard = self.lock()?;
+        snapshot::set_field_sort(&mut guard, id, sort_order)
     }
 }
 

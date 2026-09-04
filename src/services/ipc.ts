@@ -1,13 +1,13 @@
 // IPC 封装：invoke + 错误统一转中文友好提示（AGENTS 第 5 节）。
 import { invoke } from "@tauri-apps/api/core";
-import type { CalendarItem, Category, DeleteMode, FieldDef, FieldValueRow, Item, ItemDraft, TodoItem } from "./types";
+import type { CalendarItem, Category, DeleteMode, FieldDef, FieldValueRow, Item, ItemDraft, TodoItem, UndoDepth } from "./types";
 import {
   isCalendarItemArr,
   isCategory,
   isCategoryArray,
   isItem,
   isItemArray,
-  isTodoItemArr,  isFieldDef,  isFieldDefArray,  isFieldValueRowArray,
+  isTodoItemArr,  isFieldDef,  isFieldDefArray,  isFieldValueRowArray,  isUndoDepth,
 } from "./types";
 
 /** 当前是否运行在 Tauri 窗口内（浏览器预览时走 mock）。 */
@@ -114,6 +114,10 @@ export const fieldApi = {
   async setOptions(id: number, options: string[]): Promise<void> {
     await call<void>("set_field_options", { id, options });
   },
+  /** 一次字段编辑保存（改名/改类型/选项）= 一步撤销（P7，后端 save_field 复合命令）。 */
+  async saveField(id: number, name: string, newType: string | null, options: string[] | null): Promise<void> {
+    await call<void>("save_field", { id, name, newType, options });
+  },
   /** 修改类型：按 6.6 矩阵迁移历史值（计入撤销栈）。 */
   async changeType(id: number, fieldType: string): Promise<void> {
     await call<void>("change_field_type", { id, fieldType });
@@ -129,3 +133,20 @@ export const fieldApi = {
     return v;
   },
 };
+
+
+/** 撤销/重做 IPC（PRD 6.7；深度变化由后端 emit undo-depth 事件同步按钮态）。 */
+export const undoApi = {
+  async undo(): Promise<void> {
+    await call<void>("undo");
+  },
+  async redo(): Promise<void> {
+    await call<void>("redo");
+  },
+  async depth(): Promise<UndoDepth> {
+    const v = await call<unknown>("undo_depth");
+    if (!isUndoDepth(v)) throw new Error("撤销深度数据格式异常");
+    return v;
+  },
+};
+

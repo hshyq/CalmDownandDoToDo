@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P6 自定义字段（前后端代码完成；待用户手测 TC-FLD-001~017 验收后收口）**
+**开发阶段 · P7 撤销/重做与进程（代码完成：撤销部分用户验收通过；D9 单实例已实现并自动验证，TC-ENV-001 待双击手测确认）**
 
 ## 已完成
 
@@ -35,7 +35,13 @@
 - [x] **P5 待办视图完成**（2026-09-03）：list_todo_items IPC；group 分组纯函数（17 vitest）；TodoPanel 时间轴/折叠/虚拟滚动/色块；dataVersion 跨面板刷新。**手测 TC-DUE-001~008 / TC-FLD-014 通过**；修复 .todo-pane 宽度塌缩（align-items 覆盖）并补贯穿竖线；提交 d0ab2be
 - [x] **P6 自定义字段·后端完成**（2026-09-03）：store/fieldconvert（FieldType/JSON 编解码/矩阵 convert_value+7 穷举测试）、store/fields（CRUD/set_options 过滤/change_type 迁移/move_field +6 测试）、store/values（set/list）；commands/fields（8 IPC）+ items draft fieldValues；34 cargo tests、clippy 0；提交 1d0cbe7
 - [x] **P6 前端·代码完成**（2026-09-04，待手测 TC-FLD-001~017）：字段管理弹窗（增删改名/改类型确认/选项维护/排序）、ItemModal 六类型字段区（值加载/保存合并、切分类按模板过滤展示、PRD 4.3）、types/ipc 扩展与 fieldApi、FieldEditor 控件、features/fields 值编解码纯函数（+8 vitest）；vitest 25/build 通过/tauri dev 起窗正常。mock 未扩展字段（预览非验收路径，视图直连真实 IPC）
-- [ ] **P7 撤销重做+进程**：undo 栈/Ctrl+Z·Y/单实例(D9)/WebView2 检测(D11)（TC-UNDO/TC-ENV）
+- [x] **P6 前端验收通过并提交**（2026-09-04，用户手测 TC-FLD-001~017 通过）：修复字段值载荷命名（FieldValuePayload 后端 serde camelCase → fieldDefId）；commit 0d88ab7
+- [x] **P7 撤销/重做+进程完成**（2026-09-04；撤销部分用户验收通过，D9/D11 实现完毕）：
+  - [x] store::snapshot 快照/恢复原语 + undo 双栈（上限 10、重启清空）+ 命令枚举（+9 cargo 测试，共 43）
+  - [x] commands 全部写操作入栈（分类/事项/字段增删改、级联删除、排序）+ 字段复合 save_field（一次保存=一步撤销）+ undo/redo/depth IPC + undo-depth 事件
+  - [x] 前端：undoStore 按钮态/事件监听、工具栏 ↶↷ 按钮、Ctrl+Z/Y 快捷键（输入框内不触发）、撤销后跨面板刷新
+  - [x] D11 WebView2 固定版检测：exe 同目录 webview2\ 存在则设 WEBVIEW2_BROWSER_EXECUTABLE_FOLDER（打包部分 P9 落实）
+  - [x] D9 单实例互斥：经用户确认引入官方 tauri-plugin-single-instance v2.4.4；第二实例自动退出并聚焦已有窗口（自动验证拦截生效）；TC-ENV-001 待用户双击手测
 - [ ] **P8 备份**：导出导入/语义校验/二次确认/导入快照(D10)（TC-BAK）
 - [ ] **P9 一期收尾**：回归最小集 17 条/全量测试/便携打包/README/文档刷新（DoD）
 - [ ] 二期（另行推进）：托盘常驻、提醒设置、SMTP 直发、同步与过期汇总弹窗

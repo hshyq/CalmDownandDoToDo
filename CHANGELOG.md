@@ -766,3 +766,17 @@
 ### 验收
 - `vitest` 25 passed（+8 字段值纯函数）、`npm run build` 通过、clippy/fmt 零告警（后端未改）、`tauri dev` 起窗正常
 - **待用户手测**：TC-FLD-001~017（字段管理增删改/类型转换/选项维护、事项弹窗字段值保存与切分类保留、总览无字段模板、日历/待办仍只显示标题）
+
+## 2026-09-04（开发阶段 · P7 撤销/重做与进程）
+
+### 新增
+- `store/snapshot.rs`：事项/字段/整分类级联快照与恢复原语（UPSERT 行 + 值集合 replace）+ 5 单测
+- `undo/mod.rs`：UndoStack 双栈（上限 10 步、重启清空、新操作清空重做栈）+ UndoCmd 命令枚举（分类/事项/字段增删改、级联删除、字段排序）+ 4 单测
+- commands 全部写操作接入撤销：执行前取快照 → store 执行 → push 一步；新增 `save_field` 复合命令（字段弹窗一次保存=一步撤销，PRD 6.7 粒度）；`undo/redo/undo_depth` IPC + `undo-depth` 事件（深度变化推送前端）
+- 前端 `stores/undoStore.ts`（按钮态镜像 + 事件监听 + 撤销后刷新分类/事项并 bump 跨面板重查）、工具栏 ↶↷ 按钮、全局 Ctrl+Z/Ctrl+Y（焦点在输入框/文本域/可编辑区不触发）
+- D9 单实例：官方 `tauri-plugin-single-instance` v2.4.4（经用户确认引入，红线 2 流程）；第二实例自动退出并聚焦已有窗口（TC-ENV-001）
+- D11 运行部分：启动时检测 exe 同目录 `webview2\`，存在则设 `WEBVIEW2_BROWSER_EXECUTABLE_FOLDER`（打包目录放置 P9 落实）
+### 验收
+- `cargo test` 43 passed（+9）、clippy/fmt 零告警；`vitest` 25 passed、`npm run build` 通过；`tauri dev` 起窗正常
+- **用户验收通过**：TC-UNDO-001~009（撤销/重做/上限/重做栈清空/输入框内不触发等）
+- 单实例自动验证：第二实例 exit=0 拦截生效；TC-ENV-001 待用户双击手测确认

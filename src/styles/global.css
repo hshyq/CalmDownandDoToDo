@@ -285,3 +285,8 @@ body {
 .fm-footer { padding: 8px 0 2px; }
 .fm-footer button { width: 100%; }
 .del-note { color: var(--danger); font-size: 12px; margin-top: 4px; }
+
+/* ===== P7：撤销/重做按钮 ===== */
+.undobtn { width: 30px; height: 28px; padding: 0 8px; font-size: 15px; line-height: 1; margin-left: 4px; }
+.undobtn:disabled { opacity: 0.35; cursor: default; }
+.undobtn:disabled:hover { background: none; }

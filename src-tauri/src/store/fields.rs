@@ -213,6 +213,58 @@ pub fn change_type(conn: &mut Connection, id: i64, new_type: &str) -> Result<()>
     Ok(())
 }
 
+/// 一次字段编辑保存（改名 + 可选改类型 + 可选选项维护）。
+/// 前端「字段管理」弹窗的一次保存即一步撤销（PRD 6.7）；非选项类→选项类时，
+/// 选项由 change_type 按历史值自动生成（PRD 6.6 v1.2），忽略调用方传入的 options。
+/// 说明：change_type / set_options / rename 各自事务执行（单用户桌面可接受），
+/// 校验在写库前完成，避免中途失败产生不一致。
+pub fn save_edit(
+    conn: &mut Connection,
+    id: i64,
+    name: &str,
+    new_type: Option<&str>,
+    options: Option<&[String]>,
+) -> Result<()> {
+    let def = get(conn, id)?;
+    let old_type =
+        FieldType::parse(&def.r#type).ok_or_else(|| Error::Business("字段类型无效".to_string()))?;
+    let target_type = new_type.unwrap_or(&def.r#type);
+    let target_ft =
+        FieldType::parse(target_type).ok_or_else(|| Error::Business("字段类型无效".to_string()))?;
+    let type_changed = target_type != def.r#type;
+
+    // 前置校验：选项非空（选项类且需提交时）
+    let apply_options = target_ft.is_choice() && (old_type.is_choice() || !type_changed);
+    if apply_options {
+        if let Some(opts) = options {
+            if opts.is_empty() {
+                return Err(Error::Business("选项列表不能为空".to_string()));
+            }
+        }
+    }
+    if name != def.name {
+        if name.is_empty() {
+            return Err(Error::Business("字段名称不能为空".to_string()));
+        }
+        if name.chars().count() > 30 {
+            return Err(Error::Business("字段名称不能超过 30 个字符".to_string()));
+        }
+    }
+
+    if type_changed {
+        change_type(conn, id, target_type)?;
+    }
+    if apply_options {
+        if let Some(opts) = options {
+            set_options(conn, id, opts)?;
+        }
+    }
+    if name != def.name {
+        rename(conn, id, name)?;
+    }
+    Ok(())
+}
+
 /// 上移/下移（与该分类相邻字段交换 sort_order）。
 pub fn move_field(conn: &mut Connection, id: i64, direction: &str) -> Result<()> {
     let def = get(conn, id)?;

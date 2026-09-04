@@ -109,18 +109,11 @@ export default function FieldManager({ category, onClose }: Props) {
         showToast("字段已新增");
       } else {
         const old = editing.field;
-        if (old.type !== type) {
-          await fieldApi.changeType(old.id, type);
-          // 选项类 ⇄ 选项类：用户可同步修改选项（change_type 已沿用旧选项，set_options 生效并清理失效值）
-          if (isChoiceType(type) && isChoiceType(old.type)) {
-            await fieldApi.setOptions(old.id, options);
-          }
-        } else if (isChoiceType(type)) {
-          await fieldApi.setOptions(old.id, options);
-        }
-        if (old.name !== cleanName) {
-          await fieldApi.rename(old.id, cleanName);
-        }
+        // 一次保存 = 一步撤销（PRD 6.7）：改名/改类型/选项合并为 save_field
+        const newType = old.type !== type ? type : null;
+        // 非选项→选项由后端按历史值自动生成选项；其余选项类传用户维护的选项
+        const opts = isChoiceType(type) && !zeroLoss ? options : null;
+        await fieldApi.saveField(old.id, cleanName, newType, opts);
         showToast("已保存");
       }
       setEditing(null);

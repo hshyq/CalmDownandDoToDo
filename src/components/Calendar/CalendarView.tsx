@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ItemModal from "../Items/ItemModal";
 import FieldManager from "../fields/FieldManager";
+import { useUndoStore } from "../../stores/undoStore";
 import { useAppStore } from "../../stores/appStore";
 import { itemApi } from "../../services/ipc";
 import { OVERVIEW } from "../../services/types";
@@ -28,12 +29,21 @@ export default function CalendarView() {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [day, setDay] = useState<string | null>(null);
   const [fmCat, setFmCat] = useState<Category | null>(null);
+  const { canUndo, canRedo, undo: runUndo, redo: runRedo } = useUndoStore();
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
   const pendingDateRef = useRef("");
 
   const scope = activeTab === OVERVIEW ? null : activeTab;
 
+  const onUndo = async () => {
+    try { await runUndo(); showToast("已撤销"); }
+    catch (e) { showToast(e instanceof Error ? e.message : "撤销失败，请重试"); }
+  };
+  const onRedo = async () => {
+    try { await runRedo(); showToast("已重做"); }
+    catch (e) { showToast(e instanceof Error ? e.message : "重做失败，请重试"); }
+  };
   const showToast = (m: string) => {
     setToast(m);
     window.setTimeout(() => setToast(""), 2200);
@@ -177,6 +187,9 @@ export default function CalendarView() {
           <button type="button" className={view === "month" ? "on" : ""} onClick={() => setView("month")}>月</button>
         </div>
         <span className="title cal-title">{title}</span>
+        <span style={{ flex: 1 }} />
+        <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
+        <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
         {scope !== null ? (
           <button type="button" className="btn-ghost" onClick={() => { const c = catOf(scope); if (c) setFmCat(c); }}>字段管理</button>
         ) : null}

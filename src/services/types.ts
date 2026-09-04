@@ -186,3 +186,18 @@ export interface FieldValuePayload {
   fieldDefId: number;
   value: string | null;
 }
+
+
+// ===== P7 撤销/重做（对应 commands::undo::UndoDepthPayload） =====
+
+/** 撤销栈深度（Rust → 前端刷新按钮态）。 */
+export interface UndoDepth {
+  undo: number;
+  redo: number;
+}
+
+export function isUndoDepth(v: unknown): v is UndoDepth {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return typeof o.undo === "number" && typeof o.redo === "number";
+}

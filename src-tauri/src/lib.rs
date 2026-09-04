@@ -7,7 +7,9 @@
 
 pub mod commands;
 pub mod store;
+pub mod undo;
 
+use crate::undo::UndoStack;
 use tauri::Manager;
 
 /// P0 IPC 冒烟：前后端打通验证。
@@ -16,9 +18,31 @@ fn ping() -> &'static str {
     "pong"
 }
 
+/// D11：检测 exe 同目录 `webview2\\` 固定版运行时并设置环境变量（运行期解析，禁止硬编码）。
+fn prepare_webview2_fixed_runtime() {
+    let exe_dir = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    let Some(dir) = exe_dir else { return };
+    let fixed = dir.join("webview2");
+    if fixed.join("msedgewebview2.exe").exists() {
+        // 仅影响本进程后续创建的 WebView2 环境（Tauri 在此之后才初始化 WebView）
+        std::env::set_var("WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", fixed);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // D11 运行部分：若 exe 同目录存在 webview2\（Fixed Version Runtime），
+    // 在任何 WebView 创建前指向固定版，否则使用系统 Evergreen。
+    prepare_webview2_fixed_runtime();
+    // D9 单实例（决策 D9 / TC-ENV-001）：第二实例启动时聚焦已有主窗口
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+        }))
         .setup(|app| {
             // 数据目录 = exe 同目录 data\（红线 6；运行期解析，禁止硬编码）
             let data_dir = std::env::current_exe()
@@ -29,6 +53,7 @@ pub fn run() {
             let db = crate::store::Db::open(&data_dir)
                 .map_err(|e| std::io::Error::other(format!("初始化数据目录失败：{e}")))?;
             app.manage(db);
+            app.manage(UndoStack::new());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -53,6 +78,9 @@ pub fn run() {
             commands::fields::change_field_type,
             commands::fields::move_field,
             commands::fields::list_item_field_values,
+            commands::undo::undo,
+            commands::undo::redo,
+            commands::undo::undo_depth,
             commands::items::list_items
         ])
         .run(tauri::generate_context!())

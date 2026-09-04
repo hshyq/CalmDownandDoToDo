@@ -1,11 +1,14 @@
 //! 事项 IPC（PRD 4.2/5.1/6.3/6.4；验收 TC-IT）。
-//! 新增/编辑弹窗表单 → draft（标准字段）；自定义字段在 P6 引入。
+//! 写操作经 undo 包装：一次弹窗保存/删除 = 一步撤销（PRD 6.7）。
 
 use serde::Deserialize;
-use tauri::State;
+use tauri::{AppHandle, State};
 
 use crate::store::items::{Item, NewItem};
 use crate::store::Db;
+use crate::undo::{UndoCmd, UndoStack};
+
+use super::undo::emit_depth;
 
 /// 事项表单载荷（JS 侧 camelCase，对应 Rust 参数经 serde rename_all）。
 #[derive(Debug, Deserialize)]
@@ -25,7 +28,7 @@ pub struct ItemDraft {
     pub field_values: Option<Vec<FieldValuePayload>>,
 }
 
-/// 事项-字段值载荷（JS camelCase）。
+/// 事项-字段值载荷（JS camelCase：后端 serde rename_all）。
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FieldValuePayload {
@@ -49,14 +52,6 @@ impl<'a> From<&'a ItemDraft> for NewItem<'a> {
     }
 }
 
-#[tauri::command]
-pub fn create_item(db: State<'_, Db>, draft: ItemDraft) -> Result<Item, String> {
-    let new = NewItem::from(&draft);
-    let item = db.create_item(&new).map_err(|e| e.to_string())?;
-    save_values(&db, item.id, draft.field_values.as_deref())?;
-    Ok(item)
-}
-
 /// 写入事项字段值（仅覆盖当前模板字段，不删其它分类值）。
 fn save_values(db: &Db, item_id: i64, values: Option<&[FieldValuePayload]>) -> Result<(), String> {
     let Some(vals) = values else { return Ok(()) };
@@ -69,16 +64,71 @@ fn save_values(db: &Db, item_id: i64, values: Option<&[FieldValuePayload]>) -> R
 }
 
 #[tauri::command]
-pub fn update_item(db: State<'_, Db>, id: i64, draft: ItemDraft) -> Result<Item, String> {
-    let upd = NewItem::from(&draft);
-    let item = db.update_item(id, &upd).map_err(|e| e.to_string())?;
+pub fn create_item(
+    db: State<'_, Db>,
+    stack: State<'_, UndoStack>,
+    app: AppHandle,
+    draft: ItemDraft,
+) -> Result<Item, String> {
+    let new = NewItem::from(&draft);
+    let item = db.create_item(&new).map_err(|e| e.to_string())?;
     save_values(&db, item.id, draft.field_values.as_deref())?;
+    // 快照 = 创建后完整行 + 字段值（撤销=删除，重做=重建）
+    let snap = db
+        .snapshot_item(item.id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "事项不存在".to_string())?;
+    stack.push(Box::new(UndoCmd::ItemCreate {
+        snap: Box::new(snap),
+    }));
+    emit_depth(&app, &stack);
     Ok(item)
 }
 
 #[tauri::command]
-pub fn delete_item(db: State<'_, Db>, id: i64) -> Result<(), String> {
-    db.delete_item(id).map_err(|e| e.to_string())
+pub fn update_item(
+    db: State<'_, Db>,
+    stack: State<'_, UndoStack>,
+    app: AppHandle,
+    id: i64,
+    draft: ItemDraft,
+) -> Result<Item, String> {
+    let before = db
+        .snapshot_item(id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "事项不存在".to_string())?;
+    let upd = NewItem::from(&draft);
+    let item = db.update_item(id, &upd).map_err(|e| e.to_string())?;
+    save_values(&db, item.id, draft.field_values.as_deref())?;
+    let after = db
+        .snapshot_item(item.id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "事项不存在".to_string())?;
+    stack.push(Box::new(UndoCmd::ItemUpdate {
+        before: Box::new(before),
+        after: Box::new(after),
+    }));
+    emit_depth(&app, &stack);
+    Ok(item)
+}
+
+#[tauri::command]
+pub fn delete_item(
+    db: State<'_, Db>,
+    stack: State<'_, UndoStack>,
+    app: AppHandle,
+    id: i64,
+) -> Result<(), String> {
+    let snap = db
+        .snapshot_item(id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "事项不存在".to_string())?;
+    db.delete_item(id).map_err(|e| e.to_string())?;
+    stack.push(Box::new(UndoCmd::ItemDelete {
+        snap: Box::new(snap),
+    }));
+    emit_depth(&app, &stack);
+    Ok(())
 }
 
 #[tauri::command]

@@ -14,6 +14,8 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = [] }
+tauri-plugin-single-instance = "2"
+# P7 单实例互斥（决策 D9；官方插件，运行期零网络，经用户确认引入）
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 # P1 数据层：SQLite（决策 D3 既定，bundled 免系统依赖；一期零网络 crate）
