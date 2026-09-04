@@ -87,6 +87,7 @@ pub fn run() {
             commands::items::list_todo_items,
             commands::fields::list_fields,
             commands::fields::create_field,
+            commands::fields::save_field,
             commands::fields::rename_field,
             commands::fields::delete_field,
             commands::fields::set_field_options,
