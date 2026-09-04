@@ -803,3 +803,10 @@
 ### 验收
 - `cargo test` 47 passed、`vitest` 25 passed、clippy/fmt 零告警；release exe 双击启动验证正常（自动生成 data\）
 - **待用户最终回归**：回归最小集 17 条（TC-IT-001/006/007、TC-DUE-001/002/005、TC-CAL-001/004/005/007/011、TC-FLD-004/008、TC-UNDO-002/004/006、TC-BAK-003）
+
+## 2026-09-04（v0.1.0 发布后修复）
+
+### 修复
+- 字段管理弹窗编辑已有字段（改名/改类型/选项维护）报 `Command save_field not found`：P7 引入的复合命令 `save_field` 漏注册于 `lib.rs`，已补注册（commit e90a126）；便携目录已重新打包并清理测试遗留 data
+### 验收
+- 用户复测通过；cargo 47 passed、clippy/fmt 0；新版 release exe 双击启动验证通过
