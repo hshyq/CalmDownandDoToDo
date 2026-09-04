@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**开发阶段 · P9 一期收尾（代码/打包/文档就绪；待用户跑回归最小集 17 条后提交收口）**
+**一期完成 · v0.1.0 发布（2026-09-04，P0~P9 全部验收通过并提交）**。业务开发按 `doc/开发批次计划.md` 已完成一期全部批次；二期另行推进。
 
 ## 已完成
 
@@ -43,7 +43,7 @@
   - [x] D11 WebView2 固定版检测：exe 同目录 webview2\ 存在则设 WEBVIEW2_BROWSER_EXECUTABLE_FOLDER（打包部分 P9 落实）
   - [x] D9 单实例互斥：经用户确认引入官方 tauri-plugin-single-instance v2.4.4；第二实例自动退出并聚焦已有窗口；commit a9a8003
 - [x] **P8 备份完成并提交**（2026-09-04，用户验收通过；commit 9c09fd0）：store/backup.rs、undo Import（D10 落盘）、commands default_backup_path/export/import、⚙ 设置弹窗经官方 tauri-plugin-dialog 选目录/文件（应验收反馈调整）
-- [ ] **P9 一期收尾（进行中）**：
+- [x] **P9 一期收尾完成并提交**（2026-09-04，用户回归最小集验收通过；commit e0172a6）：
   - [x] TC-BAK-005 启动只读目录提示（dialog）；README 正式版；release exe 便携目录（target\release\日历待办工具 v0.1.0\，双击验证通过）；CHANGELOG/PROJECT_MAP/TODO 终态
   - [ ] 用户最终回归最小集 17 条通过 → 提交 P9 → 一期发布
 - [ ] 二期（另行推进）：托盘常驻、提醒设置、SMTP 直发、同步与过期汇总弹窗
