@@ -6,6 +6,7 @@ import { itemApi } from "../../services/ipc";
 import { OVERVIEW } from "../../services/types";
 import type { Category, Item, TodoItem } from "../../services/types";
 import { groupTodos } from "../../features/todo/group";
+import { TODO_MIME } from "../../features/calendar/drag";
 
 const GROUP_H = 30;
 const ITEM_H = 34;
@@ -125,6 +126,12 @@ export default function TodoPanel() {
                   key={"i" + row.item.id}
                   className="titem-row"
                   style={{ top, height: ITEM_H, background: catOf(row.item.category_id)?.color ?? "#9E9E9E" }}
+                  draggable
+                  onDragStart={(e) => {
+                    // 拖入日历：开始=结束=落格日期（PRD 5.3 v1.8）；来源类型区分于横条拖拽
+                    e.dataTransfer.setData(TODO_MIME, String(row.item.id));
+                    e.dataTransfer.effectAllowed = "copyMove";
+                  }}
                   onClick={() => void openEdit(row.item)}
                 >
                   <span className="titem-title" title={row.item.title}>{row.item.title}</span>

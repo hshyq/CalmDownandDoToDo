@@ -6,10 +6,12 @@ import { useUndoStore } from "../../stores/undoStore";
 import { useAppStore } from "../../stores/appStore";
 import { itemApi } from "../../services/ipc";
 import { OVERVIEW } from "../../services/types";
-import type { CalendarItem, Category, Item } from "../../services/types";
+import type { CalendarItem, Category, Item, ItemDraft } from "../../services/types";
 import { addDays, monthRows, parseISO, toISO, todayISO, weekStartMonday } from "../../features/calendar/dates";
 import { layoutRow } from "../../features/calendar/layout";
 import type { CalItemLite } from "../../features/calendar/layout";
+import { BAR_MIME, TODO_MIME, shiftRange, todoDropDates } from "../../features/calendar/drag";
+import type { ShiftedDates } from "../../features/calendar/drag";
 
 type ViewMode = "week" | "month";
 
@@ -22,13 +24,14 @@ interface ModalState {
 }
 
 export default function CalendarView() {
-  const { categories, activeTab, ready, dataVersion } = useAppStore();
+  const { categories, activeTab, ready, dataVersion, updateItem } = useAppStore();
   const [view, setView] = useState<ViewMode>("month");
   const [cursor, setCursor] = useState<string>(todayISO());
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [day, setDay] = useState<string | null>(null);
   const [fmCat, setFmCat] = useState<Category | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const { canUndo, canRedo, undo: runUndo, redo: runRedo } = useUndoStore();
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
@@ -104,6 +107,44 @@ export default function CalendarView() {
     setModal({ open: true, item: null, defaultCatId: def, allowPick, presetDate: date });
   };
 
+  // 拖拽改期（PRD 5.3 v1.8）：仅改起止日期，标题/描述/截止/分类/字段值原样保留；
+  // 走 update_item（已接撤销包装），不传 fieldValues → 库中字段值不动。
+  const moveItem = async (id: number, dates: ShiftedDates) => {
+    try {
+      const detail = await itemApi.getDetail(id);
+      if (detail.start_date === dates.startDate && detail.end_date === dates.endDate) return;
+      const draft: ItemDraft = {
+        categoryId: detail.category_id,
+        title: detail.title,
+        description: detail.description,
+        startDate: dates.startDate,
+        startTime: detail.start_time,
+        endDate: dates.endDate,
+        endTime: detail.end_time,
+        dueDate: detail.due_date,
+        dueTime: detail.due_time,
+      };
+      await updateItem(id, draft);
+      showToast("已更新日期");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "更新日期失败，请重试");
+    }
+  };
+
+  // 落格分发：按 dataTransfer 来源类型区分「横条平移」与「待办拖入」（PRD 5.3 v1.8）
+  const onCellDrop = (e: React.DragEvent, date: string) => {
+    e.preventDefault();
+    setDragOverDate(null);
+    const barId = e.dataTransfer.getData(BAR_MIME);
+    if (barId) {
+      const it = items.find((x) => x.id === Number(barId));
+      if (it) void moveItem(it.id, shiftRange(it.start_date, it.end_date, date));
+      return;
+    }
+    const todoId = e.dataTransfer.getData(TODO_MIME);
+    if (todoId) void moveItem(Number(todoId), todoDropDates(date));
+  };
+
   const title = monthKey.slice(0, 4) + "年" + Number(monthKey.slice(5, 7)) + "月";
 
   const renderRow = (rowDates: string[]) => {
@@ -134,6 +175,11 @@ export default function CalendarView() {
               background: cat?.color ?? "#9E9E9E",
             }}
             title={it.title}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData(BAR_MIME, String(p.id));
+              e.dataTransfer.effectAllowed = "copyMove";
+            }}
             onClick={() => void openEdit(p.id)}
           >
             {it.title}
@@ -154,13 +200,24 @@ export default function CalendarView() {
       const other = view === "month" && d.slice(0, 7) !== monthKey;
       const isToday = d === todayISO();
       return (
-        <div key={d} className={"daycell " + (other ? "other " : "") + (isToday ? "today" : "")}>
+        <div
+          key={d}
+          className={"daycell " + (other ? "other " : "") + (isToday ? "today" : "") + (dragOverDate === d ? " dragover" : "")}
+          onDragOver={(e) => {
+            // dragover 中不可读 getData，用 types 判断来源（横条或待办）
+            if (e.dataTransfer.types.includes(BAR_MIME) || e.dataTransfer.types.includes(TODO_MIME)) {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = "copy";
+              setDragOverDate(d);
+            }
+          }}
+          onDragLeave={() => setDragOverDate((cur) => (cur === d ? null : cur))}
+          onDrop={(e) => onCellDrop(e, d)}
+        >
           <span className="dnum">{Number(d.slice(8))}</span>
-          {!other ? (
-            <span className="celladd" title="新增事项" onClick={() => openCreate(d, activeTab === OVERVIEW)}>
-              +
-            </span>
-          ) : null}
+          <span className="celladd" title="新增事项" onClick={() => openCreate(d, activeTab === OVERVIEW)}>
+            +
+          </span>
         </div>
       );
     });

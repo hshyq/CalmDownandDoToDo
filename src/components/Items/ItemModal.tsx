@@ -31,7 +31,8 @@ function empty(item: Item | null, presetStartDate = ""): FormState {
     title: item?.title ?? "",
     description: item?.description ?? "",
     sd: item?.start_date ?? presetStartDate, st: item?.start_time ?? "",
-    ed: item?.end_date ?? "", et: item?.end_time ?? "",
+    // 新增时结束日期与开始日期同预填该格日期（时刻为空，PRD 6.3 v1.8）；编辑用原值
+    ed: item?.end_date ?? (presetStartDate || ""), et: item?.end_time ?? "",
     dd: item?.due_date ?? "", dt: item?.due_time ?? "",
   };
 }

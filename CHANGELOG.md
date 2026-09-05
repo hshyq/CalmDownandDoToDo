@@ -188,3 +188,18 @@
 ### 背景
 - 修复 save_field 后重打包便携版时误删便携目录 data\（将其当作测试残留），教训记录为上述铁律
 
+## 2026-09-05（v0.1.0 后功能增强 · 拖拽改期与快捷入口）
+
+### 新增 / 变更（PRD v1.8，测试用例 88 条）
+- 日历格「+」新增事项：开始**与结束**日期均默认=该格日期（原仅开始日期预填；时刻为空）；入口扩展至月视图前后月**补齐格**（原补齐格不显示）
+- 拖拽改期：日历横条可拖拽到目标日期格，按「落格日期 − 原开始日期」偏移整体平移起止日期（跨度与已填时分不变，原地放下不产生写库）
+- 待办拖入日历：待办条目可拖拽到日历格，开始=结束=落格日期（已填时分保留），按 5.1 规则立即迁入日历
+- 两者均走 `update_item`（撤销栈可回退），不改标题/描述/截止/分类/自定义字段值
+### 实现
+- 前端新增 `features/calendar/drag.ts`（shiftRange/todoDropDates 纯函数 + BAR_MIME/TODO_MIME 来源区分）+ 6 vitest；`CalendarView` 横条 draggable、daycell dragover/drop 与落格高亮；`TodoPanel` 条目 draggable；`global.css` grab 光标与 dragover 高亮
+- `tauri.conf.json` 窗口 `dragDropEnabled:false`：Windows 上 Tauri 系统级文件拖放监听会禁用 WebView 内 HTML5 拖拽（本项目无文件拖入需求）
+- UI 契约同步 `doc/原型.html`（补齐格「+」、结束日期预填、拖拽演示）
+### 验收
+- `cargo test` 47 passed、`vitest` 31 passed、`npm run build` 通过；原型 script 语法冒烟通过
+- **用户手测通过**：TC-IT-012（预填/补齐格入口）、TC-CAL-013/014（拖拽改期/待办拖入，含 Ctrl+Z 回退）、TC-CAL-015（补齐格入口）
+

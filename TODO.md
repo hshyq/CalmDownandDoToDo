@@ -6,7 +6,17 @@
 
 **一期完成 · v0.1.0 发布（2026-09-04，P0~P9 全部验收通过并提交）**。业务开发按 `doc/开发批次计划.md` 已完成一期全部批次；二期另行推进。
 
+**2026-09-05 功能增强（PRD v1.8）已完成并验收**：①日历格「+」新增预填开始+结束日期 ②横条拖拽平移改期 ③待办拖入日历 ④补齐格「+」入口。文档基线：PRD v1.8 / 测试用例 88 条。
+
 ## 已完成
+
+- [x] **2026-09-05 拖拽改期与快捷入口增强（用户验收通过）**：
+  - `features/calendar/drag.ts` 纯函数（shiftRange 平移 / todoDropDates 待办拖入 / BAR_MIME·TODO_MIME 来源区分）+ 6 vitest
+  - `CalendarView`：横条 draggable、daycell dragover/drop 与落格高亮、补齐格「+」；`ItemModal`「+」新增预填开始=结束=格日期；`TodoPanel` 条目 draggable
+  - 写库走 `update_item`（撤销可回退；fieldValues 不传保留旧值；原地放下不写库）
+  - `tauri.conf.json` `dragDropEnabled:false`（Windows 系统级拖放监听会禁用 WebView 内 HTML5 拖拽）
+  - 同步 `doc/原型.html`（预填/补齐格/拖拽演示，script 语法冒烟通过）；PRD v1.8、测试用例 88 条、PROJECT_MAP、CHANGELOG 已刷新
+  - 验证：cargo 47 passed、vitest 31 passed、build 通过；**用户手测 TC-IT-012、TC-CAL-013~015 通过**
 
 - [x] 产品方案与技术方案讨论定稿（一期 18 条需求细化、二期邮箱方案改 SMTP 直发）
 - [x] 《Vibe Coding 项目文档标准化指南》更新：纳入测试用例/原型两份文档（外部文件，仅更新一次）
@@ -50,7 +60,8 @@
 
 ## 给下次对话的提醒
 
-- 文档基线：**PRD v1.6 / 技术方案 v1.3 / 测试用例 85 条（回归最小集 17 条）**；技术方案 v1.5/v1.6 为纯 UI 交互变更（未升架构版），v1.3 为 P1 数据字典补全；业务规则唯一权威是 PRD 第 5 章。
+- 文档基线：**PRD v1.8 / 技术方案 v1.3 / 测试用例 88 条（回归最小集 17 条）**；技术方案 v1.5/v1.6 为纯 UI 交互变更（未升架构版），v1.3 为 P1 数据字典补全；业务规则唯一权威是 PRD 第 5 章。
+- **拖拽前提**：`tauri.conf.json` 窗口 `dragDropEnabled:false` 必须保留，否则 WebView 内 HTML5 拖拽在 Windows 上失效。
 - 每批开工先读 `doc/开发批次计划.md` 对应批次；批次收口按「批次完成定义」执行（含刷新本文件与 CHANGELOG）。
 - 改业务规则先改测试用例再改码；宣称完成前跑回归最小集（AGENTS 第 9 节）。
 - **便携版 data 是生产数据**（用户以便携版正式使用并手动维护）：重打包/验证 exe 严禁删除或污染便携目录 data\（铁律见 AGENTS 第 7 节）。

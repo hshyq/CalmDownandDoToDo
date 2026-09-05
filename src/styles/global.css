@@ -204,8 +204,11 @@ body {
 .daycell:hover .celladd { opacity: 1; }
 .celladd:hover { background: #e8f0fe; border-color: var(--accent); }
 .barlayer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.bar { position: absolute; height: var(--bar-h); border-radius: 3px; color: #fff; font-size: 12px; display: flex; align-items: center; padding: 0 6px; overflow: hidden; white-space: nowrap; pointer-events: auto; cursor: pointer; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18); }
+.bar { position: absolute; height: var(--bar-h); border-radius: 3px; color: #fff; font-size: 12px; display: flex; align-items: center; padding: 0 6px; overflow: hidden; white-space: nowrap; pointer-events: auto; cursor: grab; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18); }
 .bar:hover { filter: brightness(1.08); }
+.bar:active { cursor: grabbing; }
+/* 拖拽改期落格高亮（PRD 5.3 v1.8） */
+.daycell.dragover { outline: 2px solid var(--accent); outline-offset: -2px; background: #eaf3ff; }
 .morechip { position: absolute; bottom: 4px; right: 6px; z-index: 3; font-size: 11px; color: var(--accent); background: #eaf3ff; border-radius: 8px; padding: 0 7px; cursor: pointer; }
 .morechip:hover { background: #d8e9ff; }
 .loading-mask { position: absolute; inset: 0; background: rgba(244, 245, 247, 0.5); display: flex; align-items: center; justify-content: center; color: var(--muted); z-index: 5; }
@@ -237,8 +240,9 @@ body {
 .titem-row:hover .tcolor { filter: brightness(1.08); }
 .tcolor { width: 100%; height: 24px; border-radius: 5px; display: block; position: absolute; inset: 0; opacity: 0.12; }
 .titem-title { position: relative; z-index: 1; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
-.titem-row { position: absolute; left: 22px; right: 8px; display: flex; align-items: center; border-radius: 5px; cursor: pointer; color: #fff; overflow: hidden; }
+.titem-row { position: absolute; left: 22px; right: 8px; display: flex; align-items: center; border-radius: 5px; cursor: grab; color: #fff; overflow: hidden; }
 .titem-row:hover { filter: brightness(1.1); }
+.titem-row:active { cursor: grabbing; }
 .titem-title { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; text-shadow: 0 1px 1px rgba(0,0,0,.18); }
 /* P5 修复：覆盖旧占位样式残留的 center 对齐，避免待办列表宽度塌缩 */
 .todo-pane { align-items: stretch; justify-content: flex-start; color: var(--text); }

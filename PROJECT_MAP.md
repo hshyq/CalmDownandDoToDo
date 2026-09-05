@@ -14,6 +14,8 @@
 > **P8 已落地**（2026-09-04，代码完成待手测 TC-BAK）：`store/backup.rs`（整库 dump/导入 + 语义校验 TC-BAK-006 + 事务整库替换 + 默认导出路径 `data\backups\`）；undo 增 Import 命令（导入前整库快照落 `data\undo_tmp`，D10，重启清理、随命令丢弃删除）；commands `default_backup_path()`/`export_backup(path)`/`import_backup(path)`（经官方 tauri-plugin-dialog 自选目录/文件）；前端 `components/Settings/SettingsDialog.tsx`（⚙ 设置 → 数据备份：另存为导出/打开导入 + 二次确认 + 导入后跨面板刷新并计入撤销栈）、`services/ipc.ts` backupApi。cargo 47 tests、vitest 25、clippy/fmt 0、build/tauri dev 正常。
 > **P9 已落地**（2026-09-04，待用户回归最小集）：TC-BAK-005（启动时数据目录不可写经 dialog 弹提示引导）；`README.md` 重写为正式版使用说明（绿色目录启动/WebView2 固定版 D11 打包步骤/数据与备份）；便携发布目录 `src-tauri\target\release\日历待办工具 v0.1.0\`（`日历待办工具.exe` ≈7.4MB + README + 使用说明.txt）；release exe 双击启动验证通过（自动生成 data\）。cargo 47 tests、vitest 25、clippy/fmt 0。
 >
+> **拖拽改期与快捷入口增强已落地**（2026-09-05，PRD v1.8 / TC-IT-012、TC-CAL-013~015，用户手测通过）：日历格「+」新增时开始与结束日期均预填该格日期；月视图补齐格也显示「+」；日历横条可拖拽到目标格按偏移平移起止日期（跨度/时分不变）；待办条目可拖入日历格（开始=结束=落格日期）。前端新增 `features/calendar/drag.ts`（shiftRange/todoDropDates 纯函数 + BAR_MIME/TODO_MIME + 6 vitest）；`CalendarView` 横条 draggable、daycell dragover/drop 与落格高亮、补齐格「+」；`TodoPanel` 条目 draggable；写库走 `update_item`（撤销可回退，fieldValues 不传保留）。`tauri.conf.json` 窗口加 `"dragDropEnabled": false`（Windows 上系统级文件拖放监听会禁用 WebView 内 HTML5 拖拽；本项目无文件拖入需求，不受影响）。cargo 47、vitest 31、build 通过。
+>
 > **P3 已落地**（2026-09-03，代码完成待手测 TC-IT）：后端 `store/items.rs`（Item/NewItem、全字段校验 create/update/delete/get/list + 3 单测）与 `commands/items.rs`（ItemDraft camelCase、6 个 IPC）；前端 `components/Items/`（ItemModal 新增/编辑/删除、ItemsView 过渡列表分组「日历/待办」）、types/ipc/mock 扩展、appStore 事项操作。后端 cargo test 21 passed、前端 vitest 5 passed、clippy 零警告、vite build/tauri dev 正常。
 
 ## 一句话架构
@@ -42,13 +44,13 @@
 │  ├─ components/             组件（按模块目录组织）
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 色盘
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部）
-│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建）
-│  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区）
-│  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入）
+│  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区；「+」新增预填开始=结束=格日期）
+│  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期）
 │  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入）
 │  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗
 │  ├─ features/               纯函数 + vitest 单测
-│  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局纯函数）
+│  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移与待办拖入日期计算）
 │  │  ├─ todo/                group.ts（待办分组纯函数）
 │  │  ├─ color/               palette.ts（色盘选取纯函数）
 │  │  └─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
@@ -104,6 +106,7 @@
 | 要改什么 | 去哪 | 配套动作 |
 | :--- | :--- | :--- |
 | 日历横条排布 / 跨格 / +N | `src/features/calendar/layout.ts`（纯函数） | 补 vitest 用例；对照 TC-CAL-004~007 |
+| 拖拽改期（横条平移 / 待办拖入） | `src/features/calendar/drag.ts`（纯函数）+ `CalendarView.tsx`（drop 分发）+ `TodoPanel.tsx`（draggable） | 对照 TC-CAL-013~014；写库走 update_item 可撤销；`tauri.conf.json` 须保持 `dragDropEnabled:false` |
 | 周一起始 / 月补齐 / 今日高亮 | `MonthGrid.tsx` / `WeekGrid.tsx` | 对照 TC-CAL-001/002/008 |
 | 待办排序、99991231 沉底 | `src-tauri/src/store/mod.rs`（COALESCE 查询） | 对照 TC-DUE-001~004 |
 | 日历/待办归属规则 | 不在代码某处——由查询条件表达（`start_date`/`end_date` 判空） | 对照 TC-IT-001~007 |

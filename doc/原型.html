@@ -86,9 +86,11 @@ input,select,textarea{font:inherit;color:inherit}
 .daycell.today .dnum{color:var(--accent);font-weight:700}
 .barlayer{position:absolute;inset:0;z-index:2;pointer-events:none}
 .bar{position:absolute;height:var(--bar-h);border-radius:3px;color:#fff;font-size:12px;
-  display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;pointer-events:auto;cursor:pointer;
+  display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;pointer-events:auto;cursor:grab;
   text-shadow:0 1px 1px rgba(0,0,0,.18)}
 .bar:hover{filter:brightness(1.08)}
+.bar:active{cursor:grabbing}
+.daycell.dragover{outline:2px solid var(--accent);outline-offset:-2px;background:#eaf3ff}
 .morechip{position:absolute;bottom:4px;right:6px;z-index:3;font-size:11px;color:var(--accent);
   background:#eaf3ff;border-radius:8px;padding:0 7px;cursor:pointer}
 .morechip:hover{background:#d8e9ff}
@@ -110,8 +112,9 @@ input,select,textarea{font:inherit;color:inherit}
 .tgroup.collapsed .chev{transform:rotate(-90deg)}
 .tgroup.collapsed .tbody{display:none}
 .titem{position:relative;background:var(--c9);color:#fff;border-radius:8px;padding:5px 9px;margin:5px 0;
-  font-size:12px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 1px rgba(0,0,0,.18)}
+  font-size:12px;cursor:grab;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 1px rgba(0,0,0,.18)}
 .titem:hover{filter:brightness(1.08)}
+.titem:active{cursor:grabbing}
 .tempty{color:var(--muted);font-size:12px;padding:14px 6px;text-align:center}
 
 /* ===== 弹窗 ===== */
@@ -603,13 +606,15 @@ function renderCalendar(){
     const placed=layoutWeek(week,maxLanes,scope);
     const cells=week.map(ds=>{
       const other=state.view==='month'&&ds.slice(0,7)!==state.cursor.slice(0,7);
-      return `<div class="daycell ${other?'other':''} ${ds===TODAY?'today':''}">
-        <span class="dnum">${Number(ds.slice(8))}</span>${!other?`<span class="celladd" title="新增事项" onclick="openItemModal(null,'${ds}')">+</span>`:''}</div>`;
+      return `<div class="daycell ${other?'other':''} ${ds===TODAY?'today':''}"
+        ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)" ondrop="cellDrop(event,'${ds}')">
+        <span class="dnum">${Number(ds.slice(8))}</span><span class="celladd" title="新增事项" onclick="openItemModal(null,'${ds}')">+</span></div>`;
     }).join('');
     const bars=placed.filter(p=>p.lane>=0).map(p=>{
       const c=catOf(p.it.cat);
       return `<div class="bar" style="left:calc(${p.cs*100/7}% + 3px);width:calc(${(p.ce-p.cs+1)*100/7}% - 6px);
-        top:${23+p.lane*22}px;background:${c.color}" title="${esc(p.it.title)}"
+        top:${23+p.lane*22}px;background:${c.color}" title="${esc(p.it.title)}" draggable="true"
+        ondragstart="dragBar(event,${p.it.id})"
         onclick="openItemModal(${p.it.id})">${esc(p.it.title)}</div>`;
     }).join('');
     const chips=[...Array(7)].map((_,d)=>{
@@ -619,6 +624,39 @@ function renderCalendar(){
     html+=`<div class="weekrow" style="height:${cellH}px"><div class="barlayer">${bars}${chips}</div>${cells}</div>`;
   }
   $('#cal').innerHTML=html;
+}
+
+/* ================= 拖拽改期（PRD 5.3 v1.8） ================= */
+/* 来源类型区分：日历横条平移起止日期（跨度/时分不变）；待办条目设开始=结束=落格日期 */
+const MIME_BAR='application/x-cal-bar',MIME_TODO='application/x-cal-todo';
+function dragBar(e,id){e.dataTransfer.setData(MIME_BAR,String(id));e.dataTransfer.effectAllowed='copyMove'}
+function dragTodo(e,id){e.dataTransfer.setData(MIME_TODO,String(id));e.dataTransfer.effectAllowed='copyMove'}
+function cellDragOver(e){
+  const t=e.dataTransfer.types;
+  if(t.includes(MIME_BAR)||t.includes(MIME_TODO)){
+    e.preventDefault();e.dataTransfer.dropEffect='copy';
+    const cell=e.target.closest('.daycell');if(cell)cell.classList.add('dragover');
+  }
+}
+function cellDragLeave(e){
+  const cell=e.target.closest('.daycell');if(cell)cell.classList.remove('dragover');
+}
+function cellDrop(e,ds){
+  e.preventDefault();
+  const cell=e.target.closest('.daycell');if(cell)cell.classList.remove('dragover');
+  const bar=e.dataTransfer.getData(MIME_BAR);
+  if(bar){
+    const it=state.items.find(x=>x.id===Number(bar));if(!it)return;
+    const off=diffDays(it.sd,ds);
+    it.sd=addDays(it.sd,off);it.ed=addDays(it.ed,off);
+    toast('已更新日期');renderCalendar();return;
+  }
+  const todo=e.dataTransfer.getData(MIME_TODO);
+  if(todo){
+    const it=state.items.find(x=>x.id===Number(todo));if(!it)return;
+    it.sd=ds;it.ed=ds;
+    toast('已更新日期');renderCalendar();renderTodo();return;
+  }
 }
 
 /* ================= 待办 ================= */
@@ -646,7 +684,8 @@ function renderTodo(){
       <div class="tbody">${col.map(it=>{
         const c=catOf(it.cat);
         const tip=it.dd?`截止 ${it.dd}${it.dt?' '+it.dt:''}｜${c.name}`:c.name;
-        return `<div class="titem" style="background:${c.color}" title="${esc(it.title+'（'+tip+'）')}"
+        return `<div class="titem" style="background:${c.color}" title="${esc(it.title+'（'+tip+'）')}" draggable="true"
+          ondragstart="dragTodo(event,${it.id})"
           onclick="openItemModal(${it.id})">${esc(it.title)}</div>`;
       }).join('')}</div></div>`;
   }
@@ -711,7 +750,7 @@ function openItemModal(id,preSd){
       <div class="frow"><label>开始时间</label>
         <input type="date" id="if-sd" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" value="${it?it.st:''}"></div>
       <div class="frow"><label>结束时间</label>
-        <input type="date" id="if-ed" value="${it?it.ed:''}"><input type="time" id="if-et" value="${it?it.et:''}"></div>
+        <input type="date" id="if-ed" value="${it?it.ed:(preSd||'')}"><input type="time" id="if-et" value="${it?it.et:''}"></div>
       <div class="frow"><label>截止时间</label>
         <input type="date" id="if-dd" value="${it?it.dd:''}"><input type="time" id="if-dt" value="${it?it.dt:''}"></div>
       <div class="fsec"><div class="sec-t">自定义字段（随所属分类的模板变化）</div>
