@@ -10,7 +10,7 @@
 
 ## 已完成
 
-- [x] **2026-09-05 拖拽改期与快捷入口增强（用户验收通过）**：
+- [x] **2026-09-05 拖拽改期与快捷入口增强（用户验收通过；commit 0c057f2）**：
   - `features/calendar/drag.ts` 纯函数（shiftRange 平移 / todoDropDates 待办拖入 / BAR_MIME·TODO_MIME 来源区分）+ 6 vitest
   - `CalendarView`：横条 draggable、daycell dragover/drop 与落格高亮、补齐格「+」；`ItemModal`「+」新增预填开始=结束=格日期；`TodoPanel` 条目 draggable
   - 写库走 `update_item`（撤销可回退；fieldValues 不传保留旧值；原地放下不写库）
