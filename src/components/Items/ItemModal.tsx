@@ -162,11 +162,16 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
     }
   };
 
+  // 日期/时刻输入：点击输入区任意位置即打开系统选择器（原型契约，系统图标已隐藏）
+  const pickOnClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    (e.currentTarget as HTMLInputElement).showPicker?.();
+  };
+
   const field = (label: string, dateKey: keyof FormState, timeKey: keyof FormState) => (
     <div className="frow">
       <label>{label}</label>
-      <input type="date" value={f[dateKey]} onChange={(e) => set(dateKey, e.target.value)} />
-      <input type="time" value={f[timeKey]} onChange={(e) => set(timeKey, e.target.value)} />
+      <input type="date" value={f[dateKey]} onClick={pickOnClick} onChange={(e) => set(dateKey, e.target.value)} />
+      <input type="time" value={f[timeKey]} onClick={pickOnClick} onChange={(e) => set(timeKey, e.target.value)} />
     </div>
   );
 

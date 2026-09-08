@@ -7,6 +7,7 @@ import { OVERVIEW } from "../../services/types";
 import type { Category, Item, TodoItem } from "../../services/types";
 import { groupTodos } from "../../features/todo/group";
 import { TODO_MIME } from "../../features/calendar/drag";
+import { textColorOn } from "../../features/color/palette";
 
 const GROUP_H = 30;
 const ITEM_H = 34;
@@ -125,7 +126,13 @@ export default function TodoPanel() {
                 <div
                   key={"i" + row.item.id}
                   className="titem-row"
-                  style={{ top, height: ITEM_H, background: catOf(row.item.category_id)?.color ?? "#9E9E9E" }}
+                  style={{
+                    top,
+                    height: ITEM_H,
+                    background: catOf(row.item.category_id)?.color ?? "#9E9E9E",
+                    // 字色随背景亮度自适应（PRD 5.4 v1.9）
+                    color: textColorOn(catOf(row.item.category_id)?.color ?? "#9E9E9E"),
+                  }}
                   draggable
                   onDragStart={(e) => {
                     // 拖入日历：开始=结束=落格日期（PRD 5.3 v1.8）；来源类型区分于横条拖拽

@@ -92,11 +92,11 @@ body {
 .popmenu button:hover { background: #f0f3f8; }
 .popmenu button.danger { color: var(--danger); }
 
-/* ===== 色盘 ===== */
+/* ===== 色盘（墨刀式，PRD 4.1 v1.9） ===== */
 .pal-grid { display: flex; flex-direction: column; gap: 5px; }
 .pal-row { display: flex; gap: 5px; }
 .sw {
-  width: 22px; height: 22px; border-radius: 4px; cursor: pointer;
+  width: 24px; height: 24px; border-radius: 5px; cursor: pointer;
   border: 1px solid rgba(0, 0, 0, 0.08); padding: 0;
 }
 .sw.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -106,8 +106,22 @@ body {
 }
 .more-colors:hover { color: var(--accent); border-color: var(--accent); }
 .custom-color { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
-.custom-color input[type="color"] { width: 36px; height: 28px; border: 1px solid var(--border); border-radius: 6px; padding: 1px; }
-.custom-color input[type="text"] { width: 90px; }
+/* 墨刀式自定义取色：SV 渐变面板 + 色相条 + HEX 输入 */
+.mockitt-cp { display: block; }
+.sv-area { position: relative; height: 130px; border-radius: 8px; cursor: crosshair; border: 1px solid var(--border); touch-action: none; }
+.sv-dot { position: absolute; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); transform: translate(-50%, -50%); pointer-events: none; }
+.hue-bar { position: relative; height: 12px; border-radius: 6px; margin-top: 10px; cursor: pointer; background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); touch-action: none; }
+.hue-dot { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35); transform: translate(-50%, -50%); pointer-events: none; }
+.cp-hex-row { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
+.cp-hex-label { font-size: 12px; color: var(--muted); }
+.cp-hex-row input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font-size: 13px; }
+.cp-prev { width: 28px; height: 22px; border-radius: 5px; border: 1px solid var(--border); flex: none; }
+/* 时间控件：隐藏系统图标（原型契约，点击输入区经 showPicker 打开） */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
+input[type="date"], input[type="time"] { cursor: pointer; }
+/* 总览页工具栏提示标签（原型 .tag 契约） */
+.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; background: #fafbfc; }
 
 /* ===== 按钮 ===== */
 .btn-primary {
@@ -204,7 +218,7 @@ body {
 .daycell:hover .celladd { opacity: 1; }
 .celladd:hover { background: #e8f0fe; border-color: var(--accent); }
 .barlayer { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
-.bar { position: absolute; height: var(--bar-h); border-radius: 3px; color: #fff; font-size: 12px; display: flex; align-items: center; padding: 0 6px; overflow: hidden; white-space: nowrap; pointer-events: auto; cursor: grab; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.18); }
+.bar { position: absolute; height: var(--bar-h); border-radius: 3px; font-size: 12px; display: flex; align-items: center; padding: 0 6px; overflow: hidden; white-space: nowrap; pointer-events: auto; cursor: grab; }
 .bar:hover { filter: brightness(1.08); }
 .bar:active { cursor: grabbing; }
 /* 拖拽改期落格高亮（PRD 5.3 v1.8） */
@@ -263,7 +277,7 @@ body {
 .titem-row { position: absolute; left: 22px; right: 8px; display: flex; align-items: center; border-radius: 5px; cursor: grab; color: #fff; overflow: hidden; }
 .titem-row:hover { filter: brightness(1.1); }
 .titem-row:active { cursor: grabbing; }
-.titem-title { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; text-shadow: 0 1px 1px rgba(0,0,0,.18); }
+.titem-title { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 8px; }
 /* P5 修复：覆盖旧占位样式残留的 center 对齐，避免待办列表宽度塌缩 */
 .todo-pane { align-items: stretch; justify-content: flex-start; color: var(--text); }
 /* P5：贯穿时间轴竖线 + 圆点/条目对齐 */

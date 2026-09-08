@@ -42,7 +42,7 @@
 │  ├─ main.tsx                入口：挂载 App、注册全局快捷键（Ctrl+Z/Y）
 │  ├─ App.tsx                 根组件：三栏布局骨架（标签栏│日历│待办）
 │  ├─ components/             组件（按模块目录组织）
-│  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 色盘
+│  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 墨刀式色盘（色板+SV 取色面板+色相条+HEX）
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部）
 │  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、工具栏「‹ 今天 ›」、年月标题点击选择面板）
 │  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区；「+」新增预填开始=结束=格日期）
@@ -52,7 +52,7 @@
 │  ├─ features/               纯函数 + vitest 单测
 │  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移与待办拖入日期计算）
 │  │  ├─ todo/                group.ts（待办分组纯函数）
-│  │  ├─ color/               palette.ts（色盘选取纯函数）
+│  │  ├─ color/               palette.ts（墨刀式色板/标准行取色/色块字色自适应/HSV 转换纯函数）
 │  │  └─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
 │  ├─ stores/
 │  │  ├─ appStore.ts      分类/事项/标签页状态 + dataVersion（跨面板刷新）

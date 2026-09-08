@@ -39,6 +39,7 @@ export default function FieldEditor({ field, value, onChange }: Props) {
       <input
         type="date"
         value={typeof value === "string" ? value : ""}
+        onClick={(e) => (e.currentTarget as HTMLInputElement).showPicker?.()}
         onChange={(e) => onChange(e.target.value)}
       />
     );

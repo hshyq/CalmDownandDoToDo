@@ -12,6 +12,7 @@ import { layoutRow } from "../../features/calendar/layout";
 import type { CalItemLite } from "../../features/calendar/layout";
 import { BAR_MIME, TODO_MIME, shiftRange, todoDropDates } from "../../features/calendar/drag";
 import type { ShiftedDates } from "../../features/calendar/drag";
+import { textColorOn } from "../../features/color/palette";
 
 type ViewMode = "week" | "month";
 
@@ -147,7 +148,12 @@ export default function CalendarView() {
     if (todoId) void moveItem(Number(todoId), todoDropDates(date));
   };
 
-  const title = monthKey.slice(0, 4) + "年" + Number(monthKey.slice(5, 7)) + "月";
+  // 标题：月视图=年月；周视图=本周区间（原型契约）
+  const title = (() => {
+    if (view === "month") return monthKey.slice(0, 4) + "年" + Number(monthKey.slice(5, 7)) + "月";
+    const ws = weekStartMonday(cursor);
+    return ws + " ~ " + addDays(ws, 6).slice(5);
+  })();
 
   // —— 年月选择面板（原型 openPickPanel/pickMonth/pickWeek 契约，PRD 5.3） ——
   const openPick = () => {
@@ -256,6 +262,8 @@ export default function CalendarView() {
               width: ((p.ce - p.cs + 1) * 100) / 7 + "%",
               top: 23 + p.lane * 22,
               background: cat?.color ?? "#9E9E9E",
+              // 字色随背景亮度自适应（PRD 5.4 v1.9）：浅色块深字、深色块白字
+              color: textColorOn(cat?.color ?? "#9E9E9E"),
             }}
             title={it.title}
             draggable
@@ -335,6 +343,7 @@ export default function CalendarView() {
           {pick ? <div className="popmask" onClick={() => setPick(null)} /> : null}
           {renderPickPanel()}
         </span>
+        {scope === null ? <span className="tag">不可新增，仅编辑/删除</span> : null}
         <span style={{ flex: 1 }} />
         <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
         <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
