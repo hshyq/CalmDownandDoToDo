@@ -120,8 +120,6 @@ body {
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator { display: none; }
 input[type="date"], input[type="time"] { cursor: pointer; }
-/* 总览页工具栏提示标签（原型 .tag 契约） */
-.tag { font-size: 11px; color: var(--muted); border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; background: #fafbfc; }
 
 /* ===== 按钮 ===== */
 .btn-primary {

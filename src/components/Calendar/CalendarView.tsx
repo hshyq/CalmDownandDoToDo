@@ -343,18 +343,28 @@ export default function CalendarView() {
           {pick ? <div className="popmask" onClick={() => setPick(null)} /> : null}
           {renderPickPanel()}
         </span>
-        {scope === null ? <span className="tag">不可新增，仅编辑/删除</span> : null}
         <span style={{ flex: 1 }} />
         <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
         <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
         {scope !== null ? (
           <button type="button" className="btn-ghost" onClick={() => { const c = catOf(scope); if (c) setFmCat(c); }}>字段管理</button>
         ) : null}
-        {scope !== null ? (
-          <button type="button" className="btn-primary add" onClick={() => { pendingDateRef.current = ""; setModal({ open: true, item: null, defaultCatId: scope ?? 0, allowPick: false }); }}>
-            + 新增事项
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className="btn-primary add"
+          onClick={() => {
+            pendingDateRef.current = "";
+            // 总览页：默认第一个分类并显示所属分类下拉（PRD 6.3 v1.10）；分类页默认当前分类
+            setModal({
+              open: true,
+              item: null,
+              defaultCatId: scope ?? categories[0]?.id ?? 0,
+              allowPick: scope === null,
+            });
+          }}
+        >
+          + 新增事项
+        </button>
       </div>
       <div className="calwrap">
         <div className="calhead">
