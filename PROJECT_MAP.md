@@ -44,7 +44,7 @@
 │  ├─ components/             组件（按模块目录组织）
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 色盘
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部）
-│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、工具栏「‹ 今天 ›」、年月标题点击选择面板）
 │  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区；「+」新增预填开始=结束=格日期）
 │  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期）
 │  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入）

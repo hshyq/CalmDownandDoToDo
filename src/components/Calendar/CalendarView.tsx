@@ -7,7 +7,7 @@ import { useAppStore } from "../../stores/appStore";
 import { itemApi } from "../../services/ipc";
 import { OVERVIEW } from "../../services/types";
 import type { CalendarItem, Category, Item, ItemDraft } from "../../services/types";
-import { addDays, monthRows, parseISO, toISO, todayISO, weekStartMonday } from "../../features/calendar/dates";
+import { addDays, daysInMonth, monthRows, parseISO, toISO, todayISO, weekStartMonday } from "../../features/calendar/dates";
 import { layoutRow } from "../../features/calendar/layout";
 import type { CalItemLite } from "../../features/calendar/layout";
 import { BAR_MIME, TODO_MIME, shiftRange, todoDropDates } from "../../features/calendar/drag";
@@ -32,6 +32,8 @@ export default function CalendarView() {
   const [day, setDay] = useState<string | null>(null);
   const [fmCat, setFmCat] = useState<Category | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
+  // 年月选择面板（原型 pk-* 契约）：浏览的年月；null=关闭
+  const [pick, setPick] = useState<{ y: number; m: number } | null>(null);
   const { canUndo, canRedo, undo: runUndo, redo: runRedo } = useUndoStore();
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
@@ -147,6 +149,87 @@ export default function CalendarView() {
 
   const title = monthKey.slice(0, 4) + "年" + Number(monthKey.slice(5, 7)) + "月";
 
+  // —— 年月选择面板（原型 openPickPanel/pickMonth/pickWeek 契约，PRD 5.3） ——
+  const openPick = () => {
+    const { y, m } = parseISO(cursor);
+    setPick({ y, m });
+  };
+  const jumpMonth = (y: number, m: number) => {
+    // 保留原日、超当月天数截断（如 08-31 → 02-28）
+    const d = Math.min(Number(cursor.slice(8)), daysInMonth(y, m));
+    setCursor(toISO({ y, m, d }));
+    setPick(null);
+  };
+  const jumpWeek = (monday: string) => {
+    setCursor(monday);
+    setPick(null);
+  };
+  const shiftPickMonth = (dir: 1 | -1) => {
+    if (!pick) return;
+    const total = pick.y * 12 + (pick.m - 1) + dir;
+    setPick({ y: Math.floor(total / 12), m: (total % 12 + 12) % 12 + 1 });
+  };
+
+  // 面板：月视图=12 宫格选月（‹› 翻年）；周视图=按月浏览周行、点整行选周
+  const renderPickPanel = () => {
+    if (!pick) return null;
+    const y = pick.y;
+    const mKey = toISO({ y: pick.y, m: pick.m, d: 1 }).slice(0, 7);
+    const curWeek = weekStartMonday(cursor);
+    if (view === "month") {
+      return (
+        <div className="pickpanel" onClick={(e) => e.stopPropagation()}>
+          <div className="pk-head">
+            <button type="button" className="pk-nav" onClick={() => setPick({ y: y - 1, m: pick.m })}>‹</button>
+            <b>{y}年</b>
+            <button type="button" className="pk-nav" onClick={() => setPick({ y: y + 1, m: pick.m })}>›</button>
+          </div>
+          <div className="pk-months">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
+              <button
+                type="button"
+                key={m}
+                className={y === parseISO(cursor).y && m === parseISO(cursor).m ? "on" : ""}
+                onClick={() => jumpMonth(y, m)}
+              >
+                {m}月
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div className="pickpanel" onClick={(e) => e.stopPropagation()}>
+        <div className="pk-head">
+          <button type="button" className="pk-nav" onClick={() => shiftPickMonth(-1)}>‹</button>
+          <b>{y}年{pick.m}月</b>
+          <button type="button" className="pk-nav" onClick={() => shiftPickMonth(1)}>›</button>
+        </div>
+        <div className="pk-dow">
+          {["一", "二", "三", "四", "五", "六", "日"].map((d) => <span key={d}>{d}</span>)}
+        </div>
+        {monthRows(pick.y, pick.m).map((row) => (
+          <div
+            key={row[0]}
+            className={"pk-weekrow" + (row[0] === curWeek ? " sel" : "")}
+            onClick={() => jumpWeek(row[0])}
+          >
+            {row.map((ds) => (
+              <button
+                type="button"
+                key={ds}
+                className={(ds.slice(0, 7) !== mKey ? "dim " : "") + (ds === todayISO() ? "today" : "")}
+              >
+                {Number(ds.slice(8))}
+              </button>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderRow = (rowDates: string[]) => {
     const rowStart = rowDates[0];
     const rowEnd = rowDates[6];
@@ -237,13 +320,21 @@ export default function CalendarView() {
     <main className="main">
       <div className="toolbar">
         <button type="button" className="nav-btn" onClick={() => nav(-1)} aria-label="上一周期">‹</button>
-        <button type="button" className="nav-btn" onClick={() => nav(1)} aria-label="下一周期">›</button>
         <button type="button" className="btn-ghost today-btn" onClick={() => setCursor(todayISO())}>今天</button>
+        <button type="button" className="nav-btn" onClick={() => nav(1)} aria-label="下一周期">›</button>
         <div className="seg">
           <button type="button" className={view === "week" ? "on" : ""} onClick={() => setView("week")}>周</button>
           <button type="button" className={view === "month" ? "on" : ""} onClick={() => setView("month")}>月</button>
         </div>
-        <span className="title cal-title">{title}</span>
+        <span style={{ position: "relative", marginLeft: 12 }}>
+          <span
+            className="title cal-title"
+            title="点击选择年月"
+            onClick={() => (pick ? setPick(null) : openPick())}
+          >{title}</span>
+          {pick ? <div className="popmask" onClick={() => setPick(null)} /> : null}
+          {renderPickPanel()}
+        </span>
         <span style={{ flex: 1 }} />
         <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
         <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
