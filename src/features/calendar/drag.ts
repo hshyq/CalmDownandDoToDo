@@ -25,3 +25,24 @@ export function shiftRange(startDate: string, endDate: string, dropDate: string)
 export function todoDropDates(dropDate: string): ShiftedDates {
   return { startDate: dropDate, endDate: dropDate };
 }
+
+/**
+ * 横条头尾拖拽（PRD 5.3 v1.11）：拖左缘改开始日期、拖右缘改结束日期。
+ * 钳制：拖头不得越过结束日期，拖尾不得早于开始日期（另一端保持不变）。
+ */
+export function clampEdge(
+  current: ShiftedDates,
+  edge: "start" | "end",
+  dropDate: string,
+): ShiftedDates {
+  if (edge === "start") {
+    return {
+      startDate: dropDate < current.endDate ? dropDate : current.endDate,
+      endDate: current.endDate,
+    };
+  }
+  return {
+    startDate: current.startDate,
+    endDate: dropDate > current.startDate ? dropDate : current.startDate,
+  };
+}

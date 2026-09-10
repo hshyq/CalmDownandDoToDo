@@ -82,11 +82,29 @@ input,select,textarea{font:inherit;color:inherit}
 .daycell.other .dnum{color:#c3c9d1}
 .daycell.today{background:#eaf3ff}
 .daycell.today .dnum{color:var(--accent);font-weight:700}
+/* 日期类型（PRD 5.3 方案待确认）：格内数字右侧角标 班/休/假；法定假日数字红色 */
+.dtype{position:absolute;top:3px;left:28px;font-size:9px;line-height:1;padding:2px 3px;border-radius:3px;color:#fff;font-weight:600}
+.dtype.work{background:#4F8EF7}.dtype.rest{background:#9AA5B1}.dtype.holiday{background:#E5534B}
+.daycell.holiday .dnum{color:#E5534B;font-weight:700}
+.daycell:not(.other) .dtype{cursor:pointer}
+/* 日期类型管理弹窗 */
+.dt-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dt-cell{position:relative;height:40px;border:1px solid var(--border);border-radius:6px;cursor:pointer;text-align:left;padding:3px 0 0 5px;font-size:12px;background:#fff}
+.dt-cell:hover{border-color:var(--accent)}
+.dt-cell.dim{color:#c3c9d1}
+.dt-cell .dtype{position:static;display:inline-block;margin-left:3px}
+.dt-legend{display:flex;gap:10px;margin-top:10px;font-size:11px;color:var(--muted);align-items:center;flex-wrap:wrap}
+.dt-legend .dtype{position:static;display:inline-block;margin-right:3px}
 .barlayer{position:absolute;inset:0;z-index:2;pointer-events:none}
 .bar{position:absolute;height:var(--bar-h);border-radius:3px;font-size:12px;
   display:flex;align-items:center;padding:0 6px;overflow:hidden;white-space:nowrap;pointer-events:auto;cursor:grab}
 .bar:hover{filter:brightness(1.08)}
 .bar:active{cursor:grabbing}
+.bar-grip{position:absolute;top:0;bottom:0;width:7px;cursor:ew-resize}
+.bar-grip.g-left{left:0;border-radius:3px 0 0 3px}
+.bar-grip.g-right{right:0;border-radius:0 3px 3px 0}
+.bar-grip:hover{background:rgba(255,255,255,.4)}
+.titem-day{flex:none;margin-left:6px;padding-right:2px;font-size:13px;font-weight:700;opacity:.92}
 .daycell.dragover{outline:2px solid var(--accent);outline-offset:-2px;background:#eaf3ff}
 .morechip{position:absolute;bottom:4px;right:6px;z-index:3;font-size:11px;color:var(--accent);
   background:#eaf3ff;border-radius:8px;padding:0 7px;cursor:pointer}
@@ -108,8 +126,9 @@ input,select,textarea{font:inherit;color:inherit}
 .thead .chev{margin-left:auto;color:var(--muted);transition:transform .15s}
 .tgroup.collapsed .chev{transform:rotate(-90deg)}
 .tgroup.collapsed .tbody{display:none}
-.titem{position:relative;background:var(--c9);border-radius:8px;padding:5px 9px;margin:5px 0;
-  font-size:12px;cursor:grab;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.titem{position:relative;background:var(--c9);border-radius:8px;padding:5px 9px;margin:5px 0;display:flex;align-items:center;
+  font-size:12px;cursor:grab;white-space:nowrap;overflow:hidden}
+.titem .tt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .titem:hover{filter:brightness(1.08)}
 .titem:active{cursor:grabbing}
 .tempty{color:var(--muted);font-size:12px;padding:14px 6px;text-align:center}
@@ -261,6 +280,8 @@ const state={
   view:'month',
   cursor:TODAY,
   activeTab:OVERVIEW,
+  /* 日期类型覆盖项（PRD 方案待确认）：未指定的日期按周一~五工作日/周六日休息日推算 */
+  dayTypes:{'2026-09-12':'work','2026-09-13':'work','2026-09-25':'rest','2026-10-01':'holiday','2026-10-02':'holiday','2026-10-03':'holiday'},
   categories:[
     {id:1,name:'生活',color:'#34B96F',kind:'normal'},
     {id:2,name:'工作',color:'#4F8EF7',kind:'normal'},
@@ -320,6 +341,13 @@ function daysInMonth(s){const[y,m]=s.split('-').map(Number);return new Date(y,m,
 function isChoice(t){return t==='single_choice'||t==='multi_choice'}
 const TYPE_LABEL={text:'单行文本',multiline:'多行文本',number:'数字',date:'日期',single_choice:'单选',multi_choice:'多选'};
 function catOf(id){return state.categories.find(c=>c.id===id)}
+/* 日期类型（PRD 5.3 方案待确认）：覆盖项优先，否则周一~五工作日/周六日休息日 */
+function dayTypeOf(ds){
+  if(state.dayTypes[ds])return state.dayTypes[ds];
+  const w=parseD(ds).getDay();return (w===0||w===6)?'rest':'work';
+}
+const DTYPE_LABEL={work:'班',rest:'休',holiday:'假'};
+const DTYPE_CYCLE={'':'work',work:'rest',rest:'holiday',holiday:''}; // 点击循环：默认→班→休→假→清除
 function fieldsOf(id){return (state.fields[id]||[]).slice().sort((a,b)=>a.sort-b.sort)}
 function activeCatId(){return state.activeTab===OVERVIEW?null:state.activeTab}
 
@@ -502,6 +530,7 @@ function renderToolbar(){
       <button class="${state.view==='month'?'on':''}" onclick="setView('month')">月</button>
     </div>
     <span class="title" title="点击选择${state.view==='week'?'周':'年月'}" onclick="openPickPanel(this)">${title}</span>
+    <button class="tbtn" onclick="openDayTypes()">日期类型</button>
     <span class="spacer"></span>
     <button class="tbtn icon" title="撤销 Ctrl+Z" onclick="undoDemo()">↶</button>
     <button class="tbtn icon" title="重做 Ctrl+Y" onclick="redoDemo()">↷</button>
@@ -509,6 +538,38 @@ function renderToolbar(){
     <button class="btn-primary" onclick="openItemModal(null)">＋ 新增事项</button>`;
 }
 function setView(v){state.view=v;renderAll()}
+
+/* ===== 日期类型管理（PRD 方案待确认：班/休/假，默认周一~五工作日、周六日休息日） ===== */
+let dtCursor=TODAY;
+function openDayTypes(){dtCursor=state.cursor.slice(0,8)+'01';renderDtModal()}
+function renderDtModal(){
+  const y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
+  const first=dtCursor.slice(0,8)+'01',ws=weekStart(first);
+  const nRows=Math.ceil((diffDays(ws,first)+daysInMonth(dtCursor))/7);
+  let cells='';
+  for(let r=0;r<nRows;r++)for(let i=0;i<7;i++){
+    const ds=addDays(ws,r*7+i);
+    const dim=ds.slice(0,7)!==dtCursor.slice(0,7);
+    const dt=dayTypeOf(ds);
+    cells+=`<div class="dt-cell ${dim?'dim':''}" onclick="dtCycle('${ds}',1)">${Number(ds.slice(8))}<span class="dtype ${dt}">${DTYPE_LABEL[dt]}</span></div>`;
+  }
+  modal(`<div class="dhead">日期类型<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody">
+      <div class="pk-head"><button class="pk-nav" onclick="dtNav(-1)">‹</button><b>${y}年${m}月</b><button class="pk-nav" onclick="dtNav(1)">›</button></div>
+      <div class="dt-grid">${cells}</div>
+      <div class="dt-legend"><span><span class="dtype work">班</span>工作日</span><span><span class="dtype rest">休</span>休息日</span><span><span class="dtype holiday">假</span>法定假日</span>
+        <span>点击日期循环切换：班→休→假→恢复默认</span></div>
+      <div class="cbody sub">默认周一~周五为工作日、周六周日为休息日；指定后的类型会以角标标注在日历格上（法定假日的日期数字显示为红色）。</div>
+    </div>`);
+}
+function dtNav(d){const y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
+  let ny=y,nm=m+d;while(nm>12){nm-=12;ny++}while(nm<1){nm+=12;ny--}
+  dtCursor=`${ny}-${String(nm).padStart(2,'0')}-01`;renderDtModal()}
+function dtCycle(ds,inModal){
+  const next=DTYPE_CYCLE[state.dayTypes[ds]||''];
+  if(next)state.dayTypes[ds]=next;else delete state.dayTypes[ds];
+  renderCalendar();if(inModal)renderDtModal();
+}
 function nav(d){
   state.cursor = state.view==='month'
     ? addDays(state.cursor.slice(0,8)+'01', d===1?32:-1)
@@ -605,16 +666,17 @@ function renderCalendar(){
     const placed=layoutWeek(week,maxLanes,scope);
     const cells=week.map(ds=>{
       const other=state.view==='month'&&ds.slice(0,7)!==state.cursor.slice(0,7);
-      return `<div class="daycell ${other?'other':''} ${ds===TODAY?'today':''}"
+      const dt=dayTypeOf(ds);
+      return `<div class="daycell ${other?'other':''} ${ds===TODAY?'today':''} ${dt==='holiday'?'holiday':''}" data-d="${ds}"
         ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)" ondrop="cellDrop(event,'${ds}')">
-        <span class="dnum">${Number(ds.slice(8))}</span><span class="celladd" title="新增事项" onclick="openItemModal(null,'${ds}')">+</span></div>`;
+        <span class="dnum">${Number(ds.slice(8))}</span><span class="dtype ${dt}" onclick="event.stopPropagation();dtCycle('${ds}')" title="点击切换日期类型（班/休/假/清除）">${DTYPE_LABEL[dt]}</span><span class="celladd" title="新增事项" onclick="openItemModal(null,'${ds}')">+</span></div>`;
     }).join('');
     const bars=placed.filter(p=>p.lane>=0).map(p=>{
       const c=catOf(p.it.cat);
       return `<div class="bar" style="left:calc(${p.cs*100/7}% + 3px);width:calc(${(p.ce-p.cs+1)*100/7}% - 6px);
         top:${23+p.lane*22}px;background:${c.color};color:${textColorOn(c.color)}" title="${esc(p.it.title)}" draggable="true"
         ondragstart="dragBar(event,${p.it.id})"
-        onclick="openItemModal(${p.it.id})">${esc(p.it.title)}</div>`;
+        onclick="openItemModal(${p.it.id})">${esc(p.it.title)}<span class="bar-grip g-left" onmousedown="gripDown(event,${p.it.id},'start')"></span><span class="bar-grip g-right" onmousedown="gripDown(event,${p.it.id},'end')"></span></div>`;
     }).join('');
     const chips=[...Array(7)].map((_,d)=>{
       const n=placed.filter(p=>p.lane===-1&&p.cs<=d&&d<=p.ce).length;
@@ -657,6 +719,32 @@ function cellDrop(e,ds){
     toast('已更新日期');renderCalendar();renderTodo();return;
   }
 }
+/* 横条头尾拖拽改期（PRD 5.3 v1.11）：拖左缘改开始、拖右缘改结束；钳制不越界 */
+let barResize=null;
+function gripDown(e,id,edge){
+  e.preventDefault();e.stopPropagation();
+  const it=state.items.find(x=>x.id===id);if(!it)return;
+  barResize={id,edge,base:{sd:it.sd,ed:it.ed},cur:{sd:it.sd,ed:it.ed}};
+  const move=ev=>{
+    if(!barResize)return;
+    let date=null;
+    for(const el of document.elementsFromPoint(ev.clientX,ev.clientY)){
+      const d=el.getAttribute&&el.getAttribute('data-d');if(d){date=d;break}
+    }
+    if(!date)return;
+    if(barResize.edge==='start')barResize.cur.sd=date<barResize.cur.ed?date:barResize.cur.ed;
+    else barResize.cur.ed=date>barResize.cur.sd?date:barResize.cur.sd;
+    const target=state.items.find(x=>x.id===id);
+    target.sd=barResize.cur.sd;target.ed=barResize.cur.ed;renderCalendar();
+  };
+  const up=()=>{
+    document.removeEventListener('mousemove',move);document.removeEventListener('mouseup',up);
+    const changed=barResize&&(barResize.cur.sd!==barResize.base.sd||barResize.cur.ed!==barResize.base.ed);
+    barResize=null;
+    if(changed)toast('已更新日期');
+  };
+  document.addEventListener('mousemove',move);document.addEventListener('mouseup',up);
+}
 
 /* ================= 待办 ================= */
 function renderTodo(){
@@ -685,7 +773,7 @@ function renderTodo(){
         const tip=it.dd?`截止 ${it.dd}${it.dt?' '+it.dt:''}｜${c.name}`:c.name;
         return `<div class="titem" style="background:${c.color};color:${textColorOn(c.color)}" title="${esc(it.title+'（'+tip+'）')}" draggable="true"
           ondragstart="dragTodo(event,${it.id})"
-          onclick="openItemModal(${it.id})">${esc(it.title)}</div>`;
+          onclick="openItemModal(${it.id})"><span class="tt">${esc(it.title)}</span><span class="titem-day">${it.dd?Number(it.dd.slice(8,10)):'—'}</span></div>`;
       }).join('')}</div></div>`;
   }
   $('#todolist').innerHTML=html;

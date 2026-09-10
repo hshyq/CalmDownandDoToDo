@@ -142,6 +142,10 @@ export default function TodoPanel() {
                   onClick={() => void openEdit(row.item)}
                 >
                   <span className="titem-title" title={row.item.title}>{row.item.title}</span>
+                  {/* 右侧显示截止日期的「日」（如 2026-09-20 → 20；无截止显示 —，PRD 5.2 v1.11） */}
+                  <span className="titem-day">
+                    {row.item.due_date ? Number(row.item.due_date.slice(8, 10)) : "—"}
+                  </span>
                 </div>
               ),
             )}

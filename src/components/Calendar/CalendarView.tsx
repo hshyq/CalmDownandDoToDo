@@ -10,7 +10,7 @@ import type { CalendarItem, Category, Item, ItemDraft } from "../../services/typ
 import { addDays, daysInMonth, monthRows, parseISO, toISO, todayISO, weekStartMonday } from "../../features/calendar/dates";
 import { layoutRow } from "../../features/calendar/layout";
 import type { CalItemLite } from "../../features/calendar/layout";
-import { BAR_MIME, TODO_MIME, shiftRange, todoDropDates } from "../../features/calendar/drag";
+import { BAR_MIME, TODO_MIME, clampEdge, shiftRange, todoDropDates } from "../../features/calendar/drag";
 import type { ShiftedDates } from "../../features/calendar/drag";
 import { textColorOn } from "../../features/color/palette";
 
@@ -35,6 +35,8 @@ export default function CalendarView() {
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   // 年月选择面板（原型 pk-* 契约）：浏览的年月；null=关闭
   const [pick, setPick] = useState<{ y: number; m: number } | null>(null);
+  // 横条头尾拖拽（PRD 5.3 v1.11）：实时预览；null=未在拖拽
+  const [resize, setResize] = useState<null | { id: number; edge: "start" | "end"; preview: ShiftedDates }>(null);
   const { canUndo, canRedo, undo: runUndo, redo: runRedo } = useUndoStore();
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
@@ -148,6 +150,43 @@ export default function CalendarView() {
     if (todoId) void moveItem(Number(todoId), todoDropDates(date));
   };
 
+  // —— 横条头尾拖拽改期（PRD 5.3 v1.11）——
+  // 指针位置 → 日期格：用 elementsFromPoint 找 data-date（指针可能悬在别的横条上，故逐层找）
+  const dateAtPointer = (x: number, y: number): string | null => {
+    for (const el of document.elementsFromPoint(x, y)) {
+      const d = el.getAttribute?.("data-date");
+      if (d) return d;
+    }
+    return null;
+  };
+
+  const startResize = (e: React.PointerEvent, id: number, edge: "start" | "end") => {
+    const it = items.find((x) => x.id === id);
+    if (!it) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const base: ShiftedDates = { startDate: it.start_date, endDate: it.end_date };
+    let latest = base;
+    setResize({ id, edge, preview: base });
+
+    const onMove = (ev: PointerEvent) => {
+      const drop = dateAtPointer(ev.clientX, ev.clientY);
+      if (!drop) return;
+      latest = clampEdge(base, edge, drop);
+      setResize({ id, edge, preview: latest });
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setResize(null);
+      if (latest.startDate !== base.startDate || latest.endDate !== base.endDate) {
+        void moveItem(id, latest);
+      }
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
   // 标题：月视图=年月；周视图=本周区间（原型契约）
   const title = (() => {
     if (view === "month") return monthKey.slice(0, 4) + "年" + Number(monthKey.slice(5, 7)) + "月";
@@ -240,12 +279,16 @@ export default function CalendarView() {
     const rowStart = rowDates[0];
     const rowEnd = rowDates[6];
     const maxLanes = view === "week" ? 10 : 4;
-    const calItems: CalItemLite[] = items.map((it) => ({
-      id: it.id,
-      startDate: it.start_date,
-      startTime: it.start_time,
-      endDate: it.end_date,
-    }));
+    // 头尾拖拽中的横条用预览日期参与布局（实时跟随指针）
+    const calItems: CalItemLite[] = items.map((it) => {
+      const pv = resize && resize.id === it.id ? resize.preview : null;
+      return {
+        id: it.id,
+        startDate: pv?.startDate ?? it.start_date,
+        startTime: it.start_time,
+        endDate: pv?.endDate ?? it.end_date,
+      };
+    });
     const placed = layoutRow(rowStart, rowEnd, calItems, maxLanes);
     const bars = placed
       .filter((p) => p.lane >= 0)
@@ -256,7 +299,7 @@ export default function CalendarView() {
         return (
           <div
             key={p.id}
-            className="bar"
+            className={"bar" + (resize?.id === p.id ? " resizing" : "")}
             style={{
               left: (p.cs * 100) / 7 + "%",
               width: ((p.ce - p.cs + 1) * 100) / 7 + "%",
@@ -274,6 +317,9 @@ export default function CalendarView() {
             onClick={() => void openEdit(p.id)}
           >
             {it.title}
+            {/* 头尾拖拽把手：拖左缘改开始日期、拖右缘改结束日期（PRD 5.3 v1.11） */}
+            <span className="bar-grip g-left" onPointerDown={(e) => startResize(e, p.id, "start")} />
+            <span className="bar-grip g-right" onPointerDown={(e) => startResize(e, p.id, "end")} />
           </div>
         );
       });
@@ -293,6 +339,7 @@ export default function CalendarView() {
       return (
         <div
           key={d}
+          data-date={d}
           className={"daycell " + (other ? "other " : "") + (isToday ? "today" : "") + (dragOverDate === d ? " dragover" : "")}
           onDragOver={(e) => {
             // dragover 中不可读 getData，用 types 判断来源（横条或待办）
