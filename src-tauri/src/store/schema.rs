@@ -65,6 +65,17 @@ CREATE TABLE app_settings (
 );
 "#,
         ),
+        // v2：日期类型覆盖项（PRD 5.5 v1.12）：work/rest/holiday；
+        // 未指定的日期不落库，按周一~五工作日、周六日休息日推算。
+        (
+            2,
+            r#"
+CREATE TABLE day_types (
+    date     TEXT PRIMARY KEY,
+    day_type TEXT NOT NULL
+);
+"#,
+        ),
     ]
 }
 
@@ -98,7 +109,7 @@ pub fn migrate(conn: &mut Connection) -> rusqlite::Result<()> {
 mod tests {
     use super::*;
 
-    /// 迁移幂等：同库重复迁移不报错，版本记录只有一条。
+    /// 迁移幂等：同库重复迁移不报错，版本记录与迁移数一致。
     #[test]
     fn migrate_is_idempotent() {
         let mut conn = Connection::open_in_memory().expect("打开内存库失败");
@@ -106,13 +117,13 @@ mod tests {
         let first: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .expect("查询版本数失败");
-        assert_eq!(first, 1);
+        assert_eq!(first, 2, "v1+v2 两条迁移");
 
         migrate(&mut conn).expect("重复迁移失败");
         let second: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .expect("查询版本数失败");
-        assert_eq!(second, 1);
+        assert_eq!(second, first, "重复迁移不新增版本记录");
     }
 
     /// v1 迁移应建齐一期表与索引。

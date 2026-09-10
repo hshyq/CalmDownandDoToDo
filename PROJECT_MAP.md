@@ -44,13 +44,13 @@
 │  ├─ components/             组件（按模块目录组织）
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 墨刀式色盘（色板+SV 取色面板+色相条+HEX）
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部）
-│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、工具栏「‹ 今天 ›」、年月标题点击选择面板）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型角标）；DayTypeDialog（日期类型月历管理弹窗）
 │  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区；「+」新增预填开始=结束=格日期）
 │  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期；右侧显示截止日数字）
 │  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入）
 │  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗
 │  ├─ features/               纯函数 + vitest 单测
-│  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制）
+│  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制）/ daytype.test.ts（默认星期推算）
 │  │  ├─ todo/                group.ts（待办分组纯函数）
 │  │  ├─ color/               palette.ts（墨刀式色板/标准行取色/色块字色自适应/HSV 转换纯函数）
 │  │  └─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
@@ -80,9 +80,10 @@
 │     ├─ store/               SQLite 唯一写库方（P1 已落地）
 │     │  ├─ mod.rs            Db(Mutex 单连接)/open/迁移调用；日历窗口交集、待办 COALESCE 排序查询
 │     │  ├─ backup.rs        P8 整库 dump/导入 + 语义校验（TC-BAK-006）+ 默认导出路径
-│     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（只增不改历史）
+│     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（一期全表）/ v2（day_types，只增不改历史）
 │     │  └─ validation.rs     应用层校验（分类名/颜色/标题/日期时刻成对/结束不早于开始）
 │     │  └─ snapshot.rs   P7 撤销快照/恢复原语（行级/字段/整分类级联）
+│     │  └─ daytypes.rs   日期类型覆盖项 list/get/set（PRD 5.5 v1.12；日期与类型值校验）
 │     ├─ undo/                UndoStack 双栈（上限 10、重启清空）+ UndoCmd 命令枚举
 │     ├─ mailer.rs            （二期）lettre SMTP + TLS，失败重试 3 次
 │     ├─ scheduler.rs         （二期）tokio interval 30s 扫描提醒：到点弹窗+计划内发信

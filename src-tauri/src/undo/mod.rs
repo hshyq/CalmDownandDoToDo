@@ -71,6 +71,12 @@ pub enum UndoCmd {
     },
     /// 备份导入：revert=恢复导入前整库快照（落盘 undo_tmp，D10）；apply=重放导入内容。
     Import { before: TmpFile, import: String },
+    /// 日期类型设置/清除（PRD 5.5 v1.12）：None=无覆盖（删除行）。
+    DayTypeSet {
+        date: String,
+        before: Option<String>,
+        after: Option<String>,
+    },
 }
 
 impl Command for UndoCmd {
@@ -92,6 +98,7 @@ impl Command for UndoCmd {
                 Ok(())
             }
             UndoCmd::Import { before: _, import } => db.import_json(import),
+            UndoCmd::DayTypeSet { date, after, .. } => db.set_day_type(date, after.as_deref()),
         }
     }
 
@@ -116,6 +123,7 @@ impl Command for UndoCmd {
                 let text = fs::read_to_string(before.path()).map_err(crate::store::Error::Io)?;
                 db.import_json(&text)
             }
+            UndoCmd::DayTypeSet { date, before, .. } => db.set_day_type(date, before.as_deref()),
         }
     }
 
@@ -132,6 +140,7 @@ impl Command for UndoCmd {
             UndoCmd::FieldDelete { .. } => "删除字段".into(),
             UndoCmd::FieldSort { .. } => "调整字段排序".into(),
             UndoCmd::Import { .. } => "导入备份".into(),
+            UndoCmd::DayTypeSet { .. } => "设置日期类型".into(),
         }
     }
 }

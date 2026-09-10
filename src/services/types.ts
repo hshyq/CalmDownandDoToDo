@@ -201,3 +201,40 @@ export function isUndoDepth(v: unknown): v is UndoDepth {
   const o = v as Record<string, unknown>;
   return typeof o.undo === "number" && typeof o.redo === "number";
 }
+
+// ===== 日期类型（PRD 5.5 v1.12；对应 store::daytypes::DayTypeRow） =====
+
+/** 日期类型值：工作日 / 休息日 / 法定假日（仅存覆盖项，未指定按星期推算）。 */
+export type DayType = "work" | "rest" | "holiday";
+
+/** 日期类型角标中文名与循环顺序（默认→班→休→假→默认）。 */
+export const DAY_TYPE_LABELS: Record<DayType, string> = {
+  work: "班",
+  rest: "休",
+  holiday: "假",
+};
+
+/** 日期类型覆盖行（date=YYYY-MM-DD）。 */
+export interface DayTypeRow {
+  date: string;
+  day_type: DayType;
+}
+
+export function isDayTypeRowArray(v: unknown): v is DayTypeRow[] {
+  if (!Array.isArray(v)) return false;
+  return v.every((x) => {
+    if (typeof x !== "object" || x === null) return false;
+    const o = x as Record<string, unknown>;
+    return (
+      typeof o.date === "string" &&
+      (o.day_type === "work" || o.day_type === "rest" || o.day_type === "holiday")
+    );
+  });
+}
+
+/** 未指定时的默认推算：周六日=休息日，其余=工作日（PRD 5.5）。 */
+export function defaultDayType(date: string): DayType {
+  const [y, m, d] = date.split("-").map(Number);
+  const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return weekday === 0 || weekday === 6 ? "rest" : "work";
+}

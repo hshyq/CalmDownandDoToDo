@@ -4,15 +4,17 @@ import ItemModal from "../Items/ItemModal";
 import FieldManager from "../fields/FieldManager";
 import { useUndoStore } from "../../stores/undoStore";
 import { useAppStore } from "../../stores/appStore";
-import { itemApi } from "../../services/ipc";
+import { itemApi, dayTypeApi } from "../../services/ipc";
 import { OVERVIEW } from "../../services/types";
-import type { CalendarItem, Category, Item, ItemDraft } from "../../services/types";
+import { defaultDayType, DAY_TYPE_LABELS } from "../../services/types";
+import type { CalendarItem, Category, DayType, Item, ItemDraft } from "../../services/types";
 import { addDays, daysInMonth, monthRows, parseISO, toISO, todayISO, weekStartMonday } from "../../features/calendar/dates";
 import { layoutRow } from "../../features/calendar/layout";
 import type { CalItemLite } from "../../features/calendar/layout";
 import { BAR_MIME, TODO_MIME, clampEdge, shiftRange, todoDropDates } from "../../features/calendar/drag";
 import type { ShiftedDates } from "../../features/calendar/drag";
 import { textColorOn } from "../../features/color/palette";
+import DayTypeDialog from "./DayTypeDialog";
 
 type ViewMode = "week" | "month";
 
@@ -37,6 +39,9 @@ export default function CalendarView() {
   const [pick, setPick] = useState<{ y: number; m: number } | null>(null);
   // 横条头尾拖拽（PRD 5.3 v1.11）：实时预览；null=未在拖拽
   const [resize, setResize] = useState<null | { id: number; edge: "start" | "end"; preview: ShiftedDates }>(null);
+  // 日期类型覆盖项（PRD 5.5 v1.12）：date → work/rest/holiday；未指定按星期推算
+  const [dayTypes, setDayTypes] = useState<Record<string, DayType>>({});
+  const [dtDialog, setDtDialog] = useState(false);
   const { canUndo, canRedo, undo: runUndo, redo: runRedo } = useUndoStore();
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
@@ -74,8 +79,12 @@ export default function CalendarView() {
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await itemApi.calendar(viewStart, viewEnd, scope);
+      const [data, dts] = await Promise.all([
+        itemApi.calendar(viewStart, viewEnd, scope),
+        dayTypeApi.list(viewStart, viewEnd),
+      ]);
       setItems(data);
+      setDayTypes(Object.fromEntries(dts.map((r) => [r.date, r.day_type])));
     } catch (e) {
       showToast(e instanceof Error ? e.message : "加载日历失败，请重试");
     } finally {
@@ -188,6 +197,30 @@ export default function CalendarView() {
   };
 
   // 标题：月视图=年月；周视图=本周区间（原型契约）
+  // —— 日期类型（PRD 5.5 v1.12）——
+  const dayTypeOf = (date: string): DayType => dayTypes[date] ?? defaultDayType(date);
+
+  const applyDayType = (date: string, t: DayType | null) => {
+    dayTypeApi
+      .set(date, t)
+      .then(() => {
+        setDayTypes((prev) => {
+          const next = { ...prev };
+          if (t) next[date] = t;
+          else delete next[date];
+          return next;
+        });
+      })
+      .catch((e) => showToast(e instanceof Error ? e.message : "设置日期类型失败，请重试"));
+  };
+  // 角标点击循环：默认→班→休→假→恢复默认
+  const dtCycle = (date: string) => {
+    const cur = dayTypes[date];
+    const next: DayType | null =
+      cur === undefined ? "work" : cur === "work" ? "rest" : cur === "rest" ? "holiday" : null;
+    applyDayType(date, next);
+  };
+
   const title = (() => {
     if (view === "month") return monthKey.slice(0, 4) + "年" + Number(monthKey.slice(5, 7)) + "月";
     const ws = weekStartMonday(cursor);
@@ -336,11 +369,12 @@ export default function CalendarView() {
     const cells = rowDates.map((d) => {
       const other = view === "month" && d.slice(0, 7) !== monthKey;
       const isToday = d === todayISO();
+      const dt = dayTypeOf(d);
       return (
         <div
           key={d}
           data-date={d}
-          className={"daycell " + (other ? "other " : "") + (isToday ? "today" : "") + (dragOverDate === d ? " dragover" : "")}
+          className={"daycell " + (other ? "other " : "") + (isToday ? "today" : "") + (dragOverDate === d ? " dragover" : "") + (dt === "holiday" ? " holiday" : "")}
           onDragOver={(e) => {
             // dragover 中不可读 getData，用 types 判断来源（横条或待办）
             if (e.dataTransfer.types.includes(BAR_MIME) || e.dataTransfer.types.includes(TODO_MIME)) {
@@ -353,6 +387,16 @@ export default function CalendarView() {
           onDrop={(e) => onCellDrop(e, d)}
         >
           <span className="dnum">{Number(d.slice(8))}</span>
+          <span
+            className={"dtype " + dt}
+            title="点击切换日期类型（班/休/假/恢复默认）"
+            onClick={(e) => {
+              e.stopPropagation();
+              dtCycle(d);
+            }}
+          >
+            {DAY_TYPE_LABELS[dt]}
+          </span>
           <span className="celladd" title="新增事项" onClick={() => openCreate(d, activeTab === OVERVIEW)}>
             +
           </span>
@@ -390,6 +434,7 @@ export default function CalendarView() {
           {pick ? <div className="popmask" onClick={() => setPick(null)} /> : null}
           {renderPickPanel()}
         </span>
+        <button type="button" className="btn-ghost" onClick={() => setDtDialog(true)}>日期类型</button>
         <span style={{ flex: 1 }} />
         <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
         <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
@@ -438,6 +483,14 @@ export default function CalendarView() {
 
       {day ? (
         <DayOverlay date={day} items={items} categories={categories} onPick={(id) => void openEdit(id)} onClose={() => setDay(null)} />
+      ) : null}
+      {dtDialog ? (
+        <DayTypeDialog
+          cursor={cursor}
+          dayTypes={dayTypes}
+          onChange={applyDayType}
+          onClose={() => setDtDialog(false)}
+        />
       ) : null}
       {fmCat ? <FieldManager category={fmCat} onClose={() => setFmCat(null)} /> : null}
       {toast ? <div className="toast">{toast}</div> : null}

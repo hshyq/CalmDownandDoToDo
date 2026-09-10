@@ -265,3 +265,18 @@
 ### 验收
 - `npm run build`、`vitest` 42 passed、原型 script 语法冒烟通过；待用户确认日期类型方案后一并打包
 
+## 2026-09-08（v0.3.0 日期类型正式版）
+
+### 新增（PRD v1.12，测试用例 106 条；方案经用户确认）
+- **日期类型**（PRD 5.5 / TC-DT-001~006）：默认周一~五工作日、周六日休息日；可指定任意日期为工作日（班·蓝）/休息日（休·灰）/法定假日（假·红），清除即恢复默认；仅存覆盖项（schema 迁移 **v2** 新表 `day_types`，未指定日期按星期推算不落库）
+- **日历标注**：每格数字右侧角标；法定假日日期数字红色
+- **编辑入口**：工具栏「日期类型」按钮 → 月历管理弹窗（`DayTypeDialog`，点击日期循环切换、翻月、图例；单元格数字与角标 flex 对齐——用户反馈原型对齐问题已修）；日历格角标直接点击同样切换
+- 写操作（设置/清除）经 undo 包装（`UndoCmd::DayTypeSet` before/after），Ctrl+Z 可回退；数据持久化
+- 用户已确认角标/编辑方案与「其他没有问题」，横条头尾拖拽、待办日数字一并随本版打包
+### 实现
+- 后端：schema v2、`store/daytypes.rs`（list/get/set + 日期与类型校验 + 3 测试）、`commands/daytypes.rs`（list_day_types/set_day_type）、undo 新命令、lib.rs 注册；cargo **50** passed、clippy/fmt 0
+- 前端：`types.ts`（DayType/DayTypeRow/`defaultDayType` + 3 vitest）、`ipc.ts` dayTypeApi、`CalendarView` 角标与加载、`DayTypeDialog.tsx`、global.css 样式；vitest **45** passed、build 通过
+### 打包
+- 版本号 0.2.2 → **0.3.0**（schema 变更 + 新功能）；正式目录 `release\日历待办工具 v0.2.2\` 重命名为 `release\日历待办工具 v0.3.0\`，替换 exe 与使用说明.txt（生产 data\ 原地未动，82 条事项校验完整）
+- 临时整目录副本启动验证：用户旧库（schema v1）自动迁移到 v2、`day_types` 表创建、82 条事项完好；验证后进程终止、临时副本清理，原目录未动
+

@@ -5,6 +5,7 @@
 
 pub mod backup;
 pub mod categories;
+pub mod daytypes;
 pub mod fieldconvert;
 pub mod fields;
 pub mod items;
@@ -295,6 +296,30 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
         values::list_for_item(&guard, item_id)
     }
 
+    // ---- 日期类型（PRD 5.5 v1.12；写操作经 undo 包装）----
+
+    /// 视图窗口内已指定的日期类型。
+    pub fn list_day_types(
+        &self,
+        view_start: &str,
+        view_end: &str,
+    ) -> Result<Vec<daytypes::DayTypeRow>> {
+        let guard = self.lock()?;
+        daytypes::list(&guard, view_start, view_end)
+    }
+
+    /// 某日当前覆盖值（撤销记录 before 用；无覆盖 = None）。
+    pub fn get_day_type(&self, date: &str) -> Result<Option<String>> {
+        let guard = self.lock()?;
+        daytypes::get(&guard, date)
+    }
+
+    /// 设置（Some）或清除（None）某日类型。
+    pub fn set_day_type(&self, date: &str, day_type: Option<&str>) -> Result<()> {
+        let guard = self.lock()?;
+        daytypes::set(&guard, date, day_type)
+    }
+
     // ---- 事项（P3；SQL 实现见 store::items，写操作 P7 接入 undo）----
 
     pub fn create_item(&self, new: &items::NewItem<'_>) -> Result<items::Item> {
@@ -466,7 +491,7 @@ mod tests {
                 r.get(0)
             })
             .expect("查询版本失败");
-        assert_eq!(v, 1);
+        assert_eq!(v, 2, "应迁移到最新版本 v2（day_types）");
     }
 
     #[test]

@@ -89,10 +89,10 @@ input,select,textarea{font:inherit;color:inherit}
 .daycell:not(.other) .dtype{cursor:pointer}
 /* 日期类型管理弹窗 */
 .dt-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
-.dt-cell{position:relative;height:40px;border:1px solid var(--border);border-radius:6px;cursor:pointer;text-align:left;padding:3px 0 0 5px;font-size:12px;background:#fff}
+.dt-cell{display:flex;align-items:center;gap:4px;height:40px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:0 0 0 6px;font-size:12px;background:#fff}
 .dt-cell:hover{border-color:var(--accent)}
 .dt-cell.dim{color:#c3c9d1}
-.dt-cell .dtype{position:static;display:inline-block;margin-left:3px}
+.dt-cell .dtype{position:static;flex:none}
 .dt-legend{display:flex;gap:10px;margin-top:10px;font-size:11px;color:var(--muted);align-items:center;flex-wrap:wrap}
 .dt-legend .dtype{position:static;display:inline-block;margin-right:3px}
 .barlayer{position:absolute;inset:0;z-index:2;pointer-events:none}

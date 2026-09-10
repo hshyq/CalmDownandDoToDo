@@ -3,6 +3,7 @@
 
 pub mod backup;
 pub mod categories;
+pub mod daytypes;
 pub mod fields;
 pub mod items;
 pub mod undo;

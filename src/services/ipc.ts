@@ -1,10 +1,11 @@
 // IPC 封装：invoke + 错误统一转中文友好提示（AGENTS 第 5 节）。
 import { invoke } from "@tauri-apps/api/core";
-import type { CalendarItem, Category, DeleteMode, FieldDef, FieldValueRow, Item, ItemDraft, TodoItem, UndoDepth } from "./types";
+import type { CalendarItem, Category, DayType, DayTypeRow, DeleteMode, FieldDef, FieldValueRow, Item, ItemDraft, TodoItem, UndoDepth } from "./types";
 import {
   isCalendarItemArr,
   isCategory,
   isCategoryArray,
+  isDayTypeRowArray,
   isItem,
   isItemArray,
   isTodoItemArr,  isFieldDef,  isFieldDefArray,  isFieldValueRowArray,  isUndoDepth,
@@ -135,9 +136,22 @@ export const fieldApi = {
 };
 
 
+/** 日期类型 IPC（PRD 5.5 v1.12；仅存覆盖项，未指定日期由前端按星期推算；设置/清除一步撤销）。 */
+export const dayTypeApi = {
+  /** 视图窗口内已指定的日期类型。 */
+  async list(viewStart: string, viewEnd: string): Promise<DayTypeRow[]> {
+    const v = await call<unknown>("list_day_types", { viewStart, viewEnd });
+    if (!isDayTypeRowArray(v)) throw new Error("日期类型数据格式异常");
+    return v;
+  },
+  /** 设置（dayType=work/rest/holiday）或清除（null）某日类型。 */
+  async set(date: string, dayType: DayType | null): Promise<void> {
+    await call<void>("set_day_type", { date, dayType });
+  },
+};
+
 /** 撤销/重做 IPC（PRD 6.7；深度变化由后端 emit undo-depth 事件同步按钮态）。 */
-export const undoApi = {
-  async undo(): Promise<void> {
+export const undoApi = {  async undo(): Promise<void> {
     await call<void>("undo");
   },
   async redo(): Promise<void> {

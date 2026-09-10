@@ -94,6 +94,8 @@ pub fn run() {
             commands::fields::change_field_type,
             commands::fields::move_field,
             commands::fields::list_item_field_values,
+            commands::daytypes::list_day_types,
+            commands::daytypes::set_day_type,
             commands::undo::undo,
             commands::undo::redo,
             commands::undo::undo_depth,
