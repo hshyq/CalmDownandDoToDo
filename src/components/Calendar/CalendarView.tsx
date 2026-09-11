@@ -105,6 +105,32 @@ export default function CalendarView() {
     }
   };
 
+  // 滚轮切换周期（PRD 5.3 v1.13）：悬浮日历区滚动滚轮=上/下周·月。
+  // 内容溢出（窗口较矮）时不劫持，保留内容滚动；按 deltaY 累计阈值触发，防一次滚动连跳。
+  const calwrapRef = useRef<HTMLDivElement | null>(null);
+  const navRef = useRef<(dir: 1 | -1) => void>(() => {});
+  navRef.current = nav;
+
+  useEffect(() => {
+    const el = calwrapRef.current;
+    if (!el) return;
+    const acc = { v: 0, t: 0 };
+    const onWheel = (e: WheelEvent) => {
+      if (el.scrollHeight > el.clientHeight + 1) return;
+      const now = Date.now();
+      if (now - acc.t > 400) acc.v = 0;
+      acc.t = now;
+      acc.v += e.deltaY;
+      if (Math.abs(acc.v) >= 100) {
+        const dir: 1 | -1 = acc.v > 0 ? 1 : -1;
+        acc.v = 0;
+        navRef.current(dir);
+      }
+    };
+    el.addEventListener("wheel", onWheel);
+    return () => el.removeEventListener("wheel", onWheel);
+  }, []);
+
   const openEdit = async (id: number) => {
     try {
       const detail = await itemApi.getDetail(id);
@@ -458,7 +484,7 @@ export default function CalendarView() {
           + 新增事项
         </button>
       </div>
-      <div className="calwrap">
+      <div className="calwrap" ref={calwrapRef}>
         <div className="calhead">
           {["周一", "周二", "周三", "周四", "周五", "周六", "周日"].map((d) => (
             <div key={d}>{d}</div>

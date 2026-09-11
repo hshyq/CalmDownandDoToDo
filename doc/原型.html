@@ -576,6 +576,16 @@ function nav(d){
     : addDays(state.cursor, d*7);
   renderAll();
 }
+/* 滚轮切换周期（PRD 5.3 v1.13）：悬浮日历区滚动=上/下周·月；内容溢出时不劫持 */
+let wheelAcc=0,wheelT=0;
+document.addEventListener('wheel',e=>{
+  const el=document.getElementById('cal');
+  if(!el||!el.contains(e.target))return;
+  if(el.scrollHeight>el.clientHeight+1)return;
+  const now=Date.now();if(now-wheelT>400)wheelAcc=0;wheelT=now;
+  wheelAcc+=e.deltaY;
+  if(Math.abs(wheelAcc)>=100){const d=wheelAcc>0?1:-1;wheelAcc=0;nav(d)}
+});
 function goToday(){state.cursor=TODAY;renderAll()}
 
 /* ===== 年月/周选择面板（交互参照 antd DatePicker：月面板点选月份、周面板点整行选周，周一为一周第一天） ===== */
