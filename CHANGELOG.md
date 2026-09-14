@@ -308,4 +308,6 @@
 - 实现：`Modal` 基座新增可选 `closeOnOverlayClick`（默认 false 行为不变）；按下/松开都在遮罩上才判定为点外关闭（防拖拽误关）；`busy` 期间不响应；遮罩点击一律 `stopPropagation` 不穿透到底层日历与嵌套外层弹窗
 - 原型同步：`modal()` 增加 `dismissable` 参数，仅事项弹窗传 true；其余 7 处弹窗（更多颜色/重命名分类/新建分类/日期类型/某日事项/字段管理/设置）由原「点外关闭」改为「点外不关」，与实现精确对齐
 ### 验收
-- `vitest` 45 passed、`npm run build` 通过、原型 script 语法冒烟通过；未触及 Rust 后端；待用户手测 TC-IT-014/015
+- `vitest` 45 passed、`npm run build` 通过、原型 script 语法冒烟通过；未触及 Rust 后端；**用户手测 TC-IT-014/015 通过**
+### 打包
+- 版本号 0.3.2 → **0.3.3**；正式目录重命名为 `release\日历待办工具 v0.3.3\` 并替换 exe 与使用说明.txt（生产 data\ 原地未动）；临时目录启动验证通过（data 自动初始化、进程存活）后清理
