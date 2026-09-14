@@ -318,3 +318,6 @@
 - 项目定名 **CalmDownandDoToDo**（无连字符，「Calm Down and Do To-Do」口号式命名，用户选定；GitHub 查重无同名仓库，最近似的 gabemiller/calmdown 为 markdown 编辑器、领域不同）
 - 分工：英文名对外（GitHub 仓库名 + README 大标题 + 口号「先冷静，再一件件做完」）；中文「日历待办工具」对内（exe 文件名、窗口标题、发布目录名不变）
 - 同步：README 大标题与副题、AGENTS.md 项目速览；`identifier`（com.calendartodo.app）与 productName 保持不变，数据目录不受影响
+### 发布
+- GitHub Release **v0.3.3** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.3
+- 附件 `CalmDownandDoToDo-v0.3.3.zip`（2.9MB，英文名顶层目录 + exe/README/使用说明，**不含生产 data**）；License 文件（MIT）随仓库入库；本地临时打包文件已清理

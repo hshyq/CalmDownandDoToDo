@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-**2026-09-15 已发布到 GitHub（当前）**：仓库 https://github.com/hshyq/CalmDownandDoToDo （MIT License），main 分支已推送并建立跟踪；共 77 个跟踪文件（含 LICENSE）。**下一步（可选）**：GitHub Release 页上传 v0.3.3 exe 附件（仓库不含 exe，release\ 目录被 gitignore）；后续版本发布后记得 push。
+**2026-09-15 已发布到 GitHub（当前）**：仓库 https://github.com/hshyq/CalmDownandDoToDo （MIT License），main 已推送并跟踪；**Release v0.3.3 已上线**，附件 `CalmDownandDoToDo-v0.3.3.zip`（英文名，2.9MB，不含生产 data）。共 77 个跟踪文件（含 LICENSE）。**后续版本发布流程**：升版本号 → tauri build → 更新正式目录 → 提交 push → 同流程打 Release（英文 zip 名）。
 
 **2026-09-15 项目定名**：**CalmDownandDoToDo**（无连字符；对外 GitHub 仓库名/README 标题 + 口号「先冷静，再一件件做完」；exe 与窗口标题保持「日历待办工具」）。README/AGENTS/CHANGELOG 已同步。GitHub 查重无同名。
 
