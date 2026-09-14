@@ -4,6 +4,8 @@
 
 ## 当前阶段
 
+**2026-09-15 仓库精简（commit f21d27e + 后续，跟踪文件 132 → 76）**：`gen/schemas/`（构建自生成）加入 .gitignore 并移出跟踪；删除 android/ios 移动端图标与 17 个冗余桌面图标（Square\*Logo=UWP 商店、icon.icns=macOS、多尺寸 png=Linux/移动 bundle，bundle.active=false 全部零引用）；桌面图标仅保留 `icon.ico`（tauri-build 隐式用作 exe 资源图标）。tauri build 验证通过、exe 正常产出。
+
 **2026-09-14 仓库精简（commit f21d27e，跟踪文件 132 → 93）**：`gen/schemas/`（构建自生成）加入 .gitignore 并移出跟踪；删除 android/ios 移动端图标 40 个（本项目仅 Windows 桌面，bundle.active=false 全部零引用）；tauri build 验证通过。桌面图标保留 18 个（icon.ico 为 exe 资源图标隐式必需；Square*Logo/icns/png 系列零引用，是否进一步精简待用户决定）。
 
 **2026-09-14 发布到仓库准备检查（commit 1a20984）**：
