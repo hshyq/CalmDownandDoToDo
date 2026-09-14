@@ -13,6 +13,10 @@ release/
 .vscode/
 .idea/
 *.user
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.log
 
 # Codex 内部会话文件
 .zcode/

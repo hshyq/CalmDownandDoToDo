@@ -54,6 +54,7 @@
 │  │  ├─ todo/                group.ts（待办分组纯函数）
 │  │  ├─ color/               palette.ts（墨刀式色板/标准行取色/色块字色自适应/HSV 转换纯函数）
 │  │  └─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
+│  ├─ test/                   前端冒烟测试 smoke.test.ts（vitest 可运行验证）
 │  ├─ stores/
 │  │  ├─ appStore.ts      分类/事项/标签页状态 + dataVersion（跨面板刷新）
 │  │  └─ undoStore.ts     撤销/重做按钮态（镜像 Rust 深度，undo-depth 事件同步）
