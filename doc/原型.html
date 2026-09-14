@@ -843,7 +843,7 @@ function openItemModal(id,preSd){
       <input type="hidden" id="if-id" value="${isNew?'':id}">
       ${isNew&&curCat!==null?'':`<div class="frow"><label>所属分类</label><select id="if-cat" onchange="onCatChange(this.value)">${catOpts}</select></div>`}
       <div class="frow"><label>标题 *</label><input type="text" id="if-title" maxlength="100" value="${it?esc(it.title):''}"></div>
-      <div class="frow"><label>描述</label><textarea id="if-desc">${it?esc(it.desc):''}</textarea></div>
+      <div class="frow"><label>描述</label><textarea id="if-desc" rows="5">${it?esc(it.desc):''}</textarea></div>
       <div class="frow"><label>开始时间</label>
         <input type="date" id="if-sd" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" value="${it?it.st:''}"></div>
       <div class="frow"><label>结束时间</label>

@@ -210,7 +210,7 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
         </div>
         <div className="frow">
           <label>描述</label>
-          <textarea rows={2} value={f.description} onChange={(e) => set("description", e.target.value)} />
+          <textarea rows={5} value={f.description} onChange={(e) => set("description", e.target.value)} />
         </div>
         {field("开始时间", "sd", "st")}
         {field("结束时间", "ed", "et")}
