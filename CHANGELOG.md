@@ -321,3 +321,4 @@
 ### 发布
 - GitHub Release **v0.3.3** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.3
 - 附件 `CalmDownandDoToDo-v0.3.3.zip`（2.9MB，英文名顶层目录 + exe/README/使用说明，**不含生产 data**）；License 文件（MIT）随仓库入库；本地临时打包文件已清理
+- Release 附件更新（用户反馈）：zip 内容精简为 exe + 使用说明（移除仓库版 README——压缩包内文档导航失效无意义）；使用说明.txt 精简为「使用/WebView2/备份」三节（用户修订）；发布目录内 README.md 已移除；新 zip 已替换 Release 旧附件
