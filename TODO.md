@@ -8,7 +8,7 @@
 - 仓库跟踪文件检查：132 个文件全部为源码/文档/配置，无产物、二进制、临时文件混入；源码无硬编码盘符路径（红线 6 合规）
 - 文档一致性修正：README 从 v0.2.0 同步至 v0.3.3（版本行 + 功能特性补日期类型/滚轮/墨刀色盘/点外关闭 + 导航补开发批次计划）；测试用例规则变更记录补 TC-IT-014/015 留痕；PROJECT_MAP 目录树补 `src/test/smoke.test.ts`
 - .gitignore 补充系统文件与日志（Thumbs.db/Desktop.ini/.DS_Store/*.log）；其余范围已恰当（data/dist/target/release/node_modules 均排除，Cargo.lock 与 package-lock.json 正常入库）
-- **待用户确认后清理**（target 构建缓存内的残留，不影响仓库）：`src-tauri\target\release\日历待办工具 v0.2.0\`（旧便携副本，内含旧 data）与 `src-tauri\target\release\data\`（52KB 历史测试库）
+- target 残留已清理（用户确认）：`src-tauri\target\release\日历待办工具 v0.2.0\` 旧便携副本与 `src-tauri\target\release\data\` 历史测试库已删除；生产数据 `release\日历待办工具 v0.3.3\data\` 完好
 
 **2026-09-14 v0.3.3 已发布到正式目录**（`release\日历待办工具 v0.3.3\`，生产 data 原地未动）：
 - 内容：**事项弹窗点外关闭**（点弹窗外·窗口内=关闭不保存；点窗口外=行为不变；仅事项弹窗生效，删除确认点外退回编辑；TC-IT-014/015 用户手测通过，commit d30d62d）
