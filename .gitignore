@@ -5,6 +5,7 @@ data/
 node_modules/
 dist/
 src-tauri/target/
+src-tauri/gen/schemas/
 
 # 正式发布目录（便携版 + 生产数据，AGENTS 第 7 节：data 视为生产数据）
 release/
