@@ -15,7 +15,7 @@
 
 ## 2. 项目速览与文档地图
 
-**一句话**：Windows 桌面「日历 + 待办」二合一记录工具。Tauri 2 + React + TypeScript + SQLite，单 exe 免安装，数据全本地，默认离线。
+**一句话**：Windows 桌面「日历 + 待办」二合一记录工具（GitHub 仓库名 **CalmDownandDoToDo**，口号「先冷静，再一件件做完」；exe 名与界面标题仍为「日历待办工具」）。Tauri 2 + React + TypeScript + SQLite，单 exe 免安装，数据全本地，默认离线。
 
 | 文档 | 角色 | 新对话中的用法 |
 | :--- | :--- | :--- |

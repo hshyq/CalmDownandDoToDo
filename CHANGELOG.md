@@ -311,3 +311,10 @@
 - `vitest` 45 passed、`npm run build` 通过、原型 script 语法冒烟通过；未触及 Rust 后端；**用户手测 TC-IT-014/015 通过**
 ### 打包
 - 版本号 0.3.2 → **0.3.3**；正式目录重命名为 `release\日历待办工具 v0.3.3\` 并替换 exe 与使用说明.txt（生产 data\ 原地未动）；临时目录启动验证通过（data 自动初始化、进程存活）后清理
+
+## 2026-09-15（定名 CalmDownandDoToDo）
+
+### 变更
+- 项目定名 **CalmDownandDoToDo**（无连字符，「Calm Down and Do To-Do」口号式命名，用户选定；GitHub 查重无同名仓库，最近似的 gabemiller/calmdown 为 markdown 编辑器、领域不同）
+- 分工：英文名对外（GitHub 仓库名 + README 大标题 + 口号「先冷静，再一件件做完」）；中文「日历待办工具」对内（exe 文件名、窗口标题、发布目录名不变）
+- 同步：README 大标题与副题、AGENTS.md 项目速览；`identifier`（com.calendartodo.app）与 productName 保持不变，数据目录不受影响
