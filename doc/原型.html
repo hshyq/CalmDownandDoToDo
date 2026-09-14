@@ -791,9 +791,10 @@ function renderTodo(){
 function toggleGroup(k){state.collapsed[k]=!state.collapsed[k];renderTodo()}
 
 /* ================= 弹窗基座 ================= */
-function modal(inner,topmost){
+function modal(inner,topmost,dismissable){
+  // dismissable=true 时点击遮罩（弹窗以外区域）关闭弹窗；默认不关闭，仅事项弹窗开启（对齐 v0.3.2+ 实现与 TC-IT-014）
   const root=topmost?$('#confirm-root'):$('#modal-root');
-  root.innerHTML=`<div class="overlay ${topmost?'top':''}" onclick="if(event.target===this)closeModal(${topmost})"><div class="dialog">${inner}</div></div>`;
+  root.innerHTML=`<div class="overlay ${topmost?'top':''}" onclick="if(event.target===this&&${!!dismissable})closeModal(${topmost})"><div class="dialog">${inner}</div></div>`;
 }
 function closeModal(topmost){
   (topmost?$('#confirm-root'):$('#modal-root')).innerHTML='';
@@ -858,7 +859,7 @@ function openItemModal(id,preSd){
       ${isNew?'':`<button class="btn-danger" style="margin-right:auto" onclick="askDeleteItem(${id})">删除</button>`}
       <button class="btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn-primary" onclick="saveItem()">保存</button>
-    </div>`);
+    </div>`,false,true);
 }
 function onCatChange(newCat){
   const id=Number($('#if-id').value);

@@ -180,6 +180,7 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
       title={isEdit ? "编辑事项" : "新增事项"}
       onClose={onClose}
       width={520}
+      closeOnOverlayClick={!busy}
       footer={
         <>
           {isEdit ? (
@@ -239,7 +240,7 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
         {err ? <div className="ferr">{err}</div> : null}
       </div>
       {confirmDel ? (
-        <Modal title="删除事项" onClose={() => setConfirmDel(false)} width={360}
+        <Modal title="删除事项" onClose={() => setConfirmDel(false)} width={360} closeOnOverlayClick={!busy}
           footer={
             <>
               <button type="button" className="btn-ghost" onClick={() => setConfirmDel(false)}>取消</button>
