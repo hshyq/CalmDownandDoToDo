@@ -349,3 +349,5 @@
 - 原型同步：设置弹窗加「导出 TXT」按钮与范围选择弹窗（含 limit 演示逻辑）
 ### 验收
 - `cargo test` 54 passed、`vitest` 54 passed、`npm run build` 通过、clippy/fmt 0、原型 script 冒烟通过；待用户手测 TC-EXP-001~006
+### 打包（指令 A）
+- 版本号 0.3.4 → **0.3.5**；正式目录重命名为 `release\日历待办工具 v0.3.5\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
