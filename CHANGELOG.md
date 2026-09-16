@@ -330,3 +330,7 @@
 - 根因：标题 input 缺 `type="text"` 属性，未匹配样式表 `input[type="text"]` 的 `flex: 1` 选择器，宽度塌为默认值；原型中本有该属性（代码与原型契约的偏差，本次对齐）。FieldEditor 各类型控件均已带 type，无同类问题
 ### 验收
 - `vitest` 45 passed、`npm run build` 通过；待用户手测
+### 打包
+- 版本号 0.3.3 → **0.3.4**；正式目录重命名为 `release\日历待办工具 v0.3.4\` 并替换 exe 与使用说明.txt（生产 data\ 原地未动）；临时目录启动验证通过后清理
+- GitHub Release **v0.3.4** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.4 ，附件 `CalmDownandDoToDo-v0.3.4.zip`（2.9MB，仅 exe + 使用说明，不含生产 data）
+- 排障记录：`tauri dev` 同样受 `target\debug` 旧路径缓存影响，已清除 debug 侧 build 与 .fingerprint（release 侧上次已清）
