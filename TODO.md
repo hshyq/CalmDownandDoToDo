@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-**2026-09-15 标题框拉宽（待提交/待手测）**：事项弹窗「标题」输入框补 `type="text"` 修复选择器失配，与描述区同宽占满整行（原型契约对齐）。vitest 45、build 通过。已发布：Release v0.3.3；下一版本打包时随行。
+**2026-09-16 v0.3.4 已发布（当前）**：标题框拉宽（补 type 属性，与描述区同宽）。正式目录 `release\日历待办工具 v0.3.4\`（生产 data 原地未动）；**GitHub Release v0.3.4 已上线**，附件 `CalmDownandDoToDo-v0.3.4.zip`（仅 exe+使用说明）。main 与远程同步（commit 9f45191）。
 
-**2026-09-15 已发布到 GitHub**：仓库 https://github.com/hshyq/CalmDownandDoToDo （MIT License），main 已推送并跟踪；**Release v0.3.3 已上线**，附件 `CalmDownandDoToDo-v0.3.3.zip`（英文名，仅 exe+使用说明，不含生产 data）。共 77 个跟踪文件（含 LICENSE）。**后续版本发布流程**：升版本号 → tauri build → 更新正式目录 → 提交 push → 同流程打 Release（英文 zip 名）。
+**2026-09-15 已发布到 GitHub**：仓库 https://github.com/hshyq/CalmDownandDoToDo （MIT License），main 已推送并跟踪。共 77 个跟踪文件（含 LICENSE）。**版本发布流程**：升版本号 → tauri build → 更新正式目录 → 提交 push → 同流程打 Release（英文 zip 名）；`tauri dev` 若报旧路径错误，清 `target\debug\build` 与 `.fingerprint`。
 
 **2026-09-15 项目定名**：**CalmDownandDoToDo**（无连字符；对外 GitHub 仓库名/README 标题 + 口号「先冷静，再一件件做完」；exe 与窗口标题保持「日历待办工具」）。README/AGENTS/CHANGELOG 已同步。GitHub 查重无同名。
 
