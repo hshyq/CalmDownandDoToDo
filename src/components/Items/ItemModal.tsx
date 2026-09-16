@@ -207,7 +207,7 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
         ) : null}
         <div className="frow">
           <label>标题 *</label>
-          <input maxLength={100} value={f.title} onChange={(e) => set("title", e.target.value)} placeholder="事项标题" />
+          <input type="text" maxLength={100} value={f.title} onChange={(e) => set("title", e.target.value)} placeholder="事项标题" />
         </div>
         <div className="frow">
           <label>描述</label>

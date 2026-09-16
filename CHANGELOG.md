@@ -322,3 +322,11 @@
 - GitHub Release **v0.3.3** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.3
 - 附件 `CalmDownandDoToDo-v0.3.3.zip`（2.9MB，英文名顶层目录 + exe/README/使用说明，**不含生产 data**）；License 文件（MIT）随仓库入库；本地临时打包文件已清理
 - Release 附件更新（用户反馈）：zip 内容精简为 exe + 使用说明（移除仓库版 README——压缩包内文档导航失效无意义）；使用说明.txt 精简为「使用/WebView2/备份」三节（用户修订）；发布目录内 README.md 已移除；新 zip 已替换 Release 旧附件
+
+## 2026-09-15（事项弹窗标题框拉宽）
+
+### 变更（用户反馈，UI 修复）
+- 事项弹窗「标题」输入框与「描述」输入区同宽（占满整行）
+- 根因：标题 input 缺 `type="text"` 属性，未匹配样式表 `input[type="text"]` 的 `flex: 1` 选择器，宽度塌为默认值；原型中本有该属性（代码与原型契约的偏差，本次对齐）。FieldEditor 各类型控件均已带 type，无同类问题
+### 验收
+- `vitest` 45 passed、`npm run build` 通过；待用户手测
