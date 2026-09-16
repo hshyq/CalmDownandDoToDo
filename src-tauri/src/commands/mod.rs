@@ -4,6 +4,7 @@
 pub mod backup;
 pub mod categories;
 pub mod daytypes;
+pub mod export;
 pub mod fields;
 pub mod items;
 pub mod undo;

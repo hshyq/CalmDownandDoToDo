@@ -334,3 +334,18 @@
 - 版本号 0.3.3 → **0.3.4**；正式目录重命名为 `release\日历待办工具 v0.3.4\` 并替换 exe 与使用说明.txt（生产 data\ 原地未动）；临时目录启动验证通过后清理
 - GitHub Release **v0.3.4** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.4 ，附件 `CalmDownandDoToDo-v0.3.4.zip`（2.9MB，仅 exe + 使用说明，不含生产 data）
 - 排障记录：`tauri dev` 同样受 `target\debug` 旧路径缓存影响，已清除 debug 侧 build 与 .fingerprint（release 侧上次已清）
+
+## 2026-09-16（TXT 导出，PRD v1.14）
+
+### 新增（方案经用户确认：入口设设置弹窗、半年上限=开始+6 个月−1 天；测试用例先行 TC-EXP-001~006）
+- **入口**：设置 → 数据备份 → 「导出 TXT」按钮 → 「选择导出范围」弹窗（开始/结束日期）
+- **默认范围**：当前月首日 ~ 下月末日（整月边界）；**结束上限** = 开始日期 + 6 个月 − 1 天（日期控件 max 禁选 + 确定时校验拦截；开始变化时结束超限自动钳到上限）
+- **过滤规则**：日历事项 `[事项起止]∩[选择范围]≠空` 即导出，显示**自身完整起止日期**不截断；待办按截止日期落区间（含边界），无截止（长期规划）不导出；日历归属事项只进日历块
+- **txt 格式**（UTF-8 带 BOM，CRLF）：「日历」「待办」两块各自从 1 编号，`N. yyyy-MM-dd~yyyy-MM-dd 标题` / `N. yyyy-MM-dd 标题`；日历按开始日期升序（同日按创建顺序）、待办按截止日期升序
+- 只读操作不进撤销栈；范围弹窗/另存为取消均不生成文件
+### 实现
+- 后端：`store/export.rs`（交集/截止查询 + 格式化 + BOM 写文件 + 半年校验 `half_year_limit`，4 单测）、`commands/export.rs`（default_txt_path / export_items_txt）、lib.rs 注册；零新增依赖（手写日期进位，不引 chrono）
+- 前端：`features/export/dates.ts`（默认范围/结束上限纯函数，与后端规则对齐，9 vitest）、`ipc.ts` txtExportApi、`SettingsDialog` 导出 TXT 按钮 + 范围弹窗（iform 复用表单样式；确定→另存为→IPC）
+- 原型同步：设置弹窗加「导出 TXT」按钮与范围选择弹窗（含 limit 演示逻辑）
+### 验收
+- `cargo test` 54 passed、`vitest` 54 passed、`npm run build` 通过、clippy/fmt 0、原型 script 冒烟通过；待用户手测 TC-EXP-001~006

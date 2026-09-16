@@ -1023,14 +1023,50 @@ function openSettings(){
       <div class="set-body">
         <button class="btn-primary" onclick="toast('演示原型：导出逻辑在正式版实现')">导出备份</button>
         <button class="btn-ghost" style="margin-left:8px" onclick="toast('演示原型：导入逻辑在正式版实现')">导入备份</button>
+        <button class="btn-ghost" style="margin-left:8px" onclick="openTxtExport()">导出 TXT</button>
         <div class="note">
           · 导出为带版本号的单 JSON 文件，文件名含导出日期。<br>
           · 导入会覆盖当前全部数据，需二次确认；导入前的状态可撤销。<br>
+          · 「导出 TXT」按时间范围导出事项清单（PRD 6.9）：默认当前月+下一自然月，结束最晚=开始+6 个月−1 天；日历显示自身起止、待办按截止日期，无截止不导出。<br>
           · 备份文件<b>不含邮箱授权码</b>；授权码在本机以 Windows DPAPI 加密存储。<br>
           · 数据库位于 exe 同目录 data\calendar.db，删除目录即卸载干净。
         </div>
       </div>
     </div></div>`);
+}
+
+/* ================= 导出 TXT：范围选择弹窗（PRD 6.9，v1.14） ================= */
+function openTxtExport(){
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const y=now.getFullYear(), m=now.getMonth()+1;
+  const nm=m===12?1:m+1, ny=m===12?y+1:y;
+  const dim=(yy,mm)=>mm===2?((yy%4===0&&yy%100!==0)||yy%400===0?29:28):[31,28,31,30,31,30,31,31,30,31,30,31][mm-1];
+  const sd=`${y}-${pad(m)}-01`, ed=`${ny}-${pad(nm)}-${pad(dim(ny,nm))}`;
+  // 结束上限=开始+6 个月−1 天（目标月无同日钳到月末再减一天）
+  function limit(s){
+    const [a,b,c]=s.split('-').map(Number);
+    const tt=a*12+(b-1)+6, y2=Math.floor(tt/12), m2=tt%12+1;
+    const cl=Math.min(c,dim(y2,m2));
+    if(cl>=2)return `${y2}-${pad(m2)}-${pad(cl-1)}`;
+    const t=y2*12+(m2-1)-1, y3=Math.floor(t/12), m3=t%12+1;
+    return `${y3}-${pad(m3)}-${pad(dim(y3,m3))}`;
+  }
+  modal(`<div class="dhead">导出 TXT<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody"><div class="iform">
+      <div class="frow"><label>开始日期</label><input type="date" id="tx-sd" value="${sd}" max="${sd.slice(0,4)}-12-31"
+        onchange="(function(el){const mx=limit(el.value);const e=document.getElementById('tx-ed');if(!e.value||e.value>mx)e.value=mx;e.min=el.value;e.max=mx})(this)"></div>
+      <div class="frow"><label>结束日期</label><input type="date" id="tx-ed" value="${ed}" min="${sd}" max="${limit(sd)}"></div>
+    </div>
+    <div class="note">
+      · 默认当前月+下一个自然月；结束日期最晚为开始日期+6 个月。<br>
+      · 日历事项与范围有交集即导出（显示自身起止）；待办按截止日期，无截止不导出。
+    </div></div>
+    <div class="dfoot">
+      <span style="flex:1"></span>
+      <button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="toast('演示原型：按 '+document.getElementById('tx-sd').value+'~'+document.getElementById('tx-ed').value+' 导出 txt（正式版实现）')">选择位置并导出</button>
+    </div>`);
 }
 
 /* ================= 撤销（演示） ================= */

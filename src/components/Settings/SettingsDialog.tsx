@@ -1,9 +1,11 @@
 // 设置弹窗（P8：数据备份面板；二期 tab 置灰）。对齐原型「设置 → 数据备份」界面。
 // 导出/导入经官方 tauri-plugin-dialog（用户自选目录/文件）。
+// P10：TXT 导出（PRD 6.9）——范围弹窗默认当前月首~下月末，结束上限=开始+6 个月−1 天。
 import { useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import Modal from "../Modal/Modal";
-import { backupApi } from "../../services/ipc";
+import { backupApi, txtExportApi } from "../../services/ipc";
+import { defaultExportRange, maxEndDate } from "../../features/export/dates";
 import { useAppStore } from "../../stores/appStore";
 
 interface Props {
@@ -13,6 +15,13 @@ interface Props {
 type Tab = "backup" | "mail" | "records";
 
 const JSON_FILTER = [{ name: "JSON 备份", extensions: ["json"] }];
+const TXT_FILTER = [{ name: "文本文件", extensions: ["txt"] }];
+
+/** 本地今天（yyyy-MM-dd）。 */
+const todayStr = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export default function SettingsDialog({ onClose }: Props) {
   const [tab, setTab] = useState<Tab>("backup");
@@ -20,6 +29,12 @@ export default function SettingsDialog({ onClose }: Props) {
   const [toast, setToast] = useState("");
   const [importPath, setImportPath] = useState<string | null>(null);
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
+  // TXT 导出范围弹窗（PRD 6.9）
+  const [txtOpen, setTxtOpen] = useState(false);
+  const def = defaultExportRange(todayStr());
+  const [txtStart, setTxtStart] = useState(def.start);
+  const [txtEnd, setTxtEnd] = useState(def.end);
+  const [txtErr, setTxtErr] = useState("");
 
   const showToast = (m: string) => {
     setToast(m);
@@ -90,6 +105,61 @@ export default function SettingsDialog({ onClose }: Props) {
     }
   };
 
+  /** 打开 TXT 导出范围弹窗（每次打开重置为默认范围）。 */
+  const openTxtDialog = () => {
+    const d = defaultExportRange(todayStr());
+    setTxtStart(d.start);
+    setTxtEnd(d.end);
+    setTxtErr("");
+    setTxtOpen(true);
+  };
+
+  /** 开始日期变化：若结束为空或超出新上限，自动钳到上限（PRD 6.9 半年限制）。 */
+  const onTxtStartChange = (v: string) => {
+    setTxtStart(v);
+    setTxtErr("");
+    if (v.length === 10) {
+      const max = maxEndDate(v);
+      if (!txtEnd || txtEnd > max) setTxtEnd(max);
+    }
+  };
+
+  /** 确定导出：校验范围 → 另存为 → 后端生成 txt（TC-EXP-002/005/006）。 */
+  const doExportTxt = async () => {
+    if (txtStart.length !== 10 || txtEnd.length !== 10) {
+      setTxtErr("请选择开始与结束日期");
+      return;
+    }
+    if (txtEnd > maxEndDate(txtStart)) {
+      setTxtErr(`导出范围不能超过半年：结束日期最晚为 ${maxEndDate(txtStart)}`);
+      return;
+    }
+    if (txtEnd < txtStart) {
+      setTxtErr("结束日期不能早于开始日期");
+      return;
+    }
+    setBusy(true);
+    try {
+      const defaultPath = await txtExportApi.defaultPath(txtStart, txtEnd);
+      const path = await save({
+        title: "导出 TXT",
+        defaultPath,
+        filters: TXT_FILTER,
+      });
+      if (path === null) {
+        showToast("已取消导出");
+        return;
+      }
+      const [calN, todoN] = await txtExportApi.exportTxt(path, txtStart, txtEnd);
+      setTxtOpen(false);
+      showToast(`已导出 ${calN + todoN} 条（日历 ${calN} / 待办 ${todoN}）：${path}`);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "导出失败，请重试");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const tabBtn = (k: Tab, label: string, badge?: string) => (
     <button
       type="button"
@@ -123,6 +193,9 @@ export default function SettingsDialog({ onClose }: Props) {
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => void pickImport()}>
               导入备份
             </button>
+            <button type="button" className="btn-ghost" disabled={busy} onClick={openTxtDialog}>
+              导出 TXT
+            </button>
           </div>
           {importPath !== null ? (
             <div className="note picked">已选择：{importPath}</div>
@@ -149,6 +222,47 @@ export default function SettingsDialog({ onClose }: Props) {
         >
           <p>导入将<strong>覆盖当前全部数据</strong>（分类/事项/字段定义与值）。</p>
           <p className="del-note">导入前的状态已计入撤销栈，可 Ctrl+Z 恢复。</p>
+        </Modal>
+      ) : null}
+
+      {txtOpen ? (
+        <Modal
+          title="导出 TXT"
+          onClose={() => setTxtOpen(false)}
+          width={420}
+          footer={
+            <>
+              <button type="button" className="btn-ghost" disabled={busy} onClick={() => setTxtOpen(false)}>取消</button>
+              <button type="button" className="btn-primary" disabled={busy} onClick={() => void doExportTxt()}>选择位置并导出</button>
+            </>
+          }
+        >
+          <div className="iform">
+            <div className="frow">
+              <label>开始日期</label>
+              <input
+                type="date"
+                value={txtStart}
+                max={todayStr()}
+                onChange={(e) => onTxtStartChange(e.target.value)}
+              />
+            </div>
+            <div className="frow">
+              <label>结束日期</label>
+              <input
+                type="date"
+                value={txtEnd}
+                min={txtStart}
+                max={maxEndDate(txtStart.length === 10 ? txtStart : todayStr())}
+                onChange={(e) => { setTxtEnd(e.target.value); setTxtErr(""); }}
+              />
+            </div>
+          </div>
+          {txtErr ? <div className="ferr">{txtErr}</div> : null}
+          <div className="note">
+            · 默认导出当前月与下一个自然月；结束日期最晚为开始日期 + 6 个月。<br />
+            · 日历事项与范围有交集即导出（显示自身起止日期）；待办按截止日期，无截止不导出。
+          </div>
         </Modal>
       ) : null}
 

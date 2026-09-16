@@ -183,3 +183,17 @@ export const backupApi = {
     await call<void>("import_backup", { path });
   },
 };
+
+/** TXT 导出 API（PRD 6.9；只读操作，不进撤销栈）。 */
+export const txtExportApi = {
+  /** 默认导出路径（data\日历待办导出_<开始>_<结束>.txt），供「另存为」默认文件名。 */
+  async defaultPath(start: string, end: string): Promise<string> {
+    const v = await call<unknown>("default_txt_path", { start, end });
+    return typeof v === "string" ? v : "";
+  },
+  /** 导出 txt 到指定路径，返回 [日历条数, 待办条数]。 */
+  async exportTxt(path: string, start: string, end: string): Promise<[number, number]> {
+    const v = await call<unknown>("export_items_txt", { path, start, end });
+    return Array.isArray(v) && v.length === 2 ? [Number(v[0]), Number(v[1])] : [0, 0];
+  },
+};

@@ -6,6 +6,7 @@
 pub mod backup;
 pub mod categories;
 pub mod daytypes;
+pub mod export;
 pub mod fieldconvert;
 pub mod fields;
 pub mod items;
@@ -404,6 +405,21 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
     pub fn import_json(&self, text: &str) -> Result<()> {
         let mut guard = self.lock()?;
         backup::import(&mut guard, text)
+    }
+
+    // ---- P10：TXT 导出（PRD 6.9；查询/格式化见 store::export；只读不进撤销栈） ----
+
+    /// 导出 txt 到指定路径，返回 (日历条数, 待办条数)。
+    pub fn export_items_txt(&self, path: &Path, start: &str, end: &str) -> Result<(usize, usize)> {
+        let guard = self.lock()?;
+        export::export_txt(&guard, path, start, end)
+    }
+
+    /// txt 导出默认文件名（data\日历待办导出_<开始>_<结束>.txt）。
+    pub fn next_txt_path(&self, start: &str, end: &str) -> Result<PathBuf> {
+        Ok(self
+            .data_dir
+            .join(format!("日历待办导出_{start}_{end}.txt")))
     }
 }
 

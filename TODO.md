@@ -4,7 +4,9 @@
 
 ## 当前阶段
 
-**2026-09-16 v0.3.4 已发布（当前）**：标题框拉宽（补 type 属性，与描述区同宽）。正式目录 `release\日历待办工具 v0.3.4\`（生产 data 原地未动）；**GitHub Release v0.3.4 已上线**，附件 `CalmDownandDoToDo-v0.3.4.zip`（仅 exe+使用说明）。main 与远程同步（commit 9f45191）。
+**2026-09-16 TXT 导出已实现（待用户手测 TC-EXP-001~006；本地 commit 未 push）**：设置→数据备份「导出 TXT」→ 范围弹窗（默认当前月首~下月末；结束上限=开始+6 个月−1 天，前后端同规则）→ 另存为生成 txt（日历交集块+待办截止块，各自编号，UTF-8 BOM）。PRD v1.14 / TC-EXP-001~006 / 原型 / PROJECT_MAP 已同步。cargo 54、vitest 54、build、clippy/fmt 0。**按 2026-09-16 流程规则：等用户验证后说「推送」才 push**。
+
+**2026-09-16 v0.3.4 已发布（GitHub Release 已上线）**：标题框拉宽（补 type 属性，与描述区同宽）。正式目录 `release\日历待办工具 v0.3.4\`（生产 data 原地未动）；Release 附件 `CalmDownandDoToDo-v0.3.4.zip`（仅 exe+使用说明）。
 
 **2026-09-15 已发布到 GitHub**：仓库 https://github.com/hshyq/CalmDownandDoToDo （MIT License），main 已推送并跟踪。共 77 个跟踪文件（含 LICENSE）。**版本发布流程（2026-09-16 用户立规）**：升版本号 → tauri build → 更新正式目录 → 临时目录验证 → 本地 commit 后**停下等用户验证**；用户说「推送」才 push；说「发布」才建 Release（英文 zip 名，仅 exe+使用说明）。`tauri dev` 若报旧路径错误，清 `target\debug\build` 与 `.fingerprint`。
 

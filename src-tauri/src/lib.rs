@@ -73,6 +73,8 @@ pub fn run() {
             commands::backup::default_backup_path,
             commands::backup::export_backup,
             commands::backup::import_backup,
+            commands::export::default_txt_path,
+            commands::export::export_items_txt,
             commands::categories::list_categories,
             commands::categories::create_category,
             commands::categories::rename_category,

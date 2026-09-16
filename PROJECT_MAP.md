@@ -53,7 +53,8 @@
 │  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制）/ daytype.test.ts（默认星期推算）
 │  │  ├─ todo/                group.ts（待办分组纯函数）
 │  │  ├─ color/               palette.ts（墨刀式色板/标准行取色/色块字色自适应/HSV 转换纯函数）
-│  │  └─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
+│  │  ├─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
+│  │  └─ export/              dates.ts（TXT 导出默认范围/结束上限纯函数）
 │  ├─ test/                   前端冒烟测试 smoke.test.ts（vitest 可运行验证）
 │  ├─ stores/
 │  │  ├─ appStore.ts      分类/事项/标签页状态 + dataVersion（跨面板刷新）
@@ -76,11 +77,13 @@
 │     │  ├─ items.rs          事项 CRUD、query_calendar(窗口查询)、query_todo
 │     │  ├─ fields.rs         字段 CRUD、change_type(转换矩阵表驱动)、set_options
 │     │  ├─ backup.rs         export/import JSON（导入前整库快照入撤销栈）
+│     │  ├─ export.rs         TXT 导出 default_txt_path/export_items_txt（PRD 6.9）
 │     │  ├─ undo.rs           undo / redo / undo_depth
 │     │  └─ mail.rs           （二期）邮箱配置/发送测试/失败手动重试 retry_send/同步 send_queue
 │     ├─ store/               SQLite 唯一写库方（P1 已落地）
 │     │  ├─ mod.rs            Db(Mutex 单连接)/open/迁移调用；日历窗口交集、待办 COALESCE 排序查询
 │     │  ├─ backup.rs        P8 整库 dump/导入 + 语义校验（TC-BAK-006）+ 默认导出路径
+│     │  ├─ export.rs        P10 TXT 导出（窗口交集/截止过滤 + 格式化 + UTF-8 BOM，PRD 6.9）
 │     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（一期全表）/ v2（day_types，只增不改历史）
 │     │  └─ validation.rs     应用层校验（分类名/颜色/标题/日期时刻成对/结束不早于开始）
 │     │  └─ snapshot.rs   P7 撤销快照/恢复原语（行级/字段/整分类级联）
@@ -119,6 +122,7 @@
 | 分类色盘 / 颜色 token | `src/styles/tokens.css` | 与原型一致 |
 | 分类删除二选一 | `commands/categories.rs` delete(mode) | 对照 TC-CL-003~006 |
 | 备份导入导出 | `store/backup.rs` + `commands/backup.rs` + `components/Settings/SettingsDialog.tsx` | 对照 TC-BAK-001~006；导入前整库快照落 undo_tmp（D10） |
+| TXT 导出（PRD 6.9） | `store/export.rs` + `commands/export.rs` + `features/export/dates.ts` + `SettingsDialog.tsx` | 对照 TC-EXP-001~006；上限规则前端 dates.ts 与后端 half_year_limit 对齐，改一侧必改另一侧 |
 | 二期邮件/调度 | `mailer.rs` / `scheduler.rs` / `mail.rs` | 对照 TC-MAIL-001~011；确认符合 AGENTS 红线 1 |
 | 界面文案 / 友好报错 | 组件内 + `services/ipc.ts` 错误转换 | 中文；AGENTS 第 5 节 |
 
