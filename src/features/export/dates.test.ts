@@ -1,6 +1,6 @@
-// TXT 导出纯函数测试：与后端 store/export.rs 行为对齐（TC-EXP-001/002）。
+// TXT 导出纯函数测试：与后端 store/export.rs 行为对齐（TC-EXP-001/002/007）。
 import { describe, expect, it } from "vitest";
-import { daysInMonth, defaultExportRange, maxEndDate } from "./dates";
+import { daysInMonth, defaultExportRange, maxEndDate, shortcutRange } from "./dates";
 
 describe("defaultExportRange 默认范围=当前月首~下月末", () => {
   it("普通月", () => {
@@ -38,5 +38,23 @@ describe("daysInMonth", () => {
     expect(daysInMonth(2027, 2)).toBe(28);
     expect(daysInMonth(2000, 2)).toBe(29);
     expect(daysInMonth(1900, 2)).toBe(28);
+  });
+});
+
+describe("shortcutRange 快捷范围（TC-EXP-007，开始一律=今天）", () => {
+  it("一周内 = 今天+7 天", () => {
+    expect(shortcutRange("w", "2026-09-17")).toEqual({ start: "2026-09-17", end: "2026-09-24" });
+  });
+  it("一个月内 = 今天+1 个月−1 天", () => {
+    expect(shortcutRange(1, "2026-09-17")).toEqual({ start: "2026-09-17", end: "2026-10-16" });
+  });
+  it("两个月内 = 今天+2 个月−1 天", () => {
+    expect(shortcutRange(2, "2026-09-17")).toEqual({ start: "2026-09-17", end: "2026-11-16" });
+  });
+  it("跨年：12 月选一个月内", () => {
+    expect(shortcutRange(1, "2026-12-08")).toEqual({ start: "2026-12-08", end: "2027-01-07" });
+  });
+  it("月末钳制：8-31 选一个月内（目标月无 31 日 → 钳 28 再减）", () => {
+    expect(shortcutRange(1, "2026-08-31")).toEqual({ start: "2026-08-31", end: "2026-09-29" });
   });
 });

@@ -351,3 +351,13 @@
 - `cargo test` 54 passed、`vitest` 54 passed、`npm run build` 通过、clippy/fmt 0、原型 script 冒烟通过；待用户手测 TC-EXP-001~006
 ### 打包（指令 A）
 - 版本号 0.3.4 → **0.3.5**；正式目录重命名为 `release\日历待办工具 v0.3.5\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
+
+## 2026-09-17（待办当前时间线 + 导出快捷范围，PRD v1.15）
+
+### 新增（时间线方案经用户原型确认；测试用例先行 TC-DUE-010、TC-EXP-007/008）
+- **待办当前时间线**：列表中按截止排序后，在「截止日≤今天」的最后一条之后插入红色虚线（左端「今天 MM/DD」标签，取系统当天）；全部事项在未来时插在列表最顶部；长期规划永远在线下方；时间线所在组被折叠时随组隐藏。实现：`features/todo/nowline.ts` 纯函数（6 vitest）+ `TodoPanel` 行模型新增 nowline 行（虚拟滚动行高 NOWLINE_H=26）
+- **导出 TXT 快捷范围**：范围弹窗新增「一周内 / 一个月内 / 两个月内」按钮，点击开始=今天、结束=今天+7 天 / +1 个月−1 天 / +2 个月−1 天（月钳制规则与半年上限一致）；填充后可继续手动改。实现：`dates.ts` 抽出共用 `addMonthsMinusOne` 并新增 `shortcutRange`（5 vitest）+ `SettingsDialog` chips
+### 修复
+- 导出 TXT 范围弹窗日期框点击无法弹出日期组件：正式版隐藏系统图标后点击依赖 showPicker，弹窗日期框漏加该处理（原型有全局委托故原型正常）；补 `onClick → showPicker()`（TC-EXP-008）
+### 验收
+- `vitest` 65 passed、`npm run build` 通过；未触及 Rust；待用户手测 TC-DUE-010、TC-EXP-007/008

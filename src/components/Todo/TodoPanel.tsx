@@ -1,4 +1,5 @@
 // P5 待办视图：时间轴分组（年月/长期规划）+ 折叠（会话级）+ 简易虚拟滚动。
+// P10 当前时间线（PRD 5.2 v1.15）：截止≤今天最后一条之后插红色虚线。
 import { useCallback, useEffect, useRef, useState } from "react";
 import ItemModal from "../Items/ItemModal";
 import { useAppStore } from "../../stores/appStore";
@@ -6,16 +7,25 @@ import { itemApi } from "../../services/ipc";
 import { OVERVIEW } from "../../services/types";
 import type { Category, Item, TodoItem } from "../../services/types";
 import { groupTodos } from "../../features/todo/group";
+import { nowLineIndex } from "../../features/todo/nowline";
 import { TODO_MIME } from "../../features/calendar/drag";
 import { textColorOn } from "../../features/color/palette";
 
 const GROUP_H = 30;
 const ITEM_H = 34;
+const NOWLINE_H = 26;
 const OVERSCAN = 6;
 
 type Row =
   | { kind: "group"; key: string; label: string; count: number }
-  | { kind: "item"; item: TodoItem };
+  | { kind: "item"; item: TodoItem }
+  | { kind: "nowline"; label: string };
+
+/** 本地今天（yyyy-MM-dd）。 */
+const todayStr = (): string => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 
 export default function TodoPanel() {
   const { categories, activeTab, ready, dataVersion } = useAppStore();
@@ -59,22 +69,34 @@ export default function TodoPanel() {
 
   const catOf = (id: number): Category | undefined => categories.find((c) => c.id === id);
 
-  // 行模型：组头 + （未折叠时）组内条目；组顺序由 groupTodos 保证
+  // 行模型：组头 + （未折叠时）组内条目 + 当前时间线；组顺序由 groupTodos 保证
+  const today = todayStr();
   const groups = groupTodos(todos);
+  // 时间线插入点=条目流中「截止≤今天」的最后一条之后（PRD 5.2 v1.15）；0=列表最顶部
+  const nowIdx = nowLineIndex(todos, today);
+  const nowLabel = `今天 ${today.slice(5).replace("-", "/")}`;
   const rows: Row[] = [];
+  if (nowIdx === 0) rows.push({ kind: "nowline", label: nowLabel });
+  let done = 0; // 全局条目序号（含折叠组内条目，折叠时不渲染行、时间线随之隐藏）
   for (const g of groups) {
     rows.push({ kind: "group", key: g.key, label: g.label, count: g.items.length });
-    if (!collapsed[g.key]) {
-      for (const it of g.items) rows.push({ kind: "item", item: it });
+    for (const it of g.items) {
+      done++;
+      if (collapsed[g.key]) continue;
+      rows.push({ kind: "item", item: it });
+      if (done === nowIdx) rows.push({ kind: "nowline", label: nowLabel });
     }
   }
-  const total = rows.reduce((sum, r) => sum + (r.kind === "group" ? GROUP_H : ITEM_H), 0);
+  const total = rows.reduce(
+    (sum, r) => sum + (r.kind === "group" ? GROUP_H : r.kind === "nowline" ? NOWLINE_H : ITEM_H),
+    0,
+  );
 
   // 从滚动位置定位首行（按行高累积）
   let visibleStart = 0;
   let offset = 0;
   for (let i = 0; i < rows.length; i++) {
-    const h = rows[i].kind === "group" ? GROUP_H : ITEM_H;
+    const h = rows[i].kind === "group" ? GROUP_H : rows[i].kind === "nowline" ? NOWLINE_H : ITEM_H;
     if (offset + h > scrollTop) { visibleStart = i; break; }
     offset += h;
   }
@@ -82,7 +104,7 @@ export default function TodoPanel() {
   let top = offset;
   for (let i = visibleStart; i < rows.length; i++) {
     const r = rows[i];
-    const h = r.kind === "group" ? GROUP_H : ITEM_H;
+    const h = r.kind === "group" ? GROUP_H : r.kind === "nowline" ? NOWLINE_H : ITEM_H;
     if (top - scrollTop > viewH + OVERSCAN * ITEM_H) break;
     visibleRows.push({ row: r, top });
     top += h;
@@ -121,6 +143,12 @@ export default function TodoPanel() {
                   <span className={"tdot " + (collapsed[row.key] ? "folded" : "")} />
                   <span className="tlabel">{row.label}</span>
                   <span className="tcount">{row.count}</span>
+                </div>
+              ) : row.kind === "nowline" ? (
+                // 当前时间线（PRD 5.2 v1.15）：区分已到期/今天与未来
+                <div key="nowline" className="nowline" style={{ top, height: NOWLINE_H }}>
+                  <span className="nowtag">{row.label}</span>
+                  <span className="nowrule" />
                 </div>
               ) : (
                 <div

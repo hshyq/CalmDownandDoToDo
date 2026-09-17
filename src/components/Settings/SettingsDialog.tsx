@@ -5,7 +5,8 @@ import { useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import Modal from "../Modal/Modal";
 import { backupApi, txtExportApi } from "../../services/ipc";
-import { defaultExportRange, maxEndDate } from "../../features/export/dates";
+import { defaultExportRange, maxEndDate, shortcutRange } from "../../features/export/dates";
+import type { ShortcutUnit } from "../../features/export/dates";
 import { useAppStore } from "../../stores/appStore";
 
 interface Props {
@@ -21,6 +22,11 @@ const TXT_FILTER = [{ name: "文本文件", extensions: ["txt"] }];
 const todayStr = (): string => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/** 日期/时刻输入：点击输入区任意位置即打开系统选择器（系统图标已隐藏，原型契约）。 */
+const pickDateOnClick = (e: React.MouseEvent<HTMLInputElement>) => {
+  (e.currentTarget as HTMLInputElement).showPicker?.();
 };
 
 export default function SettingsDialog({ onClose }: Props) {
@@ -122,6 +128,14 @@ export default function SettingsDialog({ onClose }: Props) {
       const max = maxEndDate(v);
       if (!txtEnd || txtEnd > max) setTxtEnd(max);
     }
+  };
+
+  /** 快捷范围：开始=今天，结束按单位计算（一周/一月/两月，PRD 6.9 v1.15）。 */
+  const applyShortcut = (unit: ShortcutUnit) => {
+    const r = shortcutRange(unit, todayStr());
+    setTxtStart(r.start);
+    setTxtEnd(r.end);
+    setTxtErr("");
   };
 
   /** 确定导出：校验范围 → 另存为 → 后端生成 txt（TC-EXP-002/005/006）。 */
@@ -239,11 +253,20 @@ export default function SettingsDialog({ onClose }: Props) {
         >
           <div className="iform">
             <div className="frow">
+              <label>快捷范围</label>
+              <span className="chips">
+                <button type="button" className="chip" disabled={busy} onClick={() => applyShortcut("w")}>一周内</button>
+                <button type="button" className="chip" disabled={busy} onClick={() => applyShortcut(1)}>一个月内</button>
+                <button type="button" className="chip" disabled={busy} onClick={() => applyShortcut(2)}>两个月内</button>
+              </span>
+            </div>
+            <div className="frow">
               <label>开始日期</label>
               <input
                 type="date"
                 value={txtStart}
                 max={todayStr()}
+                onClick={pickDateOnClick}
                 onChange={(e) => onTxtStartChange(e.target.value)}
               />
             </div>
@@ -254,6 +277,7 @@ export default function SettingsDialog({ onClose }: Props) {
                 value={txtEnd}
                 min={txtStart}
                 max={maxEndDate(txtStart.length === 10 ? txtStart : todayStr())}
+                onClick={pickDateOnClick}
                 onChange={(e) => { setTxtEnd(e.target.value); setTxtErr(""); }}
               />
             </div>
