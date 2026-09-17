@@ -361,3 +361,5 @@
 - 导出 TXT 范围弹窗日期框点击无法弹出日期组件：正式版隐藏系统图标后点击依赖 showPicker，弹窗日期框漏加该处理（原型有全局委托故原型正常）；补 `onClick → showPicker()`（TC-EXP-008）
 ### 验收
 - `vitest` 65 passed、`npm run build` 通过；未触及 Rust；待用户手测 TC-DUE-010、TC-EXP-007/008
+### 打包（指令 A）
+- 版本号 0.3.5 → **0.3.6**；正式目录重命名为 `release\日历待办工具 v0.3.6\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
