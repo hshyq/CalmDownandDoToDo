@@ -132,6 +132,10 @@ input,select,textarea{font:inherit;color:inherit}
 .titem:hover{filter:brightness(1.08)}
 .titem:active{cursor:grabbing}
 .tempty{color:var(--muted);font-size:12px;padding:14px 6px;text-align:center}
+/* 当前时间线（PRD 5.2 v1.15）：插在「截止日≤今天」的最后一条之后 */
+.nowline{display:flex;align-items:center;gap:6px;margin:7px 2px}
+.nowtag{flex:none;font-size:11px;font-weight:700;color:#fff;background:var(--danger);border-radius:8px;padding:1px 7px}
+.nowrule{flex:1;border-top:1.5px dashed var(--danger);opacity:.5}
 
 /* ===== 弹窗 ===== */
 .overlay{position:fixed;inset:0;background:rgba(24,30,40,.45);display:flex;align-items:center;justify-content:center;z-index:50}
@@ -322,6 +326,8 @@ const state={
     {id:20,cat:2,title:'回复供应商报价',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-08-31',dt:'14:00',fv:{}},
     {id:21,cat:1,title:'交电费',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-08-30',dt:'',fv:{}},
     {id:22,cat:5,title:'旧手机数据迁移',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-15',dt:'',fv:{}},
+    {id:23,cat:2,title:'季度报表初稿',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-19',dt:'18:00',fv:{}},
+    {id:24,cat:4,title:'图书馆还书',desc:'',sd:'',st:'',ed:'',et:'',dd:'2026-09-25',dt:'',fv:{}},
     {id:23,cat:5,title:'整理旧相册',desc:'',sd:'',st:'',ed:'',et:'',dd:'',dt:'',fv:{}},
     {id:24,cat:5,title:'待确认：订阅服务退订',desc:'',sd:'',st:'',ed:'',et:'',dd:'',dt:'',fv:{}},
   ],
@@ -768,23 +774,36 @@ function renderTodo(){
   todos.forEach(it=>{const k=it.dd?it.dd.slice(0,7):'unset';(groups[k]=groups[k]||[]).push(it)});
   const keys=Object.keys(groups).sort();
   if(keys.includes('unset')){keys.splice(keys.indexOf('unset'),1);keys.push('unset')}
+  // 当前时间线插入点：排序后「截止日≤今天」的最后一条之后；全部在未来则插在最前（PRD 5.2 v1.15）
+  const now=new Date(), pad=n=>String(n).padStart(2,'0');
+  const today=`${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+  let nowIdx=0;
+  todos.forEach((it,i)=>{if(it.dd&&it.dd<=today)nowIdx=i+1});
+  let gi=0;
+  const nowline=()=>`<div class="nowline"><span class="nowtag">今天 ${today.slice(5)}</span><span class="nowrule"></span></div>`;
   let html='';
   if(!keys.length){html=`<div class="tempty">当前范围暂无待办</div>`}
   for(const k of keys){
     const label=k==='unset'?'长期规划':k;
     const col=groups[k];
+    let body='';
+    if(gi===nowIdx)body+=nowline();
+    body+=col.map(it=>{
+      const c=catOf(it.cat);
+      const tip=it.dd?`截止 ${it.dd}${it.dt?' '+it.dt:''}｜${c.name}`:c.name;
+      let h=`<div class="titem" style="background:${c.color};color:${textColorOn(c.color)}" title="${esc(it.title+'（'+tip+'）')}" draggable="true"
+        ondragstart="dragTodo(event,${it.id})"
+        onclick="openItemModal(${it.id})"><span class="tt">${esc(it.title)}</span><span class="titem-day">${it.dd?Number(it.dd.slice(8,10)):'—'}</span></div>`;
+      gi++;
+      if(gi===nowIdx)h+=nowline();
+      return h;
+    }).join('');
     html+=`<div class="tgroup ${state.collapsed[k]?'collapsed':''}">
       <div class="thead" onclick="toggleGroup('${k}')">
         <span class="dot"></span><span class="tlabel">${label}</span>
         <span class="tcount">${col.length} 条</span><span class="chev">▾</span>
       </div>
-      <div class="tbody">${col.map(it=>{
-        const c=catOf(it.cat);
-        const tip=it.dd?`截止 ${it.dd}${it.dt?' '+it.dt:''}｜${c.name}`:c.name;
-        return `<div class="titem" style="background:${c.color};color:${textColorOn(c.color)}" title="${esc(it.title+'（'+tip+'）')}" draggable="true"
-          ondragstart="dragTodo(event,${it.id})"
-          onclick="openItemModal(${it.id})"><span class="tt">${esc(it.title)}</span><span class="titem-day">${it.dd?Number(it.dd.slice(8,10)):'—'}</span></div>`;
-      }).join('')}</div></div>`;
+      <div class="tbody">${body}</div></div>`;
   }
   $('#todolist').innerHTML=html;
 }
