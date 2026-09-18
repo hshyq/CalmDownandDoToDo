@@ -86,6 +86,30 @@ input,select,textarea{font:inherit;color:inherit}
 /* 日期类型（PRD 5.3 方案待确认）：格内数字右侧角标 班/休/假；法定假日数字红色 */
 /* 日期类型角标：移至格子右上角（v1.16，原型已确认；数字左侧不再放角标） */
 .dtype{position:absolute;top:3px;right:3px;font-size:9px;line-height:1;padding:2px 3px;border-radius:8px;color:#fff;font-weight:600;opacity:.92}
+
+/* ===== 日期类型显示 5 方案（v1.16 演示切换，确认后固化所选） ===== */
+.dstyle-sel{font-size:12px;padding:3px 4px;border:1px solid var(--border);border-radius:6px;color:var(--text);background:#fff}
+/* ① 顶部小胶囊（仅覆盖项，顶部居中，与右上「+」零冲突） */
+.dtype-top{position:absolute;top:2px;left:50%;transform:translateX(-50%);font-size:9px;line-height:1;padding:2px 5px;border-radius:8px;color:#fff;font-weight:600;cursor:pointer}
+.dtype-top.work{background:#4F8EF7}.dtype-top.rest{background:#9AA5B1}.dtype-top.holiday{background:#E5534B}
+/* ② 格底轻染（全部显示：默认周末浅灰、覆盖班浅蓝/覆盖休深灰/覆盖假浅红+红数字；点数字循环切换） */
+.daycell.bg-rest-def{background:#f4f5f7}
+.daycell.bg-ov-work{background:#e8f0fe}
+.daycell.bg-ov-rest{background:#e5e7eb}
+.daycell.bg-ov-holiday{background:#fdeaea}
+/* ③ 数字下色条（仅覆盖项，数字下 3px 短条，点色条循环） */
+.dtype-bar{position:absolute;left:5px;top:21px;width:16px;height:3px;border-radius:2px;cursor:pointer}
+.dtype-bar.work{background:#4F8EF7}.dtype-bar.rest{background:#9AA5B1}.dtype-bar.holiday{background:#E5534B}
+/* ④ 右下小图形（仅覆盖项，无文字：假=小旗/休=圆点/班=菱形） */
+.dtype-shape{position:absolute;bottom:3px;right:4px;width:8px;height:8px;cursor:pointer}
+.dtype-shape.dtype-holiday{background:#E5534B;clip-path:polygon(0 0,100% 0,0 100%)}
+.dtype-shape.dtype-rest{background:#9AA5B1;border-radius:50%}
+.dtype-shape.dtype-work{background:#4F8EF7;transform:rotate(45deg);width:7px;height:7px}
+/* ⑤ 右上折角（仅覆盖项，贴角三角；hover「+」会临时盖住折角） */
+.dtype-fold{position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 13px 13px 0;border-color:transparent;cursor:pointer}
+.dtype-fold.dtype-holiday{border-top-color:#E5534B;border-right-color:#E5534B}
+.dtype-fold.dtype-work{border-top-color:#4F8EF7;border-right-color:#4F8EF7}
+.dtype-fold.dtype-rest{border-top-color:#9AA5B1;border-right-color:#9AA5B1}
 .dtype.work{background:#4F8EF7}.dtype.rest{background:#9AA5B1}.dtype.holiday{background:#E5534B}
 .daycell.holiday .dnum{color:#E5534B;font-weight:700}
 .daycell:not(.other) .dtype{cursor:pointer}
@@ -290,6 +314,7 @@ let catSeq=6, itemSeq=100, fSeq=50;
 const state={
   view:'month',
   cursor:TODAY,
+  dtypeStyle:'1',
   activeTab:OVERVIEW,
   /* 日期类型覆盖项（PRD 方案待确认）：未指定的日期按周一~五工作日/周六日休息日推算 */
   dayTypes:{'2026-09-12':'work','2026-09-13':'work','2026-09-25':'rest','2026-10-01':'holiday','2026-10-02':'holiday','2026-10-03':'holiday'},
@@ -544,6 +569,13 @@ function renderToolbar(){
     </div>
     <span class="title" title="点击选择${state.view==='week'?'周':'年月'}" onclick="openPickPanel(this)">${title}</span>
     <button class="tbtn" onclick="openDayTypes()">日期类型</button>
+    <select class="dstyle-sel" onchange="setDtypeStyle(this.value)" title="演示切换：日期类型显示方案（确认后固化所选）">
+      <option value="1">类型样式① 顶部胶囊</option>
+      <option value="2">类型样式② 格底轻染</option>
+      <option value="3">类型样式③ 数字下色条</option>
+      <option value="4">类型样式④ 右下小图形</option>
+      <option value="5">类型样式⑤ 右上折角</option>
+    </select>
     <span class="spacer"></span>
     <button class="tbtn icon" title="撤销 Ctrl+Z" onclick="undoDemo()">↶</button>
     <button class="tbtn icon" title="重做 Ctrl+Y" onclick="redoDemo()">↷</button>
@@ -578,6 +610,7 @@ function renderDtModal(){
 function dtNav(d){const y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
   let ny=y,nm=m+d;while(nm>12){nm-=12;ny++}while(nm<1){nm+=12;ny--}
   dtCursor=`${ny}-${String(nm).padStart(2,'0')}-01`;renderDtModal()}
+function setDtypeStyle(v){state.dtypeStyle=v;renderCalendar();if(state.view==='week')renderCalendar()}
 function dtCycle(ds,inModal){
   const next=DTYPE_CYCLE[state.dayTypes[ds]||''];
   if(next)state.dayTypes[ds]=next;else delete state.dayTypes[ds];
@@ -690,9 +723,17 @@ function renderCalendar(){
     const cells=week.map(ds=>{
       const other=state.view==='month'&&ds.slice(0,7)!==state.cursor.slice(0,7);
       const dt=dayTypeOf(ds);
-      return `<div class="daycell ${other?'other':''} ${ds===TODAY?'today':''} ${dt==='holiday'?'holiday':''}" data-d="${ds}"
+      const ov=!!state.dayTypes[ds];
+      // 日期类型显示 5 方案（v1.16 演示切换）
+      let bgCls='',mark='',dnumClick='';
+      if(state.dtypeStyle==='1'){ if(ov)mark=`<span class="dtype-top ${dt}" onclick="event.stopPropagation();dtCycle('${ds}')" title="点击切换日期类型（班/休/假/清除）">${DTYPE_LABEL[dt]}</span>`; }
+      else if(state.dtypeStyle==='2'){ bgCls=ov?(' bg-ov-'+dt):(dt==='rest'?' bg-rest-def':''); dnumClick=`onclick="event.stopPropagation();dtCycle('${ds}')" title="点击切换日期类型（班/休/假/清除）"`; }
+      else if(state.dtypeStyle==='3'){ if(ov)mark=`<span class="dtype-bar ${dt}" onclick="event.stopPropagation();dtCycle('${ds}')" title="点击切换日期类型"></span>`; }
+      else if(state.dtypeStyle==='4'){ if(ov)mark=`<span class="dtype-shape dtype-${dt}" onclick="event.stopPropagation();dtCycle('${ds}')" title="点击切换日期类型"></span>`; }
+      else if(state.dtypeStyle==='5'){ if(ov)mark=`<span class="dtype-fold dtype-${dt}" onclick="event.stopPropagation();dtCycle('${ds}')" title="点击切换日期类型"></span>`; }
+      return `<div class="daycell ${other?'other':''} ${ds===TODAY?'today':''} ${dt==='holiday'?'holiday':''}${bgCls}" data-d="${ds}"
         ondragover="cellDragOver(event)" ondragleave="cellDragLeave(event)" ondrop="cellDrop(event,'${ds}')">
-        <span class="dnum">${Number(ds.slice(8))}</span><span class="dtype ${dt}" onclick="event.stopPropagation();dtCycle('${ds}')" title="点击切换日期类型（班/休/假/清除）">${DTYPE_LABEL[dt]}</span><span class="celladd" title="新增事项" onclick="openItemModal(null,'${ds}')">+</span></div>`;
+        <span class="dnum" ${dnumClick}>${Number(ds.slice(8))}</span>${mark}<span class="celladd" title="新增事项" onclick="openItemModal(null,'${ds}')">+</span></div>`;
     }).join('');
     const bars=placed.filter(p=>p.lane>=0).map(p=>{
       const c=catOf(p.it.cat);
