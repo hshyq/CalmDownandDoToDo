@@ -80,10 +80,12 @@ input,select,textarea{font:inherit;color:inherit}
 .daycell:nth-child(7){border-right:none}
 .daycell .dnum{position:absolute;top:4px;left:8px;font-size:12px;color:var(--text);z-index:1}
 .daycell.other .dnum{color:#c3c9d1}
-.daycell.today{background:#eaf3ff}
-.daycell.today .dnum{color:var(--accent);font-weight:700}
+.daycell.today{background:#eaf3ff;box-shadow:inset 0 0 0 1.5px var(--accent)}
+/* 今日数字：accent 圆底白字（v1.16，强化显眼度；原型已确认） */
+.daycell.today .dnum{background:var(--accent);color:#fff;font-weight:700;border-radius:50%;width:21px;height:21px;display:inline-flex;align-items:center;justify-content:center;margin-top:1px}
 /* 日期类型（PRD 5.3 方案待确认）：格内数字右侧角标 班/休/假；法定假日数字红色 */
-.dtype{position:absolute;top:3px;left:28px;font-size:9px;line-height:1;padding:2px 3px;border-radius:3px;color:#fff;font-weight:600}
+/* 日期类型角标：移至格子右上角（v1.16，原型已确认；数字左侧不再放角标） */
+.dtype{position:absolute;top:3px;right:3px;font-size:9px;line-height:1;padding:2px 3px;border-radius:8px;color:#fff;font-weight:600;opacity:.92}
 .dtype.work{background:#4F8EF7}.dtype.rest{background:#9AA5B1}.dtype.holiday{background:#E5534B}
 .daycell.holiday .dnum{color:#E5534B;font-weight:700}
 .daycell:not(.other) .dtype{cursor:pointer}
@@ -117,6 +119,7 @@ input,select,textarea{font:inherit;color:inherit}
   border-radius:var(--radius);display:flex;flex-direction:column;min-height:0}
 .todo h3{font-size:13px;padding:10px 12px 8px;border-bottom:1px solid var(--border);color:var(--muted);font-weight:600}
 .tlist{flex:1;overflow:auto;position:relative;padding:4px 12px 12px 30px}
+.tlist.dragover{outline:2px dashed var(--accent);outline-offset:-4px;background:#f0f6ff}
 .tlist::before{content:'';position:absolute;left:14px;top:12px;bottom:12px;width:2px;background:var(--border);border-radius:2px}
 .thead{position:relative;display:flex;align-items:center;gap:8px;padding:9px 6px;cursor:pointer;border-radius:6px;user-select:none}
 .thead:hover{background:#f4f6fa}
@@ -249,7 +252,7 @@ input[type=time]::-webkit-calendar-picker-indicator{display:none}
       <!-- 右：待办区 -->
       <div class="todo">
         <h3>待办</h3>
-        <div class="tlist" id="todolist"></div>
+        <div class="tlist" id="todolist" ondragover="todoPaneDragOver(event)" ondragleave="todoPaneDragLeave(event)" ondrop="todoPaneDrop(event)"></div>
       </div>
     </div>
   </div>
@@ -738,6 +741,22 @@ function cellDrop(e,ds){
     it.sd=ds;it.ed=ds;
     toast('已更新日期');renderCalendar();renderTodo();return;
   }
+}
+/* 日历横条拖入待办面板（v1.16，用户确认）：结束日期→截止日期、结束时刻→截止时刻，清空结束日期/时刻；开始信息保留 */
+function todoPaneDragOver(e){
+  if(e.dataTransfer.types.includes(MIME_BAR)){
+    e.preventDefault();e.dataTransfer.dropEffect='copy';
+    e.currentTarget.classList.add('dragover');
+  }
+}
+function todoPaneDragLeave(e){e.currentTarget.classList.remove('dragover')}
+function todoPaneDrop(e){
+  e.preventDefault();e.currentTarget.classList.remove('dragover');
+  const bar=e.dataTransfer.getData(MIME_BAR);if(!bar)return;
+  const it=state.items.find(x=>x.id===Number(bar));if(!it||!it.ed)return;
+  it.dd=it.ed;it.dt=it.et||'';it.ed='';it.et='';
+  toast(`已转为待办：${it.title}（截止 ${it.dd}${it.dt?' '+it.dt:''}）`);
+  renderCalendar();renderTodo();
 }
 /* 横条头尾拖拽改期（PRD 5.3 v1.11）：拖左缘改开始、拖右缘改结束；钳制不越界 */
 let barResize=null;
