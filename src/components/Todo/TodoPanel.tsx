@@ -8,7 +8,7 @@ import { OVERVIEW } from "../../services/types";
 import type { Category, Item, TodoItem } from "../../services/types";
 import { groupTodos } from "../../features/todo/group";
 import { nowLineIndex } from "../../features/todo/nowline";
-import { TODO_MIME } from "../../features/calendar/drag";
+import { BAR_MIME, TODO_MIME, calendarToTodoDraft } from "../../features/calendar/drag";
 import { textColorOn } from "../../features/color/palette";
 
 const GROUP_H = 30;
@@ -68,6 +68,27 @@ export default function TodoPanel() {
   }, [ready, reload, dataVersion]);
 
   const catOf = (id: number): Category | undefined => categories.find((c) => c.id === id);
+
+  // —— 接收日历横条拖入（PRD 5.2 v1.16）：结束日期/时刻转截止并清空结束，开始保留，update_item 可撤销 ——
+  const [barDragOver, setBarDragOver] = useState(false);
+
+  const onBarDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setBarDragOver(false);
+    const id = Number(e.dataTransfer.getData(BAR_MIME));
+    if (!id) return;
+    try {
+      const detail = await itemApi.getDetail(id);
+      if (!detail.end_date) return; // 非日历事项（防御，拖拽来源已限定横条）
+      await itemApi.update(id, calendarToTodoDraft(detail));
+      showToast(`已转为待办：${detail.title}（截止 ${detail.end_date}${detail.end_time ? " " + detail.end_time : ""}）`);
+      await reload();
+      // bump 驱动日历面板重查，横条立即从日历消失（PRD 5.2 v1.16）
+      useAppStore.getState().bump();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "转为待办失败，请重试");
+    }
+  };
 
   // 行模型：组头 + （未折叠时）组内条目 + 当前时间线；组顺序由 groupTodos 保证
   const today = todayStr();
@@ -130,7 +151,23 @@ export default function TodoPanel() {
         <h3>待办</h3>
         <span className="todo-count">{todos.length}</span>
       </div>
-      <div className="tlist" ref={listRef} onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}>
+      <div
+        className={"tlist" + (barDragOver ? " dragover" : "")}
+        ref={listRef}
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+        onDragOver={(e) => {
+          // 仅接收日历横条（待办条目拖回日历走格子的 TODO_MIME，反向拖入无意义）
+          if (e.dataTransfer.types.includes(BAR_MIME)) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "copy";
+            setBarDragOver(true);
+          }
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) setBarDragOver(false);
+        }}
+        onDrop={(e) => void onBarDrop(e)}
+      >
         {empty ? (
           <div className="tempty">
             {activeTab === OVERVIEW ? "暂无待办" : "当前分类暂无待办"}

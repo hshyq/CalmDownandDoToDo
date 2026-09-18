@@ -1,6 +1,7 @@
 // 拖拽改期纯函数（PRD 5.3 v1.8）：日历横条平移 / 待办条目拖入日历。
 // 时分由调用方原样保留，本模块只负责日期计算。
 import { addDays, dayDiff } from "./dates";
+import type { Item, ItemDraft } from "../../services/types";
 
 /** dataTransfer 自定义类型：区分拖拽来源（日历横条 / 待办条目） */
 export const BAR_MIME = "application/x-cal-bar";
@@ -24,6 +25,25 @@ export function shiftRange(startDate: string, endDate: string, dropDate: string)
 /** 待办拖入日历：开始=结束=目标格日期（PRD 5.3 v1.8）。 */
 export function todoDropDates(dropDate: string): ShiftedDates {
   return { startDate: dropDate, endDate: dropDate };
+}
+
+/**
+ * 日历横条拖入待办面板的数据变更（PRD 5.2 v1.16，用户确认）：
+ * 结束日期→截止日期、结束时刻→截止时刻，结束日期/时刻清空，开始信息保留；
+ * 返回完整 ItemDraft（update_item 为全字段更新，必须携带全部现有字段，仅 fieldValues 不传以保留）。
+ */
+export function calendarToTodoDraft(it: Item): ItemDraft {
+  return {
+    categoryId: it.category_id,
+    title: it.title,
+    description: it.description,
+    startDate: it.start_date,
+    startTime: it.start_time,
+    endDate: null,
+    endTime: null,
+    dueDate: it.end_date,
+    dueTime: it.end_time,
+  };
 }
 
 /**

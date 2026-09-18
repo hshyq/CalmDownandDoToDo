@@ -6,7 +6,7 @@ import { useUndoStore } from "../../stores/undoStore";
 import { useAppStore } from "../../stores/appStore";
 import { itemApi, dayTypeApi } from "../../services/ipc";
 import { OVERVIEW } from "../../services/types";
-import { defaultDayType, DAY_TYPE_LABELS } from "../../services/types";
+import { defaultDayType } from "../../services/types";
 import type { CalendarItem, Category, DayType, Item, ItemDraft } from "../../services/types";
 import { addDays, daysInMonth, monthRows, parseISO, toISO, todayISO, weekStartMonday } from "../../features/calendar/dates";
 import { layoutRow } from "../../features/calendar/layout";
@@ -396,11 +396,12 @@ export default function CalendarView() {
       const other = view === "month" && d.slice(0, 7) !== monthKey;
       const isToday = d === todayISO();
       const dt = dayTypeOf(d);
+      // 日期类型色条（PRD 5.3 v1.16）：每天显示，今天格不显示（类型由今日圆圈颜色表达）
       return (
         <div
           key={d}
           data-date={d}
-          className={"daycell " + (other ? "other " : "") + (isToday ? "today" : "") + (dragOverDate === d ? " dragover" : "") + (dt === "holiday" ? " holiday" : "")}
+          className={"daycell " + (other ? "other " : "") + (isToday ? "today dt-" + dt : "") + (dragOverDate === d ? " dragover" : "") + (dt === "holiday" ? " holiday" : "")}
           onDragOver={(e) => {
             // dragover 中不可读 getData，用 types 判断来源（横条或待办）
             if (e.dataTransfer.types.includes(BAR_MIME) || e.dataTransfer.types.includes(TODO_MIME)) {
@@ -413,16 +414,16 @@ export default function CalendarView() {
           onDrop={(e) => onCellDrop(e, d)}
         >
           <span className="dnum">{Number(d.slice(8))}</span>
-          <span
-            className={"dtype " + dt}
-            title="点击切换日期类型（班/休/假/恢复默认）"
-            onClick={(e) => {
-              e.stopPropagation();
-              dtCycle(d);
-            }}
-          >
-            {DAY_TYPE_LABELS[dt]}
-          </span>
+          {!isToday ? (
+            <span
+              className={"dtype-bar " + dt}
+              title="点击切换日期类型（班/休/假/恢复默认）"
+              onClick={(e) => {
+                e.stopPropagation();
+                dtCycle(d);
+              }}
+            />
+          ) : null}
           <span className="celladd" title="新增事项" onClick={() => openCreate(d, activeTab === OVERVIEW)}>
             +
           </span>

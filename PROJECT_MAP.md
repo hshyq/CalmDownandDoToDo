@@ -44,13 +44,13 @@
 │  ├─ components/             组件（按模块目录组织）
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 墨刀式色盘（色板+SV 取色面板+色相条+HEX）
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部；closeOnOverlayClick 时点遮罩等效取消，仅事项弹窗开启）
-│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型角标）；DayTypeDialog（日期类型月历管理弹窗）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；DayTypeDialog（日期类型月历管理弹窗）
 │  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区；「+」新增预填开始=结束=格日期）
-│  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期；右侧显示截止日数字；当前时间线，v1.15）
+│  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期；接收日历横条拖入转待办，v1.16；右侧显示截止日数字；当前时间线，v1.15）
 │  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入）
 │  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗
 │  ├─ features/               纯函数 + vitest 单测
-│  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制）/ daytype.test.ts（默认星期推算）
+│  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制、横条拖入待办转换）/ daytype.test.ts（默认星期推算）
 │  │  ├─ todo/                group.ts（待办分组纯函数）/ nowline.ts（当前时间线插入序号，v1.15）
 │  │  ├─ color/               palette.ts（墨刀式色板/标准行取色/色块字色自适应/HSV 转换纯函数）
 │  │  ├─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）

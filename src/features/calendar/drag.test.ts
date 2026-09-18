@@ -1,6 +1,6 @@
 // 拖拽改期纯函数单测（TC-CAL-013/014/018，PRD 5.3 v1.8/v1.11）。
 import { describe, expect, it } from "vitest";
-import { clampEdge, shiftRange, todoDropDates } from "./drag";
+import { calendarToTodoDraft, clampEdge, shiftRange, todoDropDates } from "./drag";
 
 describe("shiftRange 横条拖拽平移", () => {
   it("向后拖：起止日期同偏移平移，跨度不变", () => {
@@ -74,5 +74,45 @@ describe("clampEdge 横条头尾拖拽（TC-CAL-018）", () => {
   it("拖到原值：日期不变（原地收手不写库）", () => {
     expect(clampEdge(base, "start", "2026-09-08")).toEqual(base);
     expect(clampEdge(base, "end", "2026-09-08")).toEqual(base);
+  });
+});
+
+describe("calendarToTodoDraft 日历横条拖入待办（TC-IT-016，PRD 5.2 v1.16）", () => {
+  const base = {
+    id: 1,
+    category_id: 2,
+    title: "季度汇报",
+    description: null,
+    start_date: "2026-09-01",
+    start_time: "09:00",
+    end_date: "2026-09-05",
+    end_time: "18:00",
+    due_date: null,
+    due_time: null,
+    created_at: "2026-09-01T08:00:00",
+  };
+
+  it("结束日期/时刻转截止并清空结束，开始保留", () => {
+    expect(calendarToTodoDraft(base)).toEqual({
+      categoryId: 2,
+      title: "季度汇报",
+      description: null,
+      startDate: "2026-09-01",
+      startTime: "09:00",
+      endDate: null,
+      endTime: null,
+      dueDate: "2026-09-05",
+      dueTime: "18:00",
+    });
+  });
+
+  it("无结束时刻：截止时刻为 null", () => {
+    expect(calendarToTodoDraft({ ...base, end_time: null }).dueTime).toBeNull();
+  });
+
+  it("已有的截止信息被原结束覆盖", () => {
+    const out = calendarToTodoDraft({ ...base, due_date: "2026-08-01", due_time: "08:00" });
+    expect(out.dueDate).toBe("2026-09-05");
+    expect(out.dueTime).toBe("18:00");
   });
 });
