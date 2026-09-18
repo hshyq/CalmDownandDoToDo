@@ -374,3 +374,5 @@
 - 前端：`drag.ts` 新增 `calendarToTodoDraft`（完整 ItemDraft，3 vitest）、`CalendarView` 色条/染色、`TodoPanel` 接收拖入（BAR_MIME）、`global.css` 色条与染色样式（`.dtype` 基础样式保留供 DayTypeDialog/图例）；Rust 零改动
 ### 验收
 - `vitest` 68 passed、`npm run build` 通过；待用户手测 TC-DT-003/007、TC-IT-016
+### 打包（指令 A）
+- 版本号 0.3.6 → **0.3.7**；正式目录重命名为 `release\日历待办工具 v0.3.7\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
