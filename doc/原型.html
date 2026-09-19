@@ -197,11 +197,16 @@ input,select,textarea{font:inherit;color:inherit}
 .frow textarea{min-height:56px;resize:vertical}
 .frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
-/* 日期/时刻图标恢复显示（v1.17）：作为弹出选择器入口，与文字区键入并存 */
-input[type=date]::-webkit-calendar-picker-indicator,
-input[type=time]::-webkit-calendar-picker-indicator{opacity:.45;cursor:pointer}
-input[type=date]:hover::-webkit-calendar-picker-indicator,
-input[type=time]:hover::-webkit-calendar-picker-indicator{opacity:1}
+/* 分段日期/时刻输入（v1.17）：年4位/月2位/日2位满位自动跳段；图标弹原生选择器 */
+.segwrap{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;background:#fff;padding:0 4px;flex:1}
+.segwrap:focus-within{border-color:var(--accent)}
+.seg{border:none;outline:none;background:none;font:inherit;color:var(--text);text-align:center;padding:5px 0}
+.seg-y{width:38px}.seg-m,.seg-d,.seg-h,.seg-mi{width:22px}
+.seg::placeholder{color:var(--muted);opacity:.6}
+.segsep{color:var(--border);margin:0 1px}
+.segicon{flex:none;cursor:pointer;font-size:13px;opacity:.55;user-select:none;padding:0 2px}
+.segicon:hover{opacity:1}
+.seg-native{opacity:0;width:1px;height:1px;position:absolute;pointer-events:none}
 .ferr{color:var(--danger);font-size:12px;padding:0 0 6px 86px;display:none}
 .ferr.show{display:block}
 .fsec{border-top:1px dashed var(--border);margin:12px 0 10px;padding-top:10px}
@@ -627,6 +632,63 @@ function dtNav(d){const y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,
   let ny=y,nm=m+d;while(nm>12){nm-=12;ny++}while(nm<1){nm+=12;ny--}
   dtCursor=`${ny}-${String(nm).padStart(2,'0')}-01`;renderDtModal()}
 function setDtypeStyle(v){state.dtypeStyle=v;renderCalendar();if(state.view==='week')renderCalendar()}
+
+/* ===== 分段日期/时刻输入组件（v1.17）：年最多 4 位满位自动跳段；图标弹原生选择器 ===== */
+function segDateHtml(pfx,sd,st){ // sd=yyyy-mm-dd 可空
+  const y=sd?sd.slice(0,4):'',m=sd?sd.slice(5,7):'',d=sd?sd.slice(8,10):'';
+  return `<span class="segwrap" data-segwrap="${pfx}">
+    <input class="seg seg-y" maxlength="4" placeholder="年" inputmode="numeric" value="${y}"><span class="segsep">-</span>
+    <input class="seg seg-m" maxlength="2" placeholder="月" inputmode="numeric" value="${m}"><span class="segsep">-</span>
+    <input class="seg seg-d" maxlength="2" placeholder="日" inputmode="numeric" value="${d}">
+    <span class="segicon" title="点击弹出日历">📅</span>
+    <input type="date" class="seg-native" value="${sd||''}">
+  </span>`;
+}
+function segTimeHtml(pfx,tm){
+  const h=tm?tm.slice(0,2):'',mi=tm?tm.slice(3,5):'';
+  return `<span class="segwrap" data-segwrap="${pfx}">
+    <input class="seg seg-h" maxlength="2" placeholder="时" inputmode="numeric" value="${h}"><span class="segsep">:</span>
+    <input class="seg seg-mi" maxlength="2" placeholder="分" inputmode="numeric" value="${mi}">
+    <span class="segicon" title="点击弹出时刻列表">🕐</span>
+    <input type="time" class="seg-native" value="${tm||''}">
+  </span>`;
+}
+function initSegs(root){
+  root.querySelectorAll('.segwrap').forEach(w=>{
+    const segs=[...w.querySelectorAll('.seg')];
+    const icon=w.querySelector('.segicon'),native=w.querySelector('.seg-native');
+    segs.forEach((seg,i)=>{
+      seg.addEventListener('input',()=>{
+        seg.value=seg.value.replace(/\D/g,'').slice(0,seg.maxLength);
+        if(seg.value.length>=seg.maxLength&&i<segs.length-1)segs[i+1].focus();
+      });
+      seg.addEventListener('keydown',e=>{
+        if(e.key==='Backspace'&&!seg.value&&i>0){segs[i-1].focus();e.preventDefault()}
+      });
+    });
+    if(icon)icon.addEventListener('click',()=>{try{native.showPicker()}catch(_){native.focus()}});
+    if(native)native.addEventListener('change',()=>{
+      const v=native.value;if(!v)return;
+      const parts=icon.textContent.includes('日')?v.split('-'):v.split(':');
+      parts.forEach((pv,idx)=>{if(segs[idx])segs[idx].value=pv});
+    });
+  });
+}
+function segVal(wrapId){ // 组装 'yyyy-mm-dd' / 'HH:mm'；段不全返回 ''
+  const w=document.querySelector(`[data-segwrap="${wrapId}"]`);if(!w)return '';
+  const segs=[...w.querySelectorAll('.seg')].map(s=>s.value);
+  if(segs.some(v=>!v))return '';
+  const isDate=w.querySelector('.seg-native').type==='date';
+  return isDate?`${segs[0]}-${segs[1].padStart(2,'0')}-${segs[2].padStart(2,'0')}`
+               :`${segs[0].padStart(2,'0')}:${segs[1].padStart(2,'0')}`;
+}
+function setSegDate(wrapId,v){ // v='yyyy-mm-dd'，供快捷范围填充
+  const w=document.querySelector(`[data-segwrap="${wrapId}"]`);if(!w)return;
+  const [y,m,d]=v.split('-');
+  w.querySelector('.seg-y').value=y||'';
+  w.querySelector('.seg-m').value=m||'';
+  w.querySelector('.seg-d').value=d||'';
+}
 function dtCycle(ds,inModal){
   const next=DTYPE_CYCLE[state.dayTypes[ds]||''];
   if(next)state.dayTypes[ds]=next;else delete state.dayTypes[ds];
@@ -945,11 +1007,11 @@ function openItemModal(id,preSd){
       <div class="frow"><label>标题 *</label><input type="text" id="if-title" maxlength="100" value="${it?esc(it.title):''}"></div>
       <div class="frow"><label>描述</label><textarea id="if-desc" rows="5">${it?esc(it.desc):''}</textarea></div>
       <div class="frow"><label>开始时间</label>
-        <input type="date" id="if-sd" title="直接键入数字；点右侧图标弹出日历" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" title="直接键入数字；点右侧图标弹出时刻列表" value="${it?it.st:''}"></div>
+        ${segDateHtml('if-sd',it?it.sd:(preSd||''))}${segTimeHtml('if-st',it?it.st:'')}</div>
       <div class="frow"><label>结束时间</label>
-        <input type="date" id="if-ed" title="直接键入数字；点右侧图标弹出日历" value="${it?it.ed:(preSd||'')}"><input type="time" id="if-et" title="直接键入数字；点右侧图标弹出时刻列表" value="${it?it.et:''}"></div>
+        ${segDateHtml('if-ed',it?it.ed:(preSd||''))}${segTimeHtml('if-et',it?it.et:'')}</div>
       <div class="frow"><label>截止时间</label>
-        <input type="date" id="if-dd" title="直接键入数字；点右侧图标弹出日历" value="${it?it.dd:''}"><input type="time" id="if-dt" title="直接键入数字；点右侧图标弹出时刻列表" value="${it?it.dt:''}"></div>
+        ${segDateHtml('if-dd',it?it.dd:'')}${segTimeHtml('if-dt',it?it.dt:'')}</div>
       <div class="fsec"><div class="sec-t">自定义字段（显示当前分类可见的字段；数据全分类通用，切分类不丢失）</div>
         <div id="if-fields">${fieldsSection(catId,it?it.fv:{})}</div></div>
       <div class="ferr" id="if-err"></div>
@@ -959,6 +1021,7 @@ function openItemModal(id,preSd){
       <button class="btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn-primary" onclick="saveItem()">保存</button>
     </div>`,false,true);
+  initSegs($('#item-form'));
 }
 function onCatChange(newCat){
   const id=Number($('#if-id').value);
@@ -979,11 +1042,11 @@ function saveItem(){
   const idStr=$('#if-id').value;
   const title=$('#if-title').value.trim();
   const err=$('#if-err');
-  const sd=$('#if-sd').value,ed=$('#if-ed').value;
+  const sd=segVal('if-sd'),ed=segVal('if-ed');
   if(!title){err.textContent='标题不能为空';err.classList.add('show');return}
   if(sd&&ed&&ed<sd){err.textContent='结束时间的日期不能早于开始时间';err.classList.add('show');return}
-  const base={title,desc:$('#if-desc').value,sd,st:$('#if-st').value,ed,et:$('#if-et').value,
-    dd:$('#if-dd').value,dt:$('#if-dt').value};
+  const base={title,desc:$('#if-desc').value,sd,st:segVal('if-st'),ed,et:segVal('if-et'),
+    dd:segVal('if-dd'),dt:segVal('if-dt')};
   if(idStr===''){
     state.items.push({id:itemSeq++,cat:$('#if-cat')?Number($('#if-cat').value):activeCatId(),fv:collectFV(),...base});
     toast('已保存：按归属规则进入'+(base.sd&&base.ed?'日历':'待办'));
@@ -1179,8 +1242,7 @@ function fillTxtRange(unit){
     if(cl>=2)ed=`${y2}-${p2(m2)}-${p2(cl-1)}`;
     else{const t=y2*12+(m2-1)-1, y3=Math.floor(t/12), m3=t%12+1;ed=`${y3}-${p2(m3)}-${p2(dimDays(y3,m3))}`}
   }
-  const sd=document.getElementById('tx-sd'), edEl=document.getElementById('tx-ed');
-  sd.value=today; edEl.value=ed; edEl.min=today; edEl.max=limitStart(today);
+  setSegDate('tx-sd',today); setSegDate('tx-ed',ed);
   toast(`已填入：${today} ~ ${ed}`);
 }
 function openTxtExport(){
@@ -1195,9 +1257,8 @@ function openTxtExport(){
         <button type="button" class="chip" onclick="fillTxtRange(1)">一个月内</button>
         <button type="button" class="chip" onclick="fillTxtRange(2)">两个月内</button>
       </span></div>
-      <div class="frow"><label>开始日期</label><input type="date" id="tx-sd" value="${sd}" max="${sd.slice(0,4)}-12-31"
-        onchange="(function(el){const mx=limitStart(el.value);const e=document.getElementById('tx-ed');if(!e.value||e.value>mx)e.value=mx;e.min=el.value;e.max=mx})(this)"></div>
-      <div class="frow"><label>结束日期</label><input type="date" id="tx-ed" value="${ed}" min="${sd}" max="${limitStart(sd)}"></div>
+      <div class="frow"><label>开始日期</label>${segDateHtml('tx-sd',sd)}<span style="flex:1"></span></div>
+      <div class="frow"><label>结束日期</label>${segDateHtml('tx-ed',ed)}</div>
     </div>
     <div class="note">
       · 默认当前月+下一个自然月；结束日期最晚为开始日期+6 个月。<br>
@@ -1207,8 +1268,9 @@ function openTxtExport(){
     <div class="dfoot">
       <span style="flex:1"></span>
       <button class="btn-ghost" onclick="closeModal()">取消</button>
-      <button class="btn-primary" onclick="toast('演示原型：按 '+document.getElementById('tx-sd').value+'~'+document.getElementById('tx-ed').value+' 导出 txt（正式版实现）')">选择位置并导出</button>
+      <button class="btn-primary" onclick="const s=segVal('tx-sd'),e2=segVal('tx-ed');toast(s&&e2?('演示原型：按 '+s+'~'+e2+' 导出 txt（正式版实现）'):'请先填完整的开始与结束日期')">选择位置并导出</button>
     </div>`);
+  initSegs(document.querySelector('.dialog .dbody'));
 }
 
 /* ================= 撤销（演示） ================= */
