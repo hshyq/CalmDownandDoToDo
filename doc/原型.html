@@ -167,6 +167,14 @@ input,select,textarea{font:inherit;color:inherit}
 .nowline{display:flex;align-items:center;gap:6px;margin:7px 2px}
 .nowtag{flex:none;font-size:11px;font-weight:700;color:#fff;background:var(--danger);border-radius:8px;padding:1px 7px}
 .nowrule{flex:1;border-top:1.5px dashed var(--danger);opacity:.5}
+/* 字段管理：全局字段 + 分类可见性（PRD 4.3 v1.17） */
+.vis-tag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vis-tag:hover{border-color:var(--accent);color:var(--accent)}
+.fm-vis{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 8px 6px 26px;border-bottom:1px dashed var(--border)}
+.vis-chip{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);border-radius:10px;padding:1px 8px;font-size:11px;cursor:pointer;color:var(--text);user-select:none}
+.vis-chip.on{border-color:var(--accent);background:#e8f0fe;color:var(--accent)}
+.vis-chip input{display:none}
+.fm-vis-tip{font-size:11px;color:var(--muted)}
 /* 快捷范围按钮（导出 TXT，PRD 6.9） */
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{border:1px solid var(--border);background:#fff;border-radius:12px;padding:2px 11px;font-size:12px;cursor:pointer;color:var(--text)}
@@ -329,16 +337,17 @@ const state={
     {id:4,name:'学习',color:'#9B59B6',kind:'normal'},
     {id:5,name:'未分类',color:'#9E9E9E',kind:'uncategorized'},
   ],
-  fields:{
-    1:[{id:11,name:'花费',type:'number',options:null,sort:1},
-       {id:12,name:'类别',type:'multi_choice',options:['家庭','健康','购物','旅行'],sort:2},
-       {id:13,name:'详细记录',type:'multiline',options:null,sort:3}],
-    2:[{id:21,name:'项目',type:'text',options:null,sort:1},
-       {id:22,name:'工时',type:'number',options:null,sort:2},
-       {id:23,name:'优先级',type:'single_choice',options:['高','中','低'],sort:3}],
-    4:[{id:41,name:'来源',type:'single_choice',options:['B站','书籍','播客'],sort:1},
-       {id:42,name:'计划完成',type:'date',options:null,sort:2}],
-  },
+  // 自定义字段：全局定义（所有事项共享数据）+ vis=可见分类（PRD 4.3 v1.17）
+  fields:[
+    {id:11,name:'花费',type:'number',options:null,sort:1,vis:[1,2,3,5]},
+    {id:12,name:'类别',type:'multi_choice',options:['家庭','健康','购物','旅行'],sort:2,vis:[1]},
+    {id:13,name:'详细记录',type:'multiline',options:null,sort:3,vis:[1]},
+    {id:21,name:'项目',type:'text',options:null,sort:4,vis:[2]},
+    {id:22,name:'工时',type:'number',options:null,sort:5,vis:[2]},
+    {id:23,name:'优先级',type:'single_choice',options:['高','中','低'],sort:6,vis:[2]},
+    {id:41,name:'来源',type:'single_choice',options:['B站','书籍','播客'],sort:7,vis:[4]},
+    {id:42,name:'计划完成',type:'date',options:null,sort:8,vis:[4]},
+  ],
   items:[
     {id:1,cat:2,title:'Q3 季度汇报材料撰写',desc:'汇总三个产品线数据',sd:'2026-08-31',st:'',ed:'2026-09-02',et:'',dd:'',dt:'',fv:{21:'Q3 OKR',22:'6',23:'高'}},
     {id:2,cat:2,title:'版本发布检查清单',desc:'',sd:'2026-08-27',st:'',ed:'2026-08-28',et:'',dd:'',dt:'',fv:{}},
@@ -390,7 +399,7 @@ function dayTypeOf(ds){
 }
 const DTYPE_LABEL={work:'班',rest:'休',holiday:'假'};
 const DTYPE_CYCLE={'':'work',work:'rest',rest:'holiday',holiday:''}; // 点击循环：默认→班→休→假→清除
-function fieldsOf(id){return (state.fields[id]||[]).slice().sort((a,b)=>a.sort-b.sort)}
+function fieldsOf(id){return state.fields.filter(f=>f.vis.includes(id)).slice().sort((a,b)=>a.sort-b.sort)}
 function activeCatId(){return state.activeTab===OVERVIEW?null:state.activeTab}
 
 function toast(msg){
@@ -583,7 +592,7 @@ function renderToolbar(){
     <span class="spacer"></span>
     <button class="tbtn icon" title="撤销 Ctrl+Z" onclick="undoDemo()">↶</button>
     <button class="tbtn icon" title="重做 Ctrl+Y" onclick="redoDemo()">↷</button>
-    ${isOverview?'':`<button class="btn-ghost" onclick="openFieldManager()">字段管理</button>`}
+    <button class="btn-ghost" onclick="openFieldManager()">字段管理</button>
     <button class="btn-primary" onclick="openItemModal(null)">＋ 新增事项</button>`;
 }
 function setView(v){state.view=v;renderAll()}
@@ -923,8 +932,8 @@ function openItemModal(id,preSd){
   const it=isNew?null:state.items.find(x=>x.id===id);
   const curCat=isNew?activeCatId():it.cat;
   const catId=isNew?(curCat!==null?curCat:state.categories.find(c=>c.kind==='normal').id):it.cat;
-  const catOpts=state.categories
-    .filter(c=>c.kind==='normal'||c.kind==='uncategorized')
+  // 分类下拉顺序与界面标签栏一致：普通分类按序，未分类沉底（v1.17）
+  const catOpts=[...state.categories.filter(c=>c.kind==='normal'),...state.categories.filter(c=>c.kind==='uncategorized')]
     .map(c=>`<option value="${c.id}" ${c.id===catId?'selected':''}>${esc(c.name)}</option>`).join('');
   modal(`<div class="dhead">${isNew?'新增事项':'编辑事项'}<button class="x" onclick="closeModal()">✕</button></div>
     <div class="dbody" id="item-form">
@@ -933,12 +942,12 @@ function openItemModal(id,preSd){
       <div class="frow"><label>标题 *</label><input type="text" id="if-title" maxlength="100" value="${it?esc(it.title):''}"></div>
       <div class="frow"><label>描述</label><textarea id="if-desc" rows="5">${it?esc(it.desc):''}</textarea></div>
       <div class="frow"><label>开始时间</label>
-        <input type="date" id="if-sd" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" value="${it?it.st:''}"></div>
+        <input type="date" id="if-sd" title="点击弹出日历，或直接键入数字" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" title="点击弹出时刻列表，或直接键入数字" value="${it?it.st:''}"></div>
       <div class="frow"><label>结束时间</label>
-        <input type="date" id="if-ed" value="${it?it.ed:(preSd||'')}"><input type="time" id="if-et" value="${it?it.et:''}"></div>
+        <input type="date" id="if-ed" title="点击弹出日历，或直接键入数字" value="${it?it.ed:(preSd||'')}"><input type="time" id="if-et" title="点击弹出时刻列表，或直接键入数字" value="${it?it.et:''}"></div>
       <div class="frow"><label>截止时间</label>
-        <input type="date" id="if-dd" value="${it?it.dd:''}"><input type="time" id="if-dt" value="${it?it.dt:''}"></div>
-      <div class="fsec"><div class="sec-t">自定义字段（随所属分类的模板变化）</div>
+        <input type="date" id="if-dd" title="点击弹出日历，或直接键入数字" value="${it?it.dd:''}"><input type="time" id="if-dt" title="点击弹出时刻列表，或直接键入数字" value="${it?it.dt:''}"></div>
+      <div class="fsec"><div class="sec-t">自定义字段（显示当前分类可见的字段；数据全分类通用，切分类不丢失）</div>
         <div id="if-fields">${fieldsSection(catId,it?it.fv:{})}</div></div>
       <div class="ferr" id="if-err"></div>
     </div>
@@ -1012,41 +1021,51 @@ function openDayOverlay(ds){
     }).join('')}</div>`);
 }
 
-/* ================= 字段管理 ================= */
-let fmCat=null,fmEditing=null;
-function openFieldManager(){
-  fmCat=activeCatId();fmEditing=null;
-  if(fmCat===null){toast('总览页没有字段模板');return}
-  renderFm();
+/* ================= 字段管理（全局字段 + 分类可见性，PRD 4.3 v1.17） ================= */
+let fmEditing=null;   // 编辑中的字段 id 或 'new'
+let fmVisOpen=null;   // 展开可见性勾选的字段 id
+
+function catName(id){const c=state.categories.find(x=>x.id===id);return c?c.name:'?'}
+function visLabel(f){
+  if(f.vis.length===state.categories.length)return '全部分类';
+  return f.vis.map(catName).join('、')||'无';
 }
+function openFieldManager(){fmEditing=null;fmVisOpen=null;renderFm()}
 function renderFm(){
-  const c=catOf(fmCat),list=fieldsOf(fmCat);
+  const list=[...state.fields].sort((a,b)=>a.sort-b.sort);
   const editing=list.find(f=>f.id===fmEditing);
-  const form=editing?`
+  const visChips=(f)=>state.categories.map(c=>`<label class="vis-chip ${f.vis.includes(c.id)?'on':''}">
+      <input type="checkbox" ${f.vis.includes(c.id)?'checked':''} onchange="fmToggleVis(${f.id},${c.id},this.checked)">${esc(c.name)}</label>`).join('');
+  const visRow=(f)=>`<div class="fm-vis" style="display:${fmVisOpen===f.id?'flex':'none'}">${visChips(f)}
+      <span class="fm-vis-tip">勾选 = 该分类的事项显示此字段</span></div>`;
+  const editingForm=editing?`
     <div class="fm-form">
       <div class="frow"><label>字段名称</label><input type="text" id="fm-name" maxlength="20" value="${esc(editing.name)}"></div>
       <div class="frow"><label>类型</label>
         <select id="fm-type">${Object.keys(TYPE_LABEL).map(t=>`<option value="${t}" ${t===editing.type?'selected':''}>${TYPE_LABEL[t]}</option>`).join('')}</select></div>
       <div class="frow" id="fm-optrow" style="display:${isChoice(editing.type)?'flex':'none'}">
         <label>选项</label><input type="text" id="fm-opts" value="${editing.options?esc(editing.options.join('，')):''}" placeholder="用中文逗号分隔，如：高，中，低"></div>
+      <div class="frow"><label>可见分类</label><span class="chips">${visChips(editing)}</span></div>
       <div class="dfoot" style="padding:4px 0 0">
         <button class="btn-ghost" onclick="fmEditing=null;renderFm()">取消</button>
         <button class="btn-primary" onclick="fmSubmit(${editing.id})">保存</button></div>
     </div>`:'';
-  modal(`<div class="dhead">字段管理 · ${esc(c.name)}<button class="x" onclick="closeModal()">✕</button></div>
-    <div class="dbody">
+  modal(`<div class="dhead">字段管理<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody" style="min-width:460px">
+      <div class="note" style="margin-bottom:6px">· 自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。</div>
       ${list.length?list.map((f,i)=>`
         <div class="fm-row">
           <span class="fname">${esc(f.name)}</span>
           <span class="ftype">${TYPE_LABEL[f.type]}</span>
           <span class="fopt">${isChoice(f.type)?(f.options.length+' 选项'):'—'}</span>
+          <button class="vis-tag" onclick="fmVisOpen=fmVisOpen===${f.id}?null:${f.id};renderFm()" title="配置可见分类">可见：${visLabel(f)}</button>
           <button class="op ${i===0?'dis':''}" onclick="fmMove(${f.id},-1)">↑</button>
           <button class="op ${i===list.length-1?'dis':''}" onclick="fmMove(${f.id},1)">↓</button>
           <button class="op" title="编辑" onclick="fmEdit(${f.id})">✎</button>
           <button class="op" title="删除" onclick="fmDeleteAsk(${f.id})">🗑</button>
-        </div>`).join('')
+        </div>${visRow(f)}`).join('')
       :`<div class="tempty">暂无自定义字段</div>`}
-      ${form}
+      ${editingForm}
       ${editing?'':`<div class="dfoot" style="justify-content:flex-start;padding:8px 0 0">
         <button class="btn-primary" onclick="fmEdit('new')">＋ 新增字段</button></div>`}
     </div>`);
@@ -1055,17 +1074,24 @@ function renderFm(){
 }
 function fmEdit(fid){
   if(fid==='new'){
-    const list=state.fields[fmCat]=state.fields[fmCat]||[];
-    const f={id:fSeq++,name:'新字段',type:'text',options:null,sort:list.length+1};
-    list.push(f);fmEditing=f.id;
+    // 新字段默认全部分类可见（PRD 4.3 v1.17：定义全局，C 分类也能看到）
+    const f={id:fSeq++,name:'新字段',type:'text',options:null,sort:state.fields.length+1,
+      vis:state.categories.map(c=>c.id)};
+    state.fields.push(f);fmEditing=f.id;
   }else{fmEditing=fid}
+  renderFm();
+}
+function fmToggleVis(fid,catId,on){
+  const f=state.fields.find(x=>x.id===fid);if(!f)return;
+  if(on){if(!f.vis.includes(catId))f.vis.push(catId)}
+  else f.vis=f.vis.filter(x=>x!==catId);
   renderFm();
 }
 function fmSubmit(fid){
   const name=$('#fm-name').value.trim();
   if(!name){toast('字段名称不能为空');return}
   const type=$('#fm-type').value;
-  const f=fieldsOf(fmCat).find(x=>x.id===fid);
+  const f=state.fields.find(x=>x.id===fid);
   let opts=null;
   if(isChoice(type)){
     opts=$('#fm-opts').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean);
@@ -1082,17 +1108,17 @@ function fmSubmit(fid){
   confirmBox(`修改为【${TYPE_LABEL[type]}】的规则：<br>${rule}`,{danger:!zeroLoss,okText:'确认修改',onOk:finish});
 }
 function fmMove(fid,dir){
-  const list=state.fields[fmCat].sort((a,b)=>a.sort-b.sort);
+  const list=[...state.fields].sort((a,b)=>a.sort-b.sort);
   const i=list.findIndex(f=>f.id===fid),j=i+dir;
   if(j<0||j>=list.length)return;
   [list[i].sort,list[j].sort]=[list[j].sort,list[i].sort];
   renderFm();
 }
 function fmDeleteAsk(fid){
-  const f=fieldsOf(fmCat).find(x=>x.id===fid);
+  const f=state.fields.find(x=>x.id===fid);
   confirmBox(`确定删除字段【${esc(f.name)}】？<br><span class="sub">将丢失该字段下所有已填写数据。</span>`,
     {danger:true,okText:'删除',onOk(){
-      state.fields[fmCat]=state.fields[fmCat].filter(x=>x.id!==fid);
+      state.fields=state.fields.filter(x=>x.id!==fid);
       state.items.forEach(it=>{if(it.fv)delete it.fv[fid]});
       fmEditing=null;renderFm();toast('字段已删除');
     }});
@@ -1172,6 +1198,7 @@ function openTxtExport(){
     </div>
     <div class="note">
       · 默认当前月+下一个自然月；结束日期最晚为开始日期+6 个月。<br>
+      · 日期/时刻框：点击弹出选择器，也可直接键入数字。<br>
       · 日历事项与范围有交集即导出（显示自身起止）；待办按截止日期，无截止不导出。
     </div></div>
     <div class="dfoot">
