@@ -197,8 +197,11 @@ input,select,textarea{font:inherit;color:inherit}
 .frow textarea{min-height:56px;resize:vertical}
 .frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
+/* 日期/时刻图标恢复显示（v1.17）：作为弹出选择器入口，与文字区键入并存 */
 input[type=date]::-webkit-calendar-picker-indicator,
-input[type=time]::-webkit-calendar-picker-indicator{display:none}
+input[type=time]::-webkit-calendar-picker-indicator{opacity:.45;cursor:pointer}
+input[type=date]:hover::-webkit-calendar-picker-indicator,
+input[type=time]:hover::-webkit-calendar-picker-indicator{opacity:1}
 .ferr{color:var(--danger);font-size:12px;padding:0 0 6px 86px;display:none}
 .ferr.show{display:block}
 .fsec{border-top:1px dashed var(--border);margin:12px 0 10px;padding-top:10px}
@@ -942,11 +945,11 @@ function openItemModal(id,preSd){
       <div class="frow"><label>标题 *</label><input type="text" id="if-title" maxlength="100" value="${it?esc(it.title):''}"></div>
       <div class="frow"><label>描述</label><textarea id="if-desc" rows="5">${it?esc(it.desc):''}</textarea></div>
       <div class="frow"><label>开始时间</label>
-        <input type="date" id="if-sd" title="点击弹出日历，或直接键入数字" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" title="点击弹出时刻列表，或直接键入数字" value="${it?it.st:''}"></div>
+        <input type="date" id="if-sd" title="直接键入数字；点右侧图标弹出日历" value="${it?it.sd:(preSd||'')}"><input type="time" id="if-st" title="直接键入数字；点右侧图标弹出时刻列表" value="${it?it.st:''}"></div>
       <div class="frow"><label>结束时间</label>
-        <input type="date" id="if-ed" title="点击弹出日历，或直接键入数字" value="${it?it.ed:(preSd||'')}"><input type="time" id="if-et" title="点击弹出时刻列表，或直接键入数字" value="${it?it.et:''}"></div>
+        <input type="date" id="if-ed" title="直接键入数字；点右侧图标弹出日历" value="${it?it.ed:(preSd||'')}"><input type="time" id="if-et" title="直接键入数字；点右侧图标弹出时刻列表" value="${it?it.et:''}"></div>
       <div class="frow"><label>截止时间</label>
-        <input type="date" id="if-dd" title="点击弹出日历，或直接键入数字" value="${it?it.dd:''}"><input type="time" id="if-dt" title="点击弹出时刻列表，或直接键入数字" value="${it?it.dt:''}"></div>
+        <input type="date" id="if-dd" title="直接键入数字；点右侧图标弹出日历" value="${it?it.dd:''}"><input type="time" id="if-dt" title="直接键入数字；点右侧图标弹出时刻列表" value="${it?it.dt:''}"></div>
       <div class="fsec"><div class="sec-t">自定义字段（显示当前分类可见的字段；数据全分类通用，切分类不丢失）</div>
         <div id="if-fields">${fieldsSection(catId,it?it.fv:{})}</div></div>
       <div class="ferr" id="if-err"></div>
@@ -1198,7 +1201,7 @@ function openTxtExport(){
     </div>
     <div class="note">
       · 默认当前月+下一个自然月；结束日期最晚为开始日期+6 个月。<br>
-      · 日期/时刻框：点击弹出选择器，也可直接键入数字。<br>
+      · 日期/时刻框：直接键入数字（分段选中）；点右侧图标弹出选择器。<br>
       · 日历事项与范围有交集即导出（显示自身起止）；待办按截止日期，无截止不导出。
     </div></div>
     <div class="dfoot">
@@ -1219,13 +1222,7 @@ document.addEventListener('keydown',e=>{
   if(e.key==='y'||e.key==='Y'){e.preventDefault();redoDemo()}
 });
 
-/* 日期/时间输入：点击输入框任意位置即打开系统选择器（图标已隐藏，键盘输入不受影响） */
-document.addEventListener('click',e=>{
-  const el=e.target;
-  if(el&&el.tagName==='INPUT'&&(el.type==='date'||el.type==='time')&&el.showPicker){
-    try{el.showPicker()}catch(_){/* 无效场景（如无用户手势）忽略 */}
-  }
-});
+/* 日期/时间输入（v1.17）：文字区直接键入数字；点击右侧日历/时钟图标弹出选择器（原生行为，showPicker 已移除） */
 
 /* ================= 总渲染 ================= */
 function renderAll(){renderTabs();renderToolbar();renderCalendar();renderTodo()}
