@@ -26,9 +26,14 @@ function useSegments(
   const [segs, setSegs] = useState<string[]>(() => split(value ?? ""));
   const refs = useRef<(HTMLInputElement | null)[]>([]);
   const nativeRef = useRef<HTMLInputElement | null>(null);
+  // 最近一次组件回传给父级的值：父级 value 与之相同时说明是自身回流的更新，
+  // 不做分段重置（否则段不全时回传 "" 会经父级回流把已键入的数字清掉）
+  const lastEmitted = useRef<string | null>(null);
   // 外部赋值（如快捷范围、编辑回填）同步到分段
   useEffect(() => {
+    if ((value ?? "") === (lastEmitted.current ?? "")) return;
     setSegs(split(value ?? ""));
+    lastEmitted.current = value ?? "";
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
 
@@ -37,7 +42,9 @@ function useSegments(
       const next = [...prev];
       next[i] = v;
       // 三段都非空才回调整值（不完整状态界面保留但不提交）
-      onChange(next.every((s) => s) ? assemble(next) : "");
+      const full = next.every((s) => s) ? assemble(next) : "";
+      lastEmitted.current = full;
+      onChange(full);
       return next;
     });
     if (!reselect && v.length >= maxLens[i] && i < count - 1) {
@@ -72,7 +79,8 @@ function useSegments(
     }
   };
 
-  return { segs, segProps, refs, nativeRef, openPicker };
+  const lastEmittedRef = lastEmitted;
+  return { segs, segProps, refs, nativeRef, openPicker, lastEmittedRef };
 }
 
 function segDateSplit(v: string): string[] {
@@ -90,7 +98,7 @@ const segTimeAssemble = (s: string[]): string =>
 
 /** 分段日期输入：年(4) 月(2) 日(2)。 */
 export function SegDateInput({ value, onChange }: SegProps) {
-  const { segs, segProps, nativeRef, openPicker } = useSegments(
+  const { segs, segProps, nativeRef, openPicker, lastEmittedRef } = useSegments(
     3, [4, 2, 2], value, onChange, segDateAssemble, segDateSplit,
   );
   const [y, m, d] = segs;
@@ -107,10 +115,14 @@ export function SegDateInput({ value, onChange }: SegProps) {
         type="date"
         className="seg-native"
         aria-hidden
+        tabIndex={-1}
         value={value ?? ""}
         onChange={(e) => {
           const v = e.target.value;
-          if (v) onChange(v);
+          if (v) {
+            lastEmittedRef.current = v;
+            onChange(v);
+          }
         }}
       />
     </span>
@@ -119,7 +131,7 @@ export function SegDateInput({ value, onChange }: SegProps) {
 
 /** 分段时刻输入：时(2) 分(2)。 */
 export function SegTimeInput({ value, onChange }: SegProps) {
-  const { segs, segProps, nativeRef, openPicker } = useSegments(
+  const { segs, segProps, nativeRef, openPicker, lastEmittedRef } = useSegments(
     2, [2, 2], value, onChange, segTimeAssemble, segTimeSplit,
   );
   const [h, mi] = segs;
@@ -134,10 +146,14 @@ export function SegTimeInput({ value, onChange }: SegProps) {
         type="time"
         className="seg-native"
         aria-hidden
+        tabIndex={-1}
         value={value ?? ""}
         onChange={(e) => {
           const v = e.target.value;
-          if (v) onChange(v);
+          if (v) {
+            lastEmittedRef.current = v;
+            onChange(v);
+          }
         }}
       />
     </span>
