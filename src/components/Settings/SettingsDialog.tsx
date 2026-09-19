@@ -6,6 +6,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import Modal from "../Modal/Modal";
 import { backupApi, txtExportApi } from "../../services/ipc";
 import { defaultExportRange, maxEndDate, shortcutRange } from "../../features/export/dates";
+import { SegDateInput } from "../fields/SegInputs";
 import type { ShortcutUnit } from "../../features/export/dates";
 import { useAppStore } from "../../stores/appStore";
 
@@ -22,11 +23,6 @@ const TXT_FILTER = [{ name: "文本文件", extensions: ["txt"] }];
 const todayStr = (): string => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
-/** 日期/时刻输入：点击输入区任意位置即打开系统选择器（系统图标已隐藏，原型契约）。 */
-const pickDateOnClick = (e: React.MouseEvent<HTMLInputElement>) => {
-  (e.currentTarget as HTMLInputElement).showPicker?.();
 };
 
 export default function SettingsDialog({ onClose }: Props) {
@@ -262,24 +258,11 @@ export default function SettingsDialog({ onClose }: Props) {
             </div>
             <div className="frow">
               <label>开始日期</label>
-              <input
-                type="date"
-                value={txtStart}
-                max={todayStr()}
-                onClick={pickDateOnClick}
-                onChange={(e) => onTxtStartChange(e.target.value)}
-              />
+              <SegDateInput value={txtStart} onChange={onTxtStartChange} />
             </div>
             <div className="frow">
               <label>结束日期</label>
-              <input
-                type="date"
-                value={txtEnd}
-                min={txtStart}
-                max={maxEndDate(txtStart.length === 10 ? txtStart : todayStr())}
-                onClick={pickDateOnClick}
-                onChange={(e) => { setTxtEnd(e.target.value); setTxtErr(""); }}
-              />
+              <SegDateInput value={txtEnd} onChange={(v) => { setTxtEnd(v); setTxtErr(""); }} />
             </div>
           </div>
           {txtErr ? <div className="ferr">{txtErr}</div> : null}

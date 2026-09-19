@@ -7,33 +7,62 @@ use serde::Serialize;
 use super::fieldconvert::{self, FieldType};
 use super::{Error, Result};
 
-/// 字段模板（对应前端 services/types.ts；options_json 为 JSON 数组文本，仅单选/多选有）。
+/// 字段定义（全局，PRD 4.3 v1.17）：vis 为可见分类 ID 列表（对应前端 services/types.ts）。
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct FieldDef {
     pub id: i64,
-    pub category_id: i64,
     pub name: String,
     pub r#type: String,
     pub options_json: Option<String>,
     pub sort_order: i64,
+    pub vis: Vec<i64>,
 }
+
+const COLS: &str = "id, name, type, options_json, sort_order";
 
 fn map_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<FieldDef> {
     Ok(FieldDef {
         id: row.get(0)?,
-        category_id: row.get(1)?,
-        name: row.get(2)?,
-        r#type: row.get(3)?,
-        options_json: row.get(4)?,
-        sort_order: row.get(5)?,
+        name: row.get(1)?,
+        r#type: row.get(2)?,
+        options_json: row.get(3)?,
+        sort_order: row.get(4)?,
+        vis: Vec::new(),
     })
 }
 
-const COLS: &str = "id, category_id, name, type, options_json, sort_order";
+/// 读取某字段的可见分类 ID 列表（category_fields 中的行）。
+fn vis_of(conn: &Connection, id: i64) -> Result<Vec<i64>> {
+    let mut stmt = conn.prepare(
+        "SELECT category_id FROM category_fields WHERE field_id = ?1 ORDER BY category_id",
+    )?;
+    let rows = stmt.query_map([id], |r| r.get(0))?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
 
-pub fn list(conn: &Connection, category_id: i64) -> Result<Vec<FieldDef>> {
+/// 全部字段（字段管理列表；按全局 sort_order 排序，带可见分类）。
+pub fn list_all(conn: &Connection) -> Result<Vec<FieldDef>> {
     let mut stmt = conn.prepare(&format!(
-        "SELECT {COLS} FROM field_defs WHERE category_id = ?1 ORDER BY sort_order ASC, id ASC"
+        "SELECT {COLS} FROM field_defs ORDER BY sort_order ASC, id ASC"
+    ))?;
+    let defs: Vec<FieldDef> = stmt
+        .query_map([], map_row)?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut out = Vec::with_capacity(defs.len());
+    for mut def in defs {
+        def.vis = vis_of(conn, def.id)?;
+        out.push(def);
+    }
+    Ok(out)
+}
+
+/// 某分类可见的字段（事项弹窗字段区；按全局 sort_order 排序）。
+pub fn list_visible(conn: &Connection, category_id: i64) -> Result<Vec<FieldDef>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {COLS} FROM field_defs f
+         WHERE EXISTS (SELECT 1 FROM category_fields cf
+                       WHERE cf.field_id = f.id AND cf.category_id = ?1)
+         ORDER BY f.sort_order ASC, f.id ASC"
     ))?;
     let rows = stmt.query_map([category_id], map_row)?;
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
@@ -45,19 +74,23 @@ pub fn get(conn: &Connection, id: i64) -> Result<FieldDef> {
         [id],
         map_row,
     )
+    .map(|mut def| {
+        def.vis = vis_of(conn, def.id).unwrap_or_default();
+        def
+    })
     .map_err(|e| match e {
         rusqlite::Error::QueryReturnedNoRows => Error::Business("字段不存在".to_string()),
         other => Error::Sqlite(other),
     })
 }
 
-/// 新建字段：sort 追加到该分类末尾；单选/多选必须带非空选项。
+/// 新建字段：sort 追加到全局末尾；单选/多选必须带非空选项；写入可见分类。
 pub fn create(
-    conn: &Connection,
-    category_id: i64,
+    conn: &mut Connection,
     name: &str,
     ftype: &str,
     options: Option<&[String]>,
+    visible: &[i64],
 ) -> Result<FieldDef> {
     let ft = FieldType::parse(ftype).ok_or_else(|| Error::Business("字段类型无效".to_string()))?;
     let options_json = if ft.is_choice() {
@@ -71,16 +104,42 @@ pub fn create(
         None
     };
     let next: i64 = conn.query_row(
-        "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM field_defs WHERE category_id = ?1",
-        [category_id],
+        "SELECT COALESCE(MAX(sort_order) + 1, 0) FROM field_defs",
+        [],
         |r| r.get(0),
     )?;
-    conn.execute(
-        "INSERT INTO field_defs (category_id, name, type, options_json, sort_order)
-         VALUES (?1, ?2, ?3, ?4, ?5)",
-        rusqlite::params![category_id, name, ftype, options_json, next],
+    let tx = conn.transaction()?;
+    tx.execute(
+        "INSERT INTO field_defs (name, type, options_json, sort_order)
+         VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![name, ftype, options_json, next],
     )?;
-    get(conn, conn.last_insert_rowid())
+    let id = tx.last_insert_rowid();
+    for cat_id in visible {
+        tx.execute(
+            "INSERT OR IGNORE INTO category_fields (category_id, field_id) VALUES (?1, ?2)",
+            rusqlite::params![cat_id, id],
+        )?;
+    }
+    tx.commit()?;
+    get(conn, id)
+}
+
+/// 设置字段可见分类（整组替换；PRD 4.3 v1.17）。
+pub fn set_visibility(conn: &mut Connection, id: i64, visible: &[i64]) -> Result<()> {
+    if get(conn, id).is_err() {
+        return Err(Error::Business("字段不存在".to_string()));
+    }
+    let tx = conn.transaction()?;
+    tx.execute("DELETE FROM category_fields WHERE field_id = ?1", [id])?;
+    for cat_id in visible {
+        tx.execute(
+            "INSERT OR IGNORE INTO category_fields (category_id, field_id) VALUES (?1, ?2)",
+            rusqlite::params![cat_id, id],
+        )?;
+    }
+    tx.commit()?;
+    Ok(())
 }
 
 pub fn rename(conn: &Connection, id: i64, name: &str) -> Result<()> {
@@ -265,10 +324,11 @@ pub fn save_edit(
     Ok(())
 }
 
-/// 上移/下移（与该分类相邻字段交换 sort_order）。
+/// 上移/下移（与全局列表相邻字段交换 sort_order）。
 pub fn move_field(conn: &mut Connection, id: i64, direction: &str) -> Result<()> {
     let def = get(conn, id)?;
-    let all = list(conn, def.category_id)?;
+    let mut all = list_all(conn)?;
+    all.sort_by_key(|f| f.sort_order);
     let idx = all
         .iter()
         .position(|f| f.id == id)
@@ -362,13 +422,13 @@ mod tests {
     fn field_crud_and_move() {
         let mut conn = db();
         let c = cat(&conn);
-        let f1 = create(&conn, c, "项目", "text", None).expect("新建失败");
-        let f2 = create(&conn, c, "工时", "number", None).expect("新建失败");
-        assert_eq!(list(&conn, c).expect("列表").len(), 2);
+        let f1 = create(&mut conn, "项目", "text", None, &[c]).expect("新建失败");
+        let f2 = create(&mut conn, "工时", "number", None, &[c]).expect("新建失败");
+        assert_eq!(list_visible(&conn, c).expect("列表").len(), 2);
         assert!(f1.sort_order < f2.sort_order);
 
         move_field(&mut conn, f2.id, "up").expect("上移失败");
-        let all = list(&conn, c).expect("列表");
+        let all = list_visible(&conn, c).expect("列表");
         assert_eq!(all[0].id, f2.id);
         move_field(&mut conn, f2.id, "up").expect("再上移失败(已顶)");
         rename(&conn, f2.id, "耗时").expect("改名失败");
@@ -382,11 +442,11 @@ mod tests {
         let mut conn = db();
         let c = cat(&conn);
         let f = create(
-            &conn,
-            c,
+            &mut conn,
             "优先级",
             "single_choice",
             Some(&["高".into(), "中".into(), "低".into()]),
+            &[c],
         )
         .expect("新建失败");
         let item_id = mk_item(&conn, "A");
@@ -400,11 +460,11 @@ mod tests {
         let mut conn = db();
         let c = cat(&conn);
         let f = create(
-            &conn,
-            c,
+            &mut conn,
             "类别",
             "multi_choice",
             Some(&["A".into(), "B".into()]),
+            &[c],
         )
         .expect("新建失败");
         let item_id = mk_item(&conn, "B");
@@ -421,7 +481,7 @@ mod tests {
         let i2 = mk_item(&conn, "2");
         let i3 = mk_item(&conn, "3");
 
-        let f = create(&conn, c, "F", "text", None).expect("新建失败");
+        let f = create(&mut conn, "F", "text", None, &[c]).expect("新建失败");
         set_value(&conn, i1, f.id, Some("\"123\""));
         set_value(&conn, i2, f.id, Some("\"abc\""));
         change_type(&mut conn, f.id, "number").expect("转换失败");
@@ -429,7 +489,7 @@ mod tests {
         assert_eq!(raw(&conn, i2, f.id), None);
         assert_eq!(get(&conn, f.id).expect("读取").r#type, "number");
 
-        let g = create(&conn, c, "G", "text", None).expect("新建失败");
+        let g = create(&mut conn, "G", "text", None, &[c]).expect("新建失败");
         set_value(&conn, i1, g.id, Some("\"学习\""));
         set_value(&conn, i2, g.id, Some("\"学习\""));
         set_value(&conn, i3, g.id, Some("\"摸鱼\""));
@@ -446,11 +506,11 @@ mod tests {
         let mut conn = db();
         let c = cat(&conn);
         let f = create(
-            &conn,
-            c,
+            &mut conn,
             "S",
             "single_choice",
             Some(&["X".into(), "Y".into()]),
+            &[c],
         )
         .expect("新建失败");
         let i1 = mk_item(&conn, "a");
@@ -459,11 +519,11 @@ mod tests {
         assert_eq!(raw(&conn, i1, f.id).as_deref(), Some("[\"X\"]"));
 
         let g = create(
-            &conn,
-            c,
+            &mut conn,
             "M",
             "multi_choice",
             Some(&["A".into(), "B".into()]),
+            &[c],
         )
         .expect("新建失败");
         let i2 = mk_item(&conn, "b");
@@ -476,7 +536,7 @@ mod tests {
     fn values_set_and_list() {
         let mut conn = db();
         let c = cat(&conn);
-        let f = create(&conn, c, "标签", "text", None).expect("新建失败");
+        let f = create(&mut conn, "标签", "text", None, &[c]).expect("新建失败");
         let item_id = mk_item(&conn, "v");
         values::set_values(&mut conn, item_id, &[(f.id, Some("\"v1\"".to_string()))])
             .expect("写值失败");

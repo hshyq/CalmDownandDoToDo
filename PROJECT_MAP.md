@@ -45,10 +45,10 @@
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 墨刀式色盘（色板+SV 取色面板+色相条+HEX）
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部；closeOnOverlayClick 时点遮罩等效取消，仅事项弹窗开启）
 │  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；DayTypeDialog（日期类型月历管理弹窗）
-│  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + P6 自定义字段区；「+」新增预填开始=结束=格日期）
+│  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + 自定义字段区按分类可见过滤；分段日期/时刻输入；「+」新增预填开始=结束=格日期）
 │  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期；接收日历横条拖入转待办，v1.16；右侧显示截止日数字；当前时间线，v1.15）
 │  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入）
-│  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗
+│  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗（全局字段+分类可见性，v1.17）/ SegInputs 分段日期/时刻输入（v1.17）
 │  ├─ features/               纯函数 + vitest 单测
 │  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制、横条拖入待办转换）/ daytype.test.ts（默认星期推算）
 │  │  ├─ todo/                group.ts（待办分组纯函数）/ nowline.ts（当前时间线插入序号，v1.15）
@@ -75,9 +75,10 @@
 │     ├─ commands/            IPC 入口层：参数校验 → 写操作经 undo 包装 → store
 │     │  ├─ categories.rs     分类 list/create/rename/set_color/delete(mode)
 │     │  ├─ items.rs          事项 CRUD、query_calendar(窗口查询)、query_todo
-│     │  ├─ fields.rs         字段 CRUD、change_type(转换矩阵表驱动)、set_options
+│     │  ├─ fields.rs         全局字段 CRUD、set_visibility（分类可见性）、change_type(转换矩阵表驱动)、set_options
 │     │  ├─ backup.rs         export/import JSON（导入前整库快照入撤销栈）
 │     │  ├─ export.rs         TXT 导出 default_txt_path/export_items_txt（PRD 6.9）
+│     │  ├─ fields.rs         list_fields_all/set_field_visibility/create_field(visible)（PRD 4.3 v1.17）
 │     │  ├─ undo.rs           undo / redo / undo_depth
 │     │  └─ mail.rs           （二期）邮箱配置/发送测试/失败手动重试 retry_send/同步 send_queue
 │     ├─ store/               SQLite 唯一写库方（P1 已落地）
@@ -116,7 +117,7 @@
 | 待办排序、99991231 沉底 | `src-tauri/src/store/mod.rs`（COALESCE 查询） | 对照 TC-DUE-001~004 |
 | 日历/待办归属规则 | 不在代码某处——由查询条件表达（`start_date`/`end_date` 判空） | 对照 TC-IT-001~007 |
 | 字段类型转换矩阵 | `src-tauri/src/commands/fields.rs`（(from,to) 表驱动） | 对照 TC-FLD-004~017；先看 PRD 6.6 |
-| 字段管理弹窗 / 事项字段区 | `src/components/fields/FieldManager.tsx`、`FieldEditor.tsx`、`ItemModal.tsx` | 对照 TC-FLD-001~017、PRD 4.3/6.5/6.6；切分类按模板过滤 |
+| 字段管理弹窗 / 事项字段区 | `src-tauri/src/store/fields.rs`（全局化 v1.17）、`src/components/fields/FieldManager.tsx`、`FieldEditor.tsx`、`ItemModal.tsx` | 对照 TC-FLD-001~019、PRD 4.3/6.5/6.6（v1.17）；可见性由 category_fields 表决定，值跟随事项不迁移 |
 | 字段值 JSON 编解码 / 选项解析 | `src/features/fields/value.ts`（纯函数） | 与后端 fieldconvert 对齐；改编码先补 vitest |
 | 撤销/重做 | `src-tauri/src/undo/`（栈与快照）、`store/snapshot.rs`、前端 `stores/undoStore.ts` + 工具栏 ↶↷ / Ctrl+Z·Y | 对照 TC-UNDO-001~009；快照恢复只 UPSERT |
 | 分类色盘 / 颜色 token | `src/styles/tokens.css` | 与原型一致 |

@@ -376,3 +376,16 @@
 - `vitest` 68 passed、`npm run build` 通过；待用户手测 TC-DT-003/007、TC-IT-016
 ### 打包（指令 A）
 - 版本号 0.3.6 → **0.3.7**；正式目录重命名为 `release\日历待办工具 v0.3.7\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
+
+## 2026-09-19（自定义字段全局化 + 日期分段输入 + 分类下拉排序，PRD v1.17）
+
+### 变更（方案均经用户原型确认；测试用例先行：TC-FLD-001 修订、TC-FLD-018/019 新增、TC-EXP-008 修订）
+- **自定义字段全局化**（schema 迁移 **v3**）：字段定义不再挂分类（重建 field_defs 去掉 category_id），新增 `category_fields` 可见性表；存量字段迁移后仅对其原所属分类可见（数据零丢失）；新增字段默认全部分类可见。事项切换分类仅改变可见字段集，字段数据不变（PRD 4.3 v1.17）
+- 字段管理：任何页面可打开（含总览）；列表每字段显示「可见：…」标签，点击展开分类勾选条即时生效（一步撤销）；新增/编辑表单含可见分类勾选；`set_field_visibility` IPC + FieldUpdate 撤销命令复用
+- 备份格式 **format_version 2**：field_defs 携带 `vis` 数组（不再有 category_id）；导入兼容 v1 旧备份（category_id 单分类换算为可见性）
+- **日期/时刻分段输入**：新增 `SegInputs.tsx`（SegDateInput/SegTimeInput）——年最多 4 位满位自动跳月/日，段点击/聚焦全选覆盖，退格回上一段，右侧 📅/🕐 图标经隐藏原生控件 showPicker 弹选择器；替换事项弹窗 6 框与导出 TXT 弹窗 2 框。解决原生 date input 年段可键入 6 位（浏览器无法配置）与 WebView2 行为差异问题
+- **分类下拉排序**：事项弹窗「所属分类」未分类沉底，与界面标签栏顺序一致
+### 排障记录
+- v3 迁移涉及 DROP 父表（item_field_values 外键引用），`migrate()` 在执行迁移前临时 `PRAGMA foreign_keys=OFF`、完成后恢复 ON（PRAGMA 不能在事务内切换）
+### 验收
+- `cargo test` 55 passed、`vitest` 68 passed、`npm run build` 通过、clippy/fmt 0、原型 script 冒烟通过；待用户手测 TC-FLD-001/018/019、TC-EXP-008 及日期/时刻分段输入

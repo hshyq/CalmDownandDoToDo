@@ -11,12 +11,13 @@ use std::path::{Path, PathBuf};
 
 use super::categories;
 use super::fieldconvert::{self, FieldType};
+use super::fields;
 use super::items;
 use super::validation;
 use super::{Error, Result};
 
 /// 备份格式版本（技术方案 3.3）。
-pub const FORMAT_VERSION: i64 = 1;
+pub const FORMAT_VERSION: i64 = 2;
 
 fn now_iso(conn: &Connection) -> Result<String> {
     conn.query_row("SELECT datetime('now')", [], |r| r.get(0))
@@ -39,20 +40,20 @@ pub fn dump(conn: &Connection) -> Result<Value> {
         .collect();
 
     // field_defs 全表（跨分类）
-    let mut stmt = conn.prepare(
-        "SELECT id, category_id, name, type, options_json, sort_order FROM field_defs ORDER BY id",
-    )?;
-    let def_rows = stmt.query_map([], |r| {
-        Ok(serde_json::json!({
-            "id": r.get::<_, i64>(0)?,
-            "category_id": r.get::<_, i64>(1)?,
-            "name": r.get::<_, String>(2)?,
-            "type": r.get::<_, String>(3)?,
-            "options_json": r.get::<_, Option<String>>(4)?,
-            "sort_order": r.get::<_, i64>(5)?,
-        }))
-    })?;
-    let def_values: Vec<Value> = def_rows.collect::<rusqlite::Result<Vec<_>>>()?;
+    let defs = fields::list_all(conn)?;
+    let def_values: Vec<Value> = defs
+        .iter()
+        .map(|d| {
+            serde_json::json!({
+                "id": d.id,
+                "name": d.name,
+                "type": d.r#type,
+                "options_json": d.options_json,
+                "sort_order": d.sort_order,
+                "vis": d.vis,
+            })
+        })
+        .collect();
 
     // items 全量 + 各事项字段值
     let all_items = items::list(conn, None)?;
@@ -126,7 +127,7 @@ fn import_value(conn: &mut Connection, value: &Value) -> Result<()> {
         .get("format_version")
         .and_then(|v| v.as_i64())
         .ok_or_else(|| Error::Business("备份缺少 format_version".to_string()))?;
-    if ver != FORMAT_VERSION {
+    if ver != 1 && ver != FORMAT_VERSION {
         return Err(Error::Business(format!(
             "备份版本不兼容：文件 {ver}，本程序支持 {FORMAT_VERSION}"
         )));
@@ -192,9 +193,24 @@ fn import_value(conn: &mut Connection, value: &Value) -> Result<()> {
             .as_object()
             .ok_or_else(|| bad(&format!("field_defs[{i}] 不是对象")))?;
         let id = get_i64(obj, "id", &format!("field_defs[{i}]"))?;
-        let cat = get_i64(obj, "category_id", &format!("field_defs[{i}]"))?;
-        if !cat_ids.contains(&cat) {
-            return Err(Error::Business(format!("field_defs[{i}] 引用的分类不存在")));
+        // 可见分类：新格式为 vis 数组；旧格式（v0.3.7 之前）无 vis，用 category_id 兼容
+        let vis: Vec<i64> = match obj.get("vis").and_then(|v| v.as_array()) {
+            Some(arr) => arr
+                .iter()
+                .map(|v| {
+                    v.as_i64()
+                        .ok_or_else(|| Error::Business(format!("field_defs[{i}] 的 vis 含非数字")))
+                })
+                .collect::<Result<Vec<i64>>>()?,
+            None => {
+                let cat = get_i64(obj, "category_id", &format!("field_defs[{i}]"))?;
+                vec![cat]
+            }
+        };
+        for cat in &vis {
+            if !cat_ids.contains(cat) {
+                return Err(Error::Business(format!("field_defs[{i}] 引用的分类不存在")));
+            }
         }
         let name = get_str(obj, "name", &format!("field_defs[{i}]"))?;
         if name.trim().is_empty() {
@@ -321,17 +337,31 @@ fn import_value(conn: &mut Connection, value: &Value) -> Result<()> {
     for f in field_defs {
         let obj = f.as_object().expect("对象");
         tx.execute(
-            "INSERT INTO field_defs (id, category_id, name, type, options_json, sort_order)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO field_defs (id, name, type, options_json, sort_order)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
             rusqlite::params![
                 obj.get("id").and_then(|v| v.as_i64()),
-                obj.get("category_id").and_then(|v| v.as_i64()),
                 obj.get("name").and_then(|v| v.as_str()).unwrap_or(""),
                 obj.get("type").and_then(|v| v.as_str()).unwrap_or("text"),
                 obj.get("options_json").and_then(|v| v.as_str()),
                 obj.get("sort_order").and_then(|v| v.as_i64()).unwrap_or(0),
             ],
         )?;
+        // 可见分类（新格式 vis；旧格式 v1 回退 category_id 单分类）
+        let vis_list: Vec<i64> = match obj.get("vis").and_then(|v| v.as_array()) {
+            Some(arr) => arr.iter().filter_map(|v| v.as_i64()).collect(),
+            None => obj
+                .get("category_id")
+                .and_then(|v| v.as_i64())
+                .into_iter()
+                .collect(),
+        };
+        for cat in vis_list {
+            tx.execute(
+                "INSERT OR IGNORE INTO category_fields (category_id, field_id) VALUES (?1, ?2)",
+                rusqlite::params![cat, obj.get("id").and_then(|v| v.as_i64())],
+            )?;
+        }
     }
     for it in items {
         let obj = it.as_object().expect("对象");
@@ -448,11 +478,11 @@ mod tests {
         let mut conn = db();
         let work = work_id(&conn);
         let f = fields::create(
-            &conn,
-            work,
+            &mut conn,
             "优先级",
             "single_choice",
             Some(&["高".into(), "低".into()]),
+            &[work],
         )
         .expect("建字段");
         let it = items::create(
@@ -507,11 +537,11 @@ mod tests {
         let mut a = db();
         let work = work_id(&a);
         let f = fields::create(
-            &a,
-            work,
+            &mut a,
             "单选",
             "single_choice",
             Some(&["高".into(), "低".into()]),
+            &[work],
         )
         .expect("建字段");
         let it = items::create(
@@ -573,7 +603,7 @@ mod tests {
     fn export_has_format_and_no_secrets() {
         let conn = db();
         let out = dump(&conn).expect("导出");
-        assert_eq!(out["format_version"].as_i64(), Some(1));
+        assert_eq!(out["format_version"].as_i64(), Some(2));
         assert!(out["exported_at"].is_string());
         assert!(out["categories"].is_array());
         assert!(out["items"].is_array());

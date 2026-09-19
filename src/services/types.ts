@@ -136,14 +136,14 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   multi_choice: "多选",
 };
 
-/** 字段模板（对应 store::fields::FieldDef；options_json 为 JSON 数组文本，仅单选/多选有） */
+/** 字段定义（全局，PRD 4.3 v1.17；对应 store::fields::FieldDef；vis 为可见分类 ID 列表） */
 export interface FieldDef {
   id: number;
-  category_id: number;
   name: string;
   type: FieldType;
   options_json: string | null;
   sort_order: number;
+  vis: number[];
 }
 
 export function isFieldDef(v: unknown): v is FieldDef {
@@ -151,7 +151,7 @@ export function isFieldDef(v: unknown): v is FieldDef {
   const o = v as Record<string, unknown>;
   return (
     typeof o.id === "number" &&
-    typeof o.category_id === "number" &&
+    Array.isArray(o.vis) &&
     typeof o.name === "string" &&
     typeof o.type === "string" &&
     (o.type === "text" || o.type === "multiline" || o.type === "number" ||

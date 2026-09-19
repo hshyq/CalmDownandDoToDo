@@ -13,7 +13,7 @@ import type { FieldDef, FieldType } from "../../services/types";
 
 const def = (id: number, type: FieldType, optionsJson: string | null = null): FieldDef => ({
   id,
-  category_id: 1,
+  vis: [1],
   name: "F" + id,
   type,
   options_json: optionsJson,

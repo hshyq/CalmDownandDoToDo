@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Modal from "../Modal/Modal";
 import FieldEditor from "../fields/FieldEditor";
+import { SegDateInput, SegTimeInput } from "../fields/SegInputs";
 import { useAppStore } from "../../stores/appStore";
 import { fieldApi } from "../../services/ipc";
 import { buildFieldPayloads, decodeFieldValue } from "../../features/fields/value";
@@ -162,16 +163,12 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
     }
   };
 
-  // 日期/时刻输入：点击输入区任意位置即打开系统选择器（原型契约，系统图标已隐藏）
-  const pickOnClick = (e: React.MouseEvent<HTMLInputElement>) => {
-    (e.currentTarget as HTMLInputElement).showPicker?.();
-  };
-
+  // 日期/时刻分段输入（PRD 6.3 v1.17）：年最多 4 位满位自动跳段；图标弹原生选择器
   const field = (label: string, dateKey: keyof FormState, timeKey: keyof FormState) => (
     <div className="frow">
       <label>{label}</label>
-      <input type="date" value={f[dateKey]} onClick={pickOnClick} onChange={(e) => set(dateKey, e.target.value)} />
-      <input type="time" value={f[timeKey]} onClick={pickOnClick} onChange={(e) => set(timeKey, e.target.value)} />
+      <SegDateInput value={f[dateKey]} onChange={(v) => set(dateKey, v)} />
+      <SegTimeInput value={f[timeKey]} onChange={(v) => set(timeKey, v)} />
     </div>
   );
 
@@ -199,7 +196,7 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
           <div className="frow">
             <label>所属分类</label>
             <select value={catId} onChange={(e) => setCatId(Number(e.target.value))}>
-              {categories.map((c) => (
+              {[...categories.filter((c) => c.kind !== "uncategorized"), ...categories.filter((c) => c.kind === "uncategorized")].map((c) => (
                 <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </select>

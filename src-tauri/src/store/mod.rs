@@ -230,20 +230,33 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
 
     // ---- 字段（P6；SQL 实现见 store::fields / store::values，写操作 P7 接入 undo）----
 
+    /// 某分类可见字段（事项弹窗字段区，PRD 4.3 v1.17）。
     pub fn list_fields(&self, category_id: i64) -> Result<Vec<fields::FieldDef>> {
         let guard = self.lock()?;
-        fields::list(&guard, category_id)
+        fields::list_visible(&guard, category_id)
+    }
+
+    /// 全部字段（字段管理列表，带可见分类）。
+    pub fn list_fields_all(&self) -> Result<Vec<fields::FieldDef>> {
+        let guard = self.lock()?;
+        fields::list_all(&guard)
+    }
+
+    /// 设置字段可见分类（即时生效，撤销由 commands 层包装）。
+    pub fn set_field_visibility(&self, id: i64, visible: &[i64]) -> Result<()> {
+        let mut guard = self.lock()?;
+        fields::set_visibility(&mut guard, id, visible)
     }
 
     pub fn create_field(
         &self,
-        category_id: i64,
         name: &str,
         ftype: &str,
         options: Option<Vec<String>>,
+        visible: &[i64],
     ) -> Result<fields::FieldDef> {
-        let guard = self.lock()?;
-        fields::create(&guard, category_id, name, ftype, options.as_deref())
+        let mut guard = self.lock()?;
+        fields::create(&mut guard, name, ftype, options.as_deref(), visible)
     }
 
     pub fn rename_field(&self, id: i64, name: &str) -> Result<()> {
@@ -507,7 +520,7 @@ mod tests {
                 r.get(0)
             })
             .expect("查询版本失败");
-        assert_eq!(v, 2, "应迁移到最新版本 v2（day_types）");
+        assert_eq!(v, 3, "应迁移到最新版本 v3（字段全局化）");
     }
 
     #[test]

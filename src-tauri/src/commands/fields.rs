@@ -26,19 +26,52 @@ pub fn list_fields(db: State<'_, Db>, category_id: i64) -> Result<Vec<FieldDef>,
     db.list_fields(category_id).map_err(|e| e.to_string())
 }
 
+/// 全部字段（字段管理列表，含可见分类；PRD 4.3 v1.17）。
+#[tauri::command]
+pub fn list_fields_all(db: State<'_, Db>) -> Result<Vec<FieldDef>, String> {
+    db.list_fields_all().map_err(|e| e.to_string())
+}
+
+/// 设置字段可见分类（勾选即时生效，一次勾选=一步撤销；PRD 4.3 v1.17）。
+#[tauri::command]
+pub fn set_field_visibility(
+    db: State<'_, Db>,
+    stack: State<'_, UndoStack>,
+    app: AppHandle,
+    id: i64,
+    visible: Vec<i64>,
+) -> Result<(), String> {
+    let before = db
+        .snapshot_field(id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "字段不存在".to_string())?;
+    db.set_field_visibility(id, &visible)
+        .map_err(|e| e.to_string())?;
+    let after = db
+        .snapshot_field(id)
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "字段不存在".to_string())?;
+    stack.push(Box::new(UndoCmd::FieldUpdate {
+        before: Box::new(before),
+        after: Box::new(after),
+    }));
+    emit_depth(&app, &stack);
+    Ok(())
+}
+
 #[tauri::command]
 pub fn create_field(
     db: State<'_, Db>,
     stack: State<'_, UndoStack>,
     app: AppHandle,
-    category_id: i64,
+    visible: Vec<i64>,
     name: String,
     field_type: String,
     options: Option<Vec<String>>,
 ) -> Result<FieldDef, String> {
     let name = validate_field_name(&name)?;
     let def = db
-        .create_field(category_id, &name, &field_type, options)
+        .create_field(&name, &field_type, options, &visible)
         .map_err(|e| e.to_string())?;
     let snap = db
         .snapshot_field(def.id)
@@ -194,21 +227,15 @@ pub fn move_field(
     id: i64,
     direction: String,
 ) -> Result<(), String> {
-    // 记录该分类全部字段排序前后状态，撤销/重做时按快照恢复（P7）。
-    let cat = db
-        .snapshot_field(id)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| "字段不存在".to_string())?
-        .def
-        .category_id;
+    // 记录全局字段排序前后状态，撤销/重做时按快照恢复（P7；v1.17 字段全局排序）
     let sorts = |defs: &[FieldDef]| {
         defs.iter()
             .map(|f| (f.id, f.sort_order))
             .collect::<Vec<_>>()
     };
-    let before = sorts(&db.list_fields(cat).map_err(|e| e.to_string())?);
+    let before = sorts(&db.list_fields_all().map_err(|e| e.to_string())?);
     db.move_field(id, &direction).map_err(|e| e.to_string())?;
-    let after = sorts(&db.list_fields(cat).map_err(|e| e.to_string())?);
+    let after = sorts(&db.list_fields_all().map_err(|e| e.to_string())?);
     stack.push(Box::new(UndoCmd::FieldSort { before, after }));
     emit_depth(&app, &stack);
     Ok(())

@@ -368,7 +368,9 @@ mod tests {
             "临时"
         );
 
-        let field = db.create_field(c.id, "备注", "text", None).expect("建字段");
+        let field = db
+            .create_field("备注", "text", None, &[c.id])
+            .expect("建字段");
         let it = db.create_item(&mk_item(c.id, "事项")).expect("新增");
         db.set_item_field_values(it.id, vec![(field.id, Some("\"v\"".to_string()))])
             .expect("写值");

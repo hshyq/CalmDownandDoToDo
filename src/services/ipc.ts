@@ -93,17 +93,27 @@ export const itemApi = {
 
 /** 自定义字段 IPC（对应 commands::fields，PRD 4.3/6.5/6.6；命令参数经 Tauri camelCase→snake_case 转换）。 */
 export const fieldApi = {
-  /** 分类字段模板（按 sort_order 升序）。 */
+  /** 某分类可见字段（事项弹窗字段区，按 sort_order 升序；PRD 4.3 v1.17）。 */
   async list(categoryId: number): Promise<FieldDef[]> {
     const v = await call<unknown>("list_fields", { categoryId });
     if (!isFieldDefArray(v)) throw new Error("字段数据格式异常");
     return v;
   },
-  /** 新建字段；单选/多选必须带非空 options。 */
-  async create(categoryId: number, name: string, fieldType: string, options: string[] | null): Promise<FieldDef> {
-    const v = await call<unknown>("create_field", { categoryId, name, fieldType, options });
+  /** 全部字段（字段管理列表，含可见分类）。 */
+  async listAll(): Promise<FieldDef[]> {
+    const v = await call<unknown>("list_fields_all", {});
+    if (!isFieldDefArray(v)) throw new Error("字段数据格式异常");
+    return v;
+  },
+  /** 新建字段（默认可传全部分类可见）；单选/多选必须带非空 options。 */
+  async create(name: string, fieldType: string, options: string[] | null, visible: number[]): Promise<FieldDef> {
+    const v = await call<unknown>("create_field", { name, fieldType, options, visible });
     if (!isFieldDef(v)) throw new Error("字段数据格式异常");
     return v;
+  },
+  /** 设置字段可见分类（即时生效，一步撤销；PRD 4.3 v1.17）。 */
+  async setVisibility(id: number, visible: number[]): Promise<void> {
+    await call<void>("set_field_visibility", { id, visible });
   },
   async rename(id: number, name: string): Promise<void> {
     await call<void>("rename_field", { id, name });

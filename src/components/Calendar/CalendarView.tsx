@@ -33,7 +33,7 @@ export default function CalendarView() {
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [day, setDay] = useState<string | null>(null);
-  const [fmCat, setFmCat] = useState<Category | null>(null);
+  const [fmOpen, setFmOpen] = useState(false);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   // 年月选择面板（原型 pk-* 契约）：浏览的年月；null=关闭
   const [pick, setPick] = useState<{ y: number; m: number } | null>(null);
@@ -465,9 +465,7 @@ export default function CalendarView() {
         <span style={{ flex: 1 }} />
         <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
         <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
-        {scope !== null ? (
-          <button type="button" className="btn-ghost" onClick={() => { const c = catOf(scope); if (c) setFmCat(c); }}>字段管理</button>
-        ) : null}
+        <button type="button" className="btn-ghost" onClick={() => setFmOpen(true)}>字段管理</button>
         <button
           type="button"
           className="btn-primary add"
@@ -519,7 +517,7 @@ export default function CalendarView() {
           onClose={() => setDtDialog(false)}
         />
       ) : null}
-      {fmCat ? <FieldManager category={fmCat} onClose={() => setFmCat(null)} /> : null}
+      {fmOpen ? <FieldManager categories={categories} onClose={() => setFmOpen(false)} /> : null}
       {toast ? <div className="toast">{toast}</div> : null}
     </main>
   );

@@ -1,11 +1,9 @@
-// 字段管理弹窗（PRD 6.5/6.6；原型「字段管理 · 分类名」界面）。
-// 入口：分类页/未分类页工具栏「字段管理」按钮（总览无模板，PRD 6.5）。
+// 字段管理弹窗（PRD 4.3/6.5/6.6 v1.17；字段全局定义 + 分类可见性配置）。
+// 入口：所有页面工具栏「字段管理」按钮；可见分类勾选即时生效（一步撤销）。
 import { useCallback, useEffect, useState } from "react";
 import Modal from "../Modal/Modal";
 import { fieldApi } from "../../services/ipc";
-import {
-  FIELD_TYPE_LABELS,
-} from "../../services/types";
+import { FIELD_TYPE_LABELS } from "../../services/types";
 import type { Category, FieldDef, FieldType } from "../../services/types";
 import {
   isChoiceType,
@@ -15,16 +13,16 @@ import {
 } from "../../features/fields/value";
 
 interface Props {
-  category: Category;
+  categories: Category[];
   onClose: () => void;
 }
 
-type Editing = { mode: "new" } | { mode: "edit"; field: FieldDef };
+type Editing = { mode: "new"; visible: number[] } | { mode: "edit"; field: FieldDef };
 type Confirm = { kind: "del"; field: FieldDef } | { kind: "type" } | null;
 
 const TYPE_KEYS = Object.keys(FIELD_TYPE_LABELS) as FieldType[];
 
-export default function FieldManager({ category, onClose }: Props) {
+export default function FieldManager({ categories, onClose }: Props) {
   const [fields, setFields] = useState<FieldDef[] | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [name, setName] = useState("");
@@ -34,6 +32,7 @@ export default function FieldManager({ category, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [toast, setToast] = useState("");
+  const [visOpenId, setVisOpenId] = useState<number | null>(null);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -42,18 +41,18 @@ export default function FieldManager({ category, onClose }: Props) {
 
   const reload = useCallback(async () => {
     try {
-      setFields(await fieldApi.list(category.id));
+      setFields(await fieldApi.listAll());
     } catch (e) {
       setFields([]);
       showToast(e instanceof Error ? e.message : "加载字段失败，请重试");
     }
-  }, [category.id]);
+  }, []);
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  /** 非选项类 → 选项类：保存时由历史值自动生成选项（零丢失，PRD 6.6 v1.2 / TC-FLD-008/009/015/016/017）。 */
+  /** 非选项类 → 选项类：保存时由历史值自动生成选项（零丢失，PRD 6.6 v1.2 / TC-FLD-008/009/015）。 */
   const zeroLoss =
     editing !== null && editing.mode === "edit" &&
     isChoiceType(type) && !isChoiceType(editing.field.type);
@@ -69,7 +68,8 @@ export default function FieldManager({ category, onClose }: Props) {
   };
 
   const beginNew = () => {
-    setEditing({ mode: "new" });
+    // 新字段默认全部分类可见（PRD 4.3 v1.17）
+    setEditing({ mode: "new", visible: categories.map((c) => c.id) });
     setName("新字段");
     setType("text");
     setOptionsText("");
@@ -85,6 +85,41 @@ export default function FieldManager({ category, onClose }: Props) {
     setConfirm(null);
     setErr("");
   };
+
+  const visLabel = (f: FieldDef): string => {
+    if (f.vis.length === categories.length) return "全部分类";
+    const names = f.vis.map((id) => categories.find((c) => c.id === id)?.name).filter(Boolean);
+    return names.length ? names.join("、") : "无";
+  };
+
+  /** 可见分类勾选：即时生效，一步撤销（TC-FLD-019）。 */
+  const toggleVis = async (f: FieldDef, catId: number, on: boolean) => {
+    const next = on
+      ? f.vis.includes(catId) ? f.vis : [...f.vis, catId]
+      : f.vis.filter((x) => x !== catId);
+    try {
+      await fieldApi.setVisibility(f.id, next);
+      await reload();
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : "设置可见分类失败，请重试");
+    }
+  };
+
+  const visChips = (f: FieldDef) => (
+    <>
+      {categories.map((c) => (
+        <label key={c.id} className={"vis-chip" + (f.vis.includes(c.id) ? " on" : "")}>
+          <input
+            type="checkbox"
+            checked={f.vis.includes(c.id)}
+            onChange={(e) => void toggleVis(f, c.id, e.target.checked)}
+          />
+          {c.name}
+        </label>
+      ))}
+      <span className="fm-vis-tip">勾选 = 该分类的事项显示此字段</span>
+    </>
+  );
 
   const doSave = async () => {
     if (!editing) return;
@@ -105,13 +140,12 @@ export default function FieldManager({ category, onClose }: Props) {
     setErr("");
     try {
       if (editing.mode === "new") {
-        await fieldApi.create(category.id, cleanName, type, isChoiceType(type) ? options : null);
+        await fieldApi.create(cleanName, type, isChoiceType(type) ? options : null, editing.visible);
         showToast("字段已新增");
       } else {
         const old = editing.field;
         // 一次保存 = 一步撤销（PRD 6.7）：改名/改类型/选项合并为 save_field
         const newType = old.type !== type ? type : null;
-        // 非选项→选项由后端按历史值自动生成选项；其余选项类传用户维护的选项
         const opts = isChoiceType(type) && !zeroLoss ? options : null;
         await fieldApi.saveField(old.id, cleanName, newType, opts);
         showToast("已保存");
@@ -166,26 +200,43 @@ export default function FieldManager({ category, onClose }: Props) {
 
   const list = fields ?? [];
   const editingField = editing?.mode === "edit" ? editing.field : null;
+  const newVisibleSet = editing?.mode === "new" ? new Set(editing.visible) : null;
 
   return (
-    <Modal title={`字段管理 · ${category.name}`} onClose={onClose} width={520}>
+    <Modal title="字段管理" onClose={onClose} width={520}>
+      <div className="note" style={{ marginBottom: 6 }}>
+        · 自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。
+      </div>
       {fields === null ? (
         <div className="iempty">加载中…</div>
       ) : list.length === 0 && !editing ? (
-        <div className="iempty">该分类暂无自定义字段，点击下方按钮新增。</div>
+        <div className="iempty">暂无自定义字段，点击下方按钮新增。</div>
       ) : (
         <div className="fm-list">
           {list.map((f, i) => (
-            <div key={f.id} className="fm-row">
-              <span className="fname" title={f.name}>{f.name}</span>
-              <span className="ftype">{FIELD_TYPE_LABELS[f.type]}</span>
-              <span className="fopt">
-                {isChoiceType(f.type) ? `${parseOptions(f.options_json).length} 选项` : "—"}
-              </span>
-              <button type="button" className="op" disabled={i === 0} title="上移" onClick={() => void doMove(f, "up")}>↑</button>
-              <button type="button" className="op" disabled={i === list.length - 1} title="下移" onClick={() => void doMove(f, "down")}>↓</button>
-              <button type="button" className="op" title="编辑" onClick={() => beginEdit(f)}>✎</button>
-              <button type="button" className="op danger" title="删除" onClick={() => setConfirm({ kind: "del", field: f })}>🗑</button>
+            <div key={f.id}>
+              <div className="fm-row">
+                <span className="fname" title={f.name}>{f.name}</span>
+                <span className="ftype">{FIELD_TYPE_LABELS[f.type]}</span>
+                <span className="fopt">
+                  {isChoiceType(f.type) ? `${parseOptions(f.options_json).length} 选项` : "—"}
+                </span>
+                <button
+                  type="button"
+                  className="vis-tag"
+                  title="配置可见分类"
+                  onClick={() => setVisOpenId(visOpenId === f.id ? null : f.id)}
+                >
+                  可见：{visLabel(f)}
+                </button>
+                <button type="button" className="op" disabled={i === 0} title="上移" onClick={() => void doMove(f, "up")}>↑</button>
+                <button type="button" className="op" disabled={i === list.length - 1} title="下移" onClick={() => void doMove(f, "down")}>↓</button>
+                <button type="button" className="op" title="编辑" onClick={() => beginEdit(f)}>✎</button>
+                <button type="button" className="op danger" title="删除" onClick={() => setConfirm({ kind: "del", field: f })}>🗑</button>
+              </div>
+              {visOpenId === f.id && !editing ? (
+                <div className="fm-vis">{visChips(f)}</div>
+              ) : null}
             </div>
           ))}
         </div>
@@ -219,6 +270,34 @@ export default function FieldManager({ category, onClose }: Props) {
               )}
             </div>
           ) : null}
+          <div className="frow">
+            <label>可见分类</label>
+            <span className="chips">
+              {editing.mode === "new" ? (
+                categories.map((c) => {
+                  const on = newVisibleSet?.has(c.id) ?? false;
+                  return (
+                    <label key={c.id} className={"vis-chip" + (on ? " on" : "")}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={(e) => {
+                          if (editing.mode !== "new") return;
+                          const next = new Set(editing.visible);
+                          if (e.target.checked) next.add(c.id);
+                          else next.delete(c.id);
+                          setEditing({ ...editing, visible: [...next] });
+                        }}
+                      />
+                      {c.name}
+                    </label>
+                  );
+                })
+              ) : (
+                editingField ? visChips(editingField) : null
+              )}
+            </span>
+          </div>
           {err ? <div className="ferr">{err}</div> : null}
           <div className="fm-actions">
             <button type="button" className="btn-ghost" disabled={busy} onClick={cancelEdit}>取消</button>

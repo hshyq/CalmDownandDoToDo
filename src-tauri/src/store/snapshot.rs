@@ -75,7 +75,7 @@ pub fn snapshot_category(conn: &Connection, id: i64) -> Result<Option<CategorySn
     let Ok(category) = categories::get(conn, id) else {
         return Ok(None);
     };
-    let defs = fields::list(conn, id)?;
+    let defs = fields::list_visible(conn, id)?;
     let items = items::list(conn, Some(id))?;
     let mut snaps = Vec::with_capacity(items.len());
     for it in items {
@@ -104,12 +104,26 @@ fn upsert_category(tx: &Connection, cat: &Category) -> Result<()> {
 
 fn upsert_field_def(tx: &Connection, def: &FieldDef) -> Result<()> {
     tx.execute(
-        "INSERT INTO field_defs (id, category_id, name, type, options_json, sort_order)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-         ON CONFLICT(id) DO UPDATE SET category_id=excluded.category_id, name=excluded.name,
-             type=excluded.type, options_json=excluded.options_json, sort_order=excluded.sort_order",
-        rusqlite::params![def.id, def.category_id, def.name, def.r#type, def.options_json, def.sort_order],
+        "INSERT INTO field_defs (id, name, type, options_json, sort_order)
+         VALUES (?1, ?2, ?3, ?4, ?5)
+         ON CONFLICT(id) DO UPDATE SET name=excluded.name, type=excluded.type,
+             options_json=excluded.options_json, sort_order=excluded.sort_order",
+        rusqlite::params![
+            def.id,
+            def.name,
+            def.r#type,
+            def.options_json,
+            def.sort_order
+        ],
     )?;
+    // 恢复可见分类（category_fields 整组替换）
+    tx.execute("DELETE FROM category_fields WHERE field_id = ?1", [def.id])?;
+    for cat_id in &def.vis {
+        tx.execute(
+            "INSERT OR IGNORE INTO category_fields (category_id, field_id) VALUES (?1, ?2)",
+            rusqlite::params![cat_id, def.id],
+        )?;
+    }
     Ok(())
 }
 
@@ -278,7 +292,7 @@ mod tests {
     fn item_restore_roundtrip() {
         let mut conn = db();
         let work = cat_id(&conn, "工作");
-        let f = fields::create(&conn, work, "备注", "text", None).expect("建字段");
+        let f = fields::create(&mut conn, "备注", "text", None, &[work]).expect("建字段");
         let it = mk_item(&conn, work, "写周报");
         values::set_values(&mut conn, it.id, &[(f.id, Some("\"v1\"".to_string()))]).expect("写值");
 
@@ -328,7 +342,7 @@ mod tests {
     fn field_restore_after_change_type_and_options() {
         let mut conn = db();
         let work = cat_id(&conn, "工作");
-        let f = fields::create(&conn, work, "评分", "text", None).expect("建字段");
+        let f = fields::create(&mut conn, "评分", "text", None, &[work]).expect("建字段");
         let it = mk_item(&conn, work, "A");
         values::set_values(&mut conn, it.id, &[(f.id, Some("\"123\"".to_string()))]).expect("写值");
         let snap = snapshot_field(&conn, f.id).expect("快照").expect("存在");
@@ -350,7 +364,7 @@ mod tests {
     fn category_delete_cascade_restore() {
         let mut conn = db();
         let c = categories::create(&conn, "临时分类", "#112233").expect("建分类");
-        let f = fields::create(&conn, c.id, "备注", "text", None).expect("建字段");
+        let f = fields::create(&mut conn, "备注", "text", None, &[c.id]).expect("建字段");
         let it = mk_item(&conn, c.id, "事项1");
         let it2 = mk_item(&conn, c.id, "事项2");
         values::set_values(&mut conn, it.id, &[(f.id, Some("\"x\"".to_string()))]).expect("写值");
@@ -375,7 +389,7 @@ mod tests {
     fn category_delete_move_restore() {
         let mut conn = db();
         let c = categories::create(&conn, "临时分类", "#445566").expect("建分类");
-        let f = fields::create(&conn, c.id, "备注", "text", None).expect("建字段");
+        let f = fields::create(&mut conn, "备注", "text", None, &[c.id]).expect("建字段");
         let it = mk_item(&conn, c.id, "事项1");
         values::set_values(&mut conn, it.id, &[(f.id, Some("\"z\"".to_string()))]).expect("写值");
         let uncat = categories::list(&conn)

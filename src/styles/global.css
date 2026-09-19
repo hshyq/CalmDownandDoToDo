@@ -388,3 +388,24 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 
 /* 拖拽日历横条悬停待办面板高亮（PRD 5.2 v1.16） */
 .tlist.dragover { outline: 2px dashed var(--accent); outline-offset: -4px; background: #f0f6ff; }
+
+/* ===== 分段日期/时刻输入（PRD 6.3/6.9 v1.17）：年最多 4 位满位自动跳段；图标弹原生选择器 ===== */
+.segwrap { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 6px; background: #fff; padding: 0 4px; }
+.segwrap:focus-within { border-color: var(--accent); }
+.seg { border: none; outline: none; background: none; font: inherit; color: var(--text); text-align: center; padding: 5px 0; }
+.seg::placeholder { color: var(--muted); opacity: 0.6; }
+.seg-y { width: 38px; }
+.seg-m, .seg-d, .seg-h, .seg-mi { width: 22px; }
+.segsep { color: var(--border); margin: 0 1px; }
+.segicon { flex: none; cursor: pointer; font-size: 13px; opacity: 0.55; user-select: none; padding: 0 2px; }
+.segicon:hover { opacity: 1; }
+.seg-native { opacity: 0; width: 1px; height: 1px; position: absolute; pointer-events: none; }
+
+/* ===== 字段管理：全局字段 + 分类可见性（PRD 4.3 v1.17） ===== */
+.vis-tag { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; color: var(--muted); cursor: pointer; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vis-tag:hover { border-color: var(--accent); color: var(--accent); }
+.fm-vis { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 4px 8px 6px 26px; border-bottom: 1px dashed var(--border); }
+.vis-chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; font-size: 11px; cursor: pointer; color: var(--text); user-select: none; }
+.vis-chip.on { border-color: var(--accent); background: #e8f0fe; color: var(--accent); }
+.vis-chip input { display: none; }
+.fm-vis-tip { font-size: 11px; color: var(--muted); }
