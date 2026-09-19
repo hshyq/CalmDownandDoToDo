@@ -658,6 +658,10 @@ function initSegs(root){
     const segs=[...w.querySelectorAll('.seg')];
     const icon=w.querySelector('.segicon'),native=w.querySelector('.seg-native');
     segs.forEach((seg,i)=>{
+      // 聚焦/点击即全选本段：键入直接覆盖（对齐原生控件的分段选中体验）
+      const selAll=()=>seg.select();
+      seg.addEventListener('focus',selAll);
+      seg.addEventListener('click',selAll);
       seg.addEventListener('input',()=>{
         seg.value=seg.value.replace(/\D/g,'').slice(0,seg.maxLength);
         if(seg.value.length>=seg.maxLength&&i<segs.length-1)segs[i+1].focus();
