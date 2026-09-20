@@ -392,3 +392,7 @@
 ### 打包（指令 A）
 - 版本号 0.3.7 → **0.3.8**；正式目录重命名为 `release\日历待办工具 v0.3.8\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）
 - **schema v3 存量迁移实测**（临时目录 + 生产 data 副本）：v2 → v3 迁移后 110 条事项、50 行字段值零丢失；field_defs 的 category_id 列移除；3 个存量字段可见性正确迁至原所属分类；验证后进程终止、临时目录（含数据副本）清理；未推送、未建 Release（等指令 B/C）
+
+### 发布（指令 B+C）
+- GitHub Release **v0.3.8** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.8 ，附件 `CalmDownandDoToDo-v0.3.8.zip`（英文名，仅 exe + 使用说明，不含生产 data）
+- 本版随内容：字段全局化（schema v3）、日期/时刻分段输入、分类下拉排序、色条与今日染色、拖拽转待办、待办时间线、TXT 导出（v1.14~v1.17 累计）
