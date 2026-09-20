@@ -85,7 +85,7 @@
 │     │  ├─ mod.rs            Db(Mutex 单连接)/open/迁移调用；日历窗口交集、待办 COALESCE 排序查询
 │     │  ├─ backup.rs        P8 整库 dump/导入 + 语义校验（TC-BAK-006）+ 默认导出路径
 │     │  ├─ export.rs        P10 TXT 导出（窗口交集/截止过滤 + 格式化 + UTF-8 BOM，PRD 6.9）
-│     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（一期全表）/ v2（day_types，只增不改历史）
+│     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（一期全表）/ v2（day_types）/ v3（字段全局化+category_fields，只增不改历史）
 │     │  └─ validation.rs     应用层校验（分类名/颜色/标题/日期时刻成对/结束不早于开始）
 │     │  └─ snapshot.rs   P7 撤销快照/恢复原语（行级/字段/整分类级联）
 │     │  └─ daytypes.rs   日期类型覆盖项 list/get/set（PRD 5.5 v1.12；日期与类型值校验）
