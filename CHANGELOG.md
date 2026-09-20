@@ -389,3 +389,6 @@
 - v3 迁移涉及 DROP 父表（item_field_values 外键引用），`migrate()` 在执行迁移前临时 `PRAGMA foreign_keys=OFF`、完成后恢复 ON（PRAGMA 不能在事务内切换）
 ### 验收
 - `cargo test` 55 passed、`vitest` 68 passed、`npm run build` 通过、clippy/fmt 0、原型 script 冒烟通过；待用户手测 TC-FLD-001/018/019、TC-EXP-008 及日期/时刻分段输入
+### 打包（指令 A）
+- 版本号 0.3.7 → **0.3.8**；正式目录重命名为 `release\日历待办工具 v0.3.8\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）
+- **schema v3 存量迁移实测**（临时目录 + 生产 data 副本）：v2 → v3 迁移后 110 条事项、50 行字段值零丢失；field_defs 的 category_id 列移除；3 个存量字段可见性正确迁至原所属分类；验证后进程终止、临时目录（含数据副本）清理；未推送、未建 Release（等指令 B/C）
