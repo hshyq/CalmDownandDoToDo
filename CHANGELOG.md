@@ -396,3 +396,13 @@
 ### 发布（指令 B+C）
 - GitHub Release **v0.3.8** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.8 ，附件 `CalmDownandDoToDo-v0.3.8.zip`（英文名，仅 exe + 使用说明，不含生产 data）
 - 本版随内容：字段全局化（schema v3）、日期/时刻分段输入、分类下拉排序、色条与今日染色、拖拽转待办、待办时间线、TXT 导出（v1.14~v1.17 累计）
+
+## 2026-09-19（日期类型入口移入设置 + 列表视图，PRD v1.18）
+
+### 新增/变更（方案均经用户原型确认；测试用例先行：TC-DT-007、TC-CAL-019 修订、TC-CAL-020 新增）
+- **日期类型入口移入设置**：日历工具栏「日期类型」按钮移除；设置弹窗新增「日期类型」页签（月历管理：翻月查看、点日期循环切换班/休/假/恢复默认，可撤销）。`DayTypeDialog` 重构为自包含 `DayTypePanel`（内嵌设置弹窗，自行按浏览月份拉取覆盖项）
+- **列表视图**（PRD 6.10）：工具栏切换「周/月/列表」三态；列表视图展示全部日历+待办事项——分「日历/待办」两段（日历按开始日期升序、待办按截止日期升序无截止沉底）；表头=分类/标题/开始/结束/截止+全部自定义字段动态列；**分类与标题两列横向滚动冻结**、标题列宽 20 个汉字超出换行、分组名横向固定；上下滚动位置稳定（列表视图下滚轮不触发周期切换）；点击任意行打开编辑弹窗；受左侧标签页过滤
+### 实现
+- `DayTypePanel.tsx`（自包含面板：按浏览月份拉取覆盖项+IPC 设置）；`DayTypeDialog.tsx` 移除；`ListView.tsx` 新增（数据源=日历超大窗口查询+待办查询+`list_all_field_values` 全表字段值，并行拉取；显示经 decodeFieldValue 格式化）；`CalendarView` ViewMode 加 `list`、滚轮处理器排除列表视图；`commands/fields.rs` + `store/values.rs` 新增 `list_all_field_values`
+### 验收
+- `cargo test` 55 passed、`vitest` 68 passed、`npm run build` 通过、clippy/fmt 0、TS 通过；待用户手测 TC-DT-007、TC-CAL-019/020

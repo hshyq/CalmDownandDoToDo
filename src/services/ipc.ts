@@ -115,6 +115,16 @@ export const fieldApi = {
   async setVisibility(id: number, visible: number[]): Promise<void> {
     await call<void>("set_field_visibility", { id, visible });
   },
+  /** 全表字段值行（列表视图动态列；[item_id, field_def_id, value_json]）。 */
+  async allValues(): Promise<Array<{ itemId: number; fieldDefId: number; valueJson: string | null }>> {
+    const v = await call<Array<{ item_id: number; field_def_id: number; value_json: string | null }>>(
+      "list_all_field_values",
+      {},
+    );
+    return Array.isArray(v)
+      ? v.map((r) => ({ itemId: Number(r.item_id), fieldDefId: Number(r.field_def_id), valueJson: r.value_json }))
+      : [];
+  },
   async rename(id: number, name: string): Promise<void> {
     await call<void>("rename_field", { id, name });
   },

@@ -627,7 +627,8 @@ function renderListView(){
   const defs=[...state.fields].sort((a,b)=>a.sort-b.sort);
   const fmt=(d,t)=>d?(t?`${d} ${t}`:d):'—';
   const cell=(v)=>`<td class="lcell">${v==null||v===''?'<span class="ldim">—</span>':esc(String(v))}</td>`;
-  let rows=`<tr class="lgroup"><td colspan="${4+defs.length}">日历（${cal.length}）</td></tr>`;
+  const groupRow=(txt)=>`<tr class="lgroup"><td>${txt}</td>${'<td></td>'.repeat(4+defs.length)}</tr>`;
+  let rows=groupRow(`日历（${cal.length}）`);
   for(const it of cal){
     const c=catOf(it.cat);
     rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">
@@ -639,7 +640,7 @@ function renderListView(){
       ${defs.map(f=>cell(it.fv[f.id]!==undefined&&it.fv[f.id]!==null?(Array.isArray(it.fv[f.id])?it.fv[f.id].join('、'):String(it.fv[f.id])):'')).join('')}
     </tr>`;
   }
-  rows+=`<tr class="lgroup"><td colspan="${4+defs.length}">待办（${todo.length}）</td></tr>`;
+  rows+=groupRow(`待办（${todo.length}）`);
   for(const it of todo){
     const c=catOf(it.cat);
     rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">

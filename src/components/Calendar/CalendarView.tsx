@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ItemModal from "../Items/ItemModal";
 import FieldManager from "../fields/FieldManager";
+import ListView from "./ListView";
 import { useUndoStore } from "../../stores/undoStore";
 import { useAppStore } from "../../stores/appStore";
 import { itemApi, dayTypeApi } from "../../services/ipc";
@@ -14,9 +15,8 @@ import type { CalItemLite } from "../../features/calendar/layout";
 import { BAR_MIME, TODO_MIME, clampEdge, shiftRange, todoDropDates } from "../../features/calendar/drag";
 import type { ShiftedDates } from "../../features/calendar/drag";
 import { textColorOn } from "../../features/color/palette";
-import DayTypeDialog from "./DayTypeDialog";
 
-type ViewMode = "week" | "month";
+type ViewMode = "week" | "month" | "list";
 
 interface ModalState {
   open: boolean;
@@ -41,7 +41,6 @@ export default function CalendarView() {
   const [resize, setResize] = useState<null | { id: number; edge: "start" | "end"; preview: ShiftedDates }>(null);
   // 日期类型覆盖项（PRD 5.5 v1.12）：date → work/rest/holiday；未指定按星期推算
   const [dayTypes, setDayTypes] = useState<Record<string, DayType>>({});
-  const [dtDialog, setDtDialog] = useState(false);
   const { canUndo, canRedo, undo: runUndo, redo: runRedo } = useUndoStore();
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(false);
@@ -108,6 +107,8 @@ export default function CalendarView() {
   // 滚轮切换周期（PRD 5.3 v1.13）：悬浮日历区滚动滚轮=上/下周·月。
   // 内容溢出（窗口较矮）时不劫持，保留内容滚动；按 deltaY 累计阈值触发，防一次滚动连跳。
   const calwrapRef = useRef<HTMLDivElement | null>(null);
+  const viewRef = useRef<ViewMode>("month");
+  viewRef.current = view;
   const navRef = useRef<(dir: 1 | -1) => void>(() => {});
   navRef.current = nav;
 
@@ -116,6 +117,7 @@ export default function CalendarView() {
     if (!el) return;
     const acc = { v: 0, t: 0 };
     const onWheel = (e: WheelEvent) => {
+      if (viewRef.current === "list") return; // 列表视图：滚轮滚动表格，不切换周期
       if (el.scrollHeight > el.clientHeight + 1) return;
       const now = Date.now();
       if (now - acc.t > 400) acc.v = 0;
@@ -451,17 +453,18 @@ export default function CalendarView() {
         <div className="seg">
           <button type="button" className={view === "week" ? "on" : ""} onClick={() => setView("week")}>周</button>
           <button type="button" className={view === "month" ? "on" : ""} onClick={() => setView("month")}>月</button>
+          <button type="button" className={view === "list" ? "on" : ""} onClick={() => setView("list")}>列表</button>
         </div>
         <span style={{ position: "relative", marginLeft: 12 }}>
           <span
             className="title cal-title"
+            style={view === "list" ? { display: "none" } : undefined}
             title="点击选择年月"
             onClick={() => (pick ? setPick(null) : openPick())}
           >{title}</span>
           {pick ? <div className="popmask" onClick={() => setPick(null)} /> : null}
           {renderPickPanel()}
         </span>
-        <button type="button" className="btn-ghost" onClick={() => setDtDialog(true)}>日期类型</button>
         <span style={{ flex: 1 }} />
         <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
         <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
@@ -483,6 +486,9 @@ export default function CalendarView() {
           + 新增事项
         </button>
       </div>
+      {view === "list" ? (
+        <ListView categories={categories} scope={scope} />
+      ) : (
       <div className="calwrap" ref={calwrapRef}>
         <div className="calhead">
           {["周一", "周二", "周三", "周四", "周五", "周六", "周日"].map((d) => (
@@ -492,7 +498,7 @@ export default function CalendarView() {
         <div className="calgrid">{rows.map(renderRow)}</div>
         {loading ? <div className="loading-mask">加载中…</div> : null}
       </div>
-
+      )}
       {modal ? (
         <ItemModal
           item={modal.item}
@@ -508,14 +514,6 @@ export default function CalendarView() {
 
       {day ? (
         <DayOverlay date={day} items={items} categories={categories} onPick={(id) => void openEdit(id)} onClose={() => setDay(null)} />
-      ) : null}
-      {dtDialog ? (
-        <DayTypeDialog
-          cursor={cursor}
-          dayTypes={dayTypes}
-          onChange={applyDayType}
-          onClose={() => setDtDialog(false)}
-        />
       ) : null}
       {fmOpen ? <FieldManager categories={categories} onClose={() => setFmOpen(false)} /> : null}
       {toast ? <div className="toast">{toast}</div> : null}

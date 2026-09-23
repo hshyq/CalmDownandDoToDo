@@ -305,6 +305,11 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
         values::set_values(&mut guard, item_id, &values)
     }
 
+    pub fn list_all_field_values(&self) -> Result<Vec<(i64, i64, Option<String>)>> {
+        let guard = self.lock()?;
+        values::list_all(&guard)
+    }
+
     pub fn list_item_field_values(&self, item_id: i64) -> Result<Vec<(i64, Option<String>)>> {
         let guard = self.lock()?;
         values::list_for_item(&guard, item_id)

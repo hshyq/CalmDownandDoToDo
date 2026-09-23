@@ -44,10 +44,10 @@
 │  ├─ components/             组件（按模块目录组织）
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 墨刀式色盘（色板+SV 取色面板+色相条+HEX）
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部；closeOnOverlayClick 时点遮罩等效取消，仅事项弹窗开启）
-│  │  ├─ Calendar/            日历视图 CalendarView（周/月、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；DayTypeDialog（日期类型月历管理弹窗）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月/列表三态、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；ListView（列表视图，v1.18）；DayTypePanel（日期类型月历管理面板，v1.18 起嵌设置弹窗）
 │  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + 自定义字段区按分类可见过滤；分段日期/时刻输入；「+」新增预填开始=结束=格日期）
 │  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期；接收日历横条拖入转待办，v1.16；右侧显示截止日数字；当前时间线，v1.15）
-│  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入）
+│  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入/TXT 导出；日期类型页签，v1.18）
 │  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗（全局字段+分类可见性，v1.17）/ SegInputs 分段日期/时刻输入（v1.17）
 │  ├─ features/               纯函数 + vitest 单测
 │  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制、横条拖入待办转换）/ daytype.test.ts（默认星期推算）
@@ -78,7 +78,7 @@
 │     │  ├─ fields.rs         全局字段 CRUD、set_visibility（分类可见性）、change_type(转换矩阵表驱动)、set_options
 │     │  ├─ backup.rs         export/import JSON（导入前整库快照入撤销栈）
 │     │  ├─ export.rs         TXT 导出 default_txt_path/export_items_txt（PRD 6.9）
-│     │  ├─ fields.rs         list_fields_all/set_field_visibility/create_field(visible)（PRD 4.3 v1.17）
+│     │  ├─ fields.rs         list_fields_all/set_field_visibility/create_field(visible)/list_all_field_values（PRD 4.3/6.10）
 │     │  ├─ undo.rs           undo / redo / undo_depth
 │     │  └─ mail.rs           （二期）邮箱配置/发送测试/失败手动重试 retry_send/同步 send_queue
 │     ├─ store/               SQLite 唯一写库方（P1 已落地）
@@ -123,6 +123,8 @@
 | 分类色盘 / 颜色 token | `src/styles/tokens.css` | 与原型一致 |
 | 分类删除二选一 | `commands/categories.rs` delete(mode) | 对照 TC-CL-003~006 |
 | 备份导入导出 | `store/backup.rs` + `commands/backup.rs` + `components/Settings/SettingsDialog.tsx` | 对照 TC-BAK-001~006；导入前整库快照落 undo_tmp（D10） |
+| 列表视图（PRD 6.10） | `src/components/Calendar/ListView.tsx`（冻结列/分组/动态字段列） | 对照 TC-CAL-020；数据源=日历超窗查询+待办查询+全表字段值 |
+| 日期类型管理 | 设置弹窗「日期类型」页签（`DayTypePanel.tsx`） | 对照 TC-DT-001~007；日历格色条点击同样可切换 |
 | TXT 导出（PRD 6.9） | `store/export.rs` + `commands/export.rs` + `features/export/dates.ts` + `SettingsDialog.tsx` | 对照 TC-EXP-001~006；上限规则前端 dates.ts 与后端 half_year_limit 对齐，改一侧必改另一侧 |
 | 二期邮件/调度 | `mailer.rs` / `scheduler.rs` / `mail.rs` | 对照 TC-MAIL-001~011；确认符合 AGENTS 红线 1 |
 | 界面文案 / 友好报错 | 组件内 + `services/ipc.ts` 错误转换 | 中文；AGENTS 第 5 节 |

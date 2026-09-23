@@ -248,6 +248,29 @@ pub struct FieldValueRow {
     pub value_json: Option<String>,
 }
 
+/// 全表字段值行（列表视图动态列；PRD 6.10 v1.18）。
+#[derive(Debug, Serialize)]
+pub struct AllFieldValueRow {
+    pub item_id: i64,
+    pub field_def_id: i64,
+    pub value_json: Option<String>,
+}
+
+#[tauri::command]
+pub fn list_all_field_values(db: State<'_, Db>) -> Result<Vec<AllFieldValueRow>, String> {
+    db.list_all_field_values()
+        .map(|rows| {
+            rows.into_iter()
+                .map(|(item_id, field_def_id, value_json)| AllFieldValueRow {
+                    item_id,
+                    field_def_id,
+                    value_json,
+                })
+                .collect()
+        })
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn list_item_field_values(
     db: State<'_, Db>,

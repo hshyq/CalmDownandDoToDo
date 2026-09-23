@@ -97,6 +97,7 @@ pub fn run() {
             commands::fields::set_field_options,
             commands::fields::change_field_type,
             commands::fields::move_field,
+            commands::fields::list_all_field_values,
             commands::fields::list_item_field_values,
             commands::daytypes::list_day_types,
             commands::daytypes::set_day_type,

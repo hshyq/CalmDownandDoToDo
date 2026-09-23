@@ -31,6 +31,14 @@ pub fn list_for_item(conn: &Connection, item_id: i64) -> Result<Vec<(i64, Option
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
+/// 读取全表字段值（列表视图动态列，PRD 6.10 v1.18）。
+pub fn list_all(conn: &Connection) -> Result<Vec<(i64, i64, Option<String>)>> {
+    let mut stmt = conn
+        .prepare("SELECT item_id, field_def_id, value_json FROM item_field_values ORDER BY item_id")?;
+    let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
 /// 是否存在事项（防御）。
 pub fn item_exists(conn: &Connection, item_id: i64) -> Result<bool> {
     let n: Option<i64> = conn
