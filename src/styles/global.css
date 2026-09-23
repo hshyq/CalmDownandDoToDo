@@ -409,3 +409,20 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .vis-chip.on { border-color: var(--accent); background: #e8f0fe; color: var(--accent); }
 .vis-chip input { display: none; }
 .fm-vis-tip { font-size: 11px; color: var(--muted); }
+
+/* ===== 列表视图（PRD 6.10 v1.18）：全部日历+待办事项表格 =====
+   分类/标题两列冻结（横向滚动时固定），标题列宽 20 个汉字超出换行；其余列内容宽、整表横向滚动 */
+.ltable-wrap { flex: 1; overflow: auto; height: 100%; }
+.ltable { border-collapse: separate; border-spacing: 0; font-size: 12px; background: #fff; }
+.ltable th { position: sticky; top: 0; background: var(--panel); border-bottom: 1.5px solid var(--border); padding: 7px 10px; text-align: left; font-weight: 700; color: var(--muted); white-space: nowrap; z-index: 2; }
+.ltable td { border-bottom: 1px solid var(--border); padding: 6px 10px; vertical-align: top; background: #fff; }
+/* 冻结列：分类（left:0）与标题（left:90px，宽 20 汉字超出换行） */
+.ltable th:nth-child(1), .ltable td:nth-child(1) { position: sticky; left: 0; width: 90px; min-width: 90px; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 1; }
+.ltable th:nth-child(2), .ltable td:nth-child(2) { position: sticky; left: 90px; width: 250px; min-width: 250px; max-width: 250px; white-space: normal; word-break: break-all; z-index: 1; }
+.ltable th:nth-child(1), .ltable th:nth-child(2) { z-index: 3; }
+.ltable td.lcell { white-space: nowrap; }
+.ldim { opacity: 0.35; }
+.dotc { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+.lrow { cursor: pointer; }
+.lrow:hover td { background: #f0f6ff; }
+.lgroup td { position: sticky; left: 0; background: #fafbfc; font-weight: 700; color: var(--muted); padding: 5px 10px; z-index: 1; white-space: nowrap; }

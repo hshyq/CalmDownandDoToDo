@@ -99,7 +99,7 @@ export default function ListView({ categories, scope }: Props) {
         <td className={cls}>{v}</td>
       );
     return (
-      <tr className="lrow" onClick={() => void openEdit(item_category(it))}>
+      <tr className="lrow" onClick={() => void openEdit(item_id(it))}>
         <td>
           <span className="dotc" style={{ background: c?.color ?? "#9E9E9E" }} />
           {c?.name ?? "—"}
