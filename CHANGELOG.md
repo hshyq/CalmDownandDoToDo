@@ -406,3 +406,6 @@
 - `DayTypePanel.tsx`（自包含面板：按浏览月份拉取覆盖项+IPC 设置）；`DayTypeDialog.tsx` 移除；`ListView.tsx` 新增（数据源=日历超大窗口查询+待办查询+`list_all_field_values` 全表字段值，并行拉取；显示经 decodeFieldValue 格式化）；`CalendarView` ViewMode 加 `list`、滚轮处理器排除列表视图；`commands/fields.rs` + `store/values.rs` 新增 `list_all_field_values`
 ### 验收
 - `cargo test` 55 passed、`vitest` 68 passed、`npm run build` 通过、clippy/fmt 0、TS 通过；待用户手测 TC-DT-007、TC-CAL-019/020
+### 打包（指令 A）
+- 版本号 0.3.8 → **0.3.9**；正式目录重命名为 `release\日历待办工具 v0.3.9\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
+- 随本版内容：日期类型入口移入设置、列表视图（PRD v1.18）+ 列表样式/id 修复
