@@ -197,6 +197,19 @@ input,select,textarea{font:inherit;color:inherit}
 .frow textarea{min-height:56px;resize:vertical}
 .frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
+/* ===== 列表视图（v1.18）：全部日历+待办事项表格 ===== */
+.ltable-wrap{flex:1;overflow:auto;height:100%}
+.ltable{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
+.ltable th{position:sticky;top:0;background:var(--panel);border-bottom:1.5px solid var(--border);padding:7px 10px;text-align:left;font-weight:700;color:var(--muted);white-space:nowrap;z-index:1}
+.ltable td{border-bottom:1px solid var(--border);padding:6px 10px;vertical-align:top}
+.lrow{cursor:pointer}
+.lrow:hover td{background:#f0f6ff}
+.lgroup td{background:#fafbfc;font-weight:700;color:var(--muted);padding:5px 10px}
+.lcell{white-space:nowrap}
+.ltitle{min-width:160px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ldim{opacity:.35}
+.dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
 /* 分段日期/时刻输入（v1.17）：年4位/月2位/日2位满位自动跳段；图标弹原生选择器 */
 .segwrap{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;background:#fff;padding:0 4px;flex:1}
 .segwrap:focus-within{border-color:var(--accent)}
@@ -587,16 +600,9 @@ function renderToolbar(){
     <div class="seg">
       <button class="${state.view==='week'?'on':''}" onclick="setView('week')">周</button>
       <button class="${state.view==='month'?'on':''}" onclick="setView('month')">月</button>
+      <button class="${state.view==='list'?'on':''}" onclick="setView('list')">列表</button>
     </div>
-    <span class="title" title="点击选择${state.view==='week'?'周':'年月'}" onclick="openPickPanel(this)">${title}</span>
-    <button class="tbtn" onclick="openDayTypes()">日期类型</button>
-    <select class="dstyle-sel" onchange="setDtypeStyle(this.value)" title="演示切换：日期类型显示方案（确认后固化所选）">
-      <option value="1">类型样式① 顶部胶囊</option>
-      <option value="2">类型样式② 格底轻染</option>
-      <option value="3">类型样式③ 数字下色条（每天显示）</option>
-      <option value="4">类型样式④ 右下小图形</option>
-      <option value="5">类型样式⑤ 右上折角</option>
-    </select>
+    <span class="title" title="点击选择${state.view==='week'?'周':'年月'}" onclick="openPickPanel(this)" style="${state.view==='list'?'display:none':''}">${title}</span>
     <span class="spacer"></span>
     <button class="tbtn icon" title="撤销 Ctrl+Z" onclick="undoDemo()">↶</button>
     <button class="tbtn icon" title="重做 Ctrl+Y" onclick="redoDemo()">↷</button>
@@ -605,32 +611,64 @@ function renderToolbar(){
 }
 function setView(v){state.view=v;renderAll()}
 
+/* ================= 列表视图（v1.18）：全部日历+待办事项，表头含全部自定义字段 ================= */
+function renderListView(){
+  const scope=activeCatId();
+  const all=state.items.filter(it=>scope===null||it.cat===scope);
+  const cal=all.filter(it=>it.sd&&it.ed).sort((a,b)=>(a.sd+a.st)<(b.sd+b.st)?-1:(a.sd+a.st)>(b.sd+b.st)?1:a.id-b.id);
+  const todo=all.filter(it=>!(it.sd&&it.ed)).sort((a,b)=>{
+    const ka=a.dd?a.dd+a.dt:'9999',kb=b.dd?b.dd+b.dt:'9999';
+    return ka<kb?-1:ka>kb?1:a.id-b.id;
+  });
+  const defs=[...state.fields].sort((a,b)=>a.sort-b.sort);
+  const fmt=(d,t)=>d?(t?`${d} ${t}`:d):'—';
+  const cell=(v)=>`<td class="lcell">${v==null||v===''?'<span class="ldim">—</span>':esc(String(v))}</td>`;
+  let rows=`<tr class="lgroup"><td colspan="${4+defs.length}">日历（${cal.length}）</td></tr>`;
+  for(const it of cal){
+    const c=catOf(it.cat);
+    rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">
+      <td class="lcell"><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
+      <td class="lcell ltitle">${esc(it.title)}</td>
+      <td class="lcell">${fmt(it.sd,it.st)}</td>
+      <td class="lcell">${fmt(it.ed,it.et)}</td>
+      <td class="lcell">${fmt(it.dd,it.dt)}</td>
+      ${defs.map(f=>cell(it.fv[f.id]!==undefined&&it.fv[f.id]!==null?(Array.isArray(it.fv[f.id])?it.fv[f.id].join('、'):String(it.fv[f.id])):'')).join('')}
+    </tr>`;
+  }
+  rows+=`<tr class="lgroup"><td colspan="${4+defs.length}">待办（${todo.length}）</td></tr>`;
+  for(const it of todo){
+    const c=catOf(it.cat);
+    rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">
+      <td class="lcell"><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
+      <td class="lcell ltitle">${esc(it.title)}</td>
+      <td class="lcell">${fmt(it.sd,it.st)}</td>
+      <td class="lcell">${fmt(it.ed,it.et)}</td>
+      <td class="lcell">${fmt(it.dd,it.dt)}</td>
+      ${defs.map(f=>cell(it.fv[f.id]!==undefined&&it.fv[f.id]!==null?(Array.isArray(it.fv[f.id])?it.fv[f.id].join('、'):String(it.fv[f.id])):'')).join('')}
+    </tr>`;
+  }
+  if(!all.length)return `<div class="tempty" style="padding:40px">当前范围暂无事项</div>`;
+  return `<div class="ltable-wrap"><table class="ltable">
+    <thead><tr>
+      <th>分类</th><th>标题</th><th>开始</th><th>结束</th><th>截止</th>
+      ${defs.map(f=>`<th>${esc(f.name)}</th>`).join('')}
+    </tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
 /* ===== 日期类型管理（PRD 方案待确认：班/休/假，默认周一~五工作日、周六日休息日） ===== */
 let dtCursor=TODAY;
-function openDayTypes(){dtCursor=state.cursor.slice(0,8)+'01';renderDtModal()}
-function renderDtModal(){
-  const y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
-  const first=dtCursor.slice(0,8)+'01',ws=weekStart(first);
-  const nRows=Math.ceil((diffDays(ws,first)+daysInMonth(dtCursor))/7);
-  let cells='';
-  for(let r=0;r<nRows;r++)for(let i=0;i<7;i++){
-    const ds=addDays(ws,r*7+i);
-    const dim=ds.slice(0,7)!==dtCursor.slice(0,7);
-    const dt=dayTypeOf(ds);
-    cells+=`<div class="dt-cell ${dim?'dim':''}" onclick="dtCycle('${ds}',1)">${Number(ds.slice(8))}<span class="dtype ${dt}">${DTYPE_LABEL[dt]}</span></div>`;
+function dtNav(d){
+  if(settingsTab==='daytypes'){
+    let y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
+    m+=d;if(m<1){m=12;y--}if(m>12){m=1;y++}
+    dtCursor=`${y}-${String(m).padStart(2,'0')}-01`;
+    renderSettings();return;
   }
-  modal(`<div class="dhead">日期类型<button class="x" onclick="closeModal()">✕</button></div>
-    <div class="dbody">
-      <div class="pk-head"><button class="pk-nav" onclick="dtNav(-1)">‹</button><b>${y}年${m}月</b><button class="pk-nav" onclick="dtNav(1)">›</button></div>
-      <div class="dt-grid">${cells}</div>
-      <div class="dt-legend"><span><span class="dtype work">班</span>工作日</span><span><span class="dtype rest">休</span>休息日</span><span><span class="dtype holiday">假</span>法定假日</span>
-        <span>点击日期循环切换：班→休→假→恢复默认</span></div>
-      <div class="cbody sub">默认周一~周五为工作日、周六周日为休息日；指定后的类型会以角标标注在日历格上（法定假日的日期数字显示为红色）。</div>
-    </div>`);
+  state.cursor = state.view==='month'
+    ? addDays(state.cursor.slice(0,8)+'01', d===1?32:-1)
+    : addDays(state.cursor, d*7);
+  renderAll();
 }
-function dtNav(d){const y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
-  let ny=y,nm=m+d;while(nm>12){nm-=12;ny++}while(nm<1){nm+=12;ny--}
-  dtCursor=`${ny}-${String(nm).padStart(2,'0')}-01`;renderDtModal()}
 function setDtypeStyle(v){state.dtypeStyle=v;renderCalendar();if(state.view==='week')renderCalendar()}
 
 /* ===== 分段日期/时刻输入组件（v1.17）：年最多 4 位满位自动跳段；图标弹原生选择器 ===== */
@@ -696,7 +734,8 @@ function setSegDate(wrapId,v){ // v='yyyy-mm-dd'，供快捷范围填充
 function dtCycle(ds,inModal){
   const next=DTYPE_CYCLE[state.dayTypes[ds]||''];
   if(next)state.dayTypes[ds]=next;else delete state.dayTypes[ds];
-  renderCalendar();if(inModal)renderDtModal();
+  renderCalendar();
+  if(inModal||settingsTab==='daytypes')renderSettings();
 }
 function nav(d){
   state.cursor = state.view==='month'
@@ -783,6 +822,12 @@ function layoutWeek(weekDates,maxLanes,scope){
   return out;
 }
 function renderCalendar(){
+  if(state.view==='list'){
+    $('#cal').className='';
+    $('#cal').innerHTML=renderListView();
+    return;
+  }
+  $('#cal').className='calwrap';
   const head=['周一','周二','周三','周四','周五','周六','周日']
     .map(d=>`<div>${d}</div>`).join('');
   let rows;
@@ -1195,14 +1240,19 @@ function fmDeleteAsk(fid){
 }
 
 /* ================= 设置 ================= */
-function openSettings(){
-  modal(`<div class="dhead">设置<button class="x" onclick="closeModal()">✕</button></div>
-    <div class="dbody" style="padding:0"><div class="set-wrap">
-      <div class="set-tabs">
-        <button class="on">数据备份</button>
-        <button class="dis">邮箱绑定 <span class="badge">二期</span></button>
-        <button class="dis">提醒发送记录 <span class="badge">二期</span></button>
-      </div>
+function openSettings(){settingsTab='backup';renderSettings()}
+let settingsTab='backup';
+function settingsTabSwitch(t){settingsTab=t;renderSettings()}
+function renderSettings(){
+  const daytypesBody=`
+      <div class="set-body">
+        <div class="pk-head"><button class="pk-nav" onclick="dtNav(-1)">‹</button><b>${dtCursor.slice(0,4)}年${Number(dtCursor.slice(5,7))}月</b><button class="pk-nav" onclick="dtNav(1)">›</button></div>
+        <div class="dt-grid">${dtGridHtml()}</div>
+        <div class="dt-legend"><span><span class="dtype work">班</span>工作日</span><span><span class="dtype rest">休</span>休息日</span><span><span class="dtype holiday">假</span>法定假日</span>
+          <span>点击日期循环切换：班→休→假→恢复默认</span></div>
+        <div class="note" style="margin-top:8px">默认周一~五为工作日、周六日为休息日；指定后的类型会以色条标注在日历格上（法定假日的日期数字显示为红色）。</div>
+      </div>`;
+  const backupBody=`
       <div class="set-body">
         <button class="btn-primary" onclick="toast('演示原型：导出逻辑在正式版实现')">导出备份</button>
         <button class="btn-ghost" style="margin-left:8px" onclick="toast('演示原型：导入逻辑在正式版实现')">导入备份</button>
@@ -1214,8 +1264,30 @@ function openSettings(){
           · 备份文件<b>不含邮箱授权码</b>；授权码在本机以 Windows DPAPI 加密存储。<br>
           · 数据库位于 exe 同目录 data\calendar.db，删除目录即卸载干净。
         </div>
+      </div>`;
+  const body=settingsTab==='daytypes'?daytypesBody:backupBody;
+  modal(`<div class="dhead">设置<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody" style="padding:0"><div class="set-wrap">
+      <div class="set-tabs">
+        <button class="${settingsTab==='backup'?'on':''}" onclick="settingsTabSwitch('backup')">数据备份</button>
+        <button class="${settingsTab==='daytypes'?'on':''}" onclick="settingsTabSwitch('daytypes')">日期类型</button>
+        <button class="dis">邮箱绑定 <span class="badge">二期</span></button>
+        <button class="dis">提醒发送记录 <span class="badge">二期</span></button>
       </div>
+      ${body}
     </div></div>`);
+}
+function dtGridHtml(){
+  const first=dtCursor.slice(0,8)+'01',ws=weekStart(first);
+  const nRows=Math.ceil((diffDays(ws,first)+daysInMonth(dtCursor))/7);
+  let cells='';
+  for(let r=0;r<nRows;r++)for(let i=0;i<7;i++){
+    const ds=addDays(ws,r*7+i);
+    const dim=ds.slice(0,7)!==dtCursor.slice(0,7);
+    const dt=dayTypeOf(ds);
+    cells+=`<div class="dt-cell ${dim?'dim':''}" onclick="dtCycle('${ds}',1)">${Number(ds.slice(8))}<span class="dtype ${dt}">${DTYPE_LABEL[dt]}</span></div>`;
+  }
+  return cells;
 }
 
 /* ================= 导出 TXT：范围选择弹窗（PRD 6.9，v1.14） ================= */
