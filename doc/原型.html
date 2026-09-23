@@ -197,18 +197,22 @@ input,select,textarea{font:inherit;color:inherit}
 .frow textarea{min-height:56px;resize:vertical}
 .frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
-/* ===== 列表视图（v1.18）：全部日历+待办事项表格 ===== */
+/* ===== 列表视图（v1.18）：全部日历+待办事项表格 =====
+   分类/标题两列冻结（横向滚动时固定），标题列宽 20 个汉字超出换行；其余列内容宽、整表横向滚动 */
 .ltable-wrap{flex:1;overflow:auto;height:100%}
-.ltable{width:100%;border-collapse:collapse;font-size:12px;background:#fff}
-.ltable th{position:sticky;top:0;background:var(--panel);border-bottom:1.5px solid var(--border);padding:7px 10px;text-align:left;font-weight:700;color:var(--muted);white-space:nowrap;z-index:1}
-.ltable td{border-bottom:1px solid var(--border);padding:6px 10px;vertical-align:top}
-.lrow{cursor:pointer}
-.lrow:hover td{background:#f0f6ff}
-.lgroup td{background:#fafbfc;font-weight:700;color:var(--muted);padding:5px 10px}
-.lcell{white-space:nowrap}
-.ltitle{min-width:160px;max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ltable{border-collapse:separate;border-spacing:0;font-size:12px;background:#fff}
+.ltable th{position:sticky;top:0;background:var(--panel);border-bottom:1.5px solid var(--border);padding:7px 10px;text-align:left;font-weight:700;color:var(--muted);white-space:nowrap;z-index:2}
+.ltable td{border-bottom:1px solid var(--border);padding:6px 10px;vertical-align:top;background:#fff}
+/* 冻结列：分类（left:0）与标题（left:90px，宽 20 汉字超出换行） */
+.ltable th:nth-child(1),.ltable td:nth-child(1){position:sticky;left:0;width:90px;min-width:90px;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
+.ltable th:nth-child(2),.ltable td:nth-child(2){position:sticky;left:90px;width:250px;min-width:250px;max-width:250px;white-space:normal;word-break:break-all;z-index:1}
+.ltable th:nth-child(1),.ltable th:nth-child(2){z-index:3}
+.ltable td.lcell{white-space:nowrap}
 .ldim{opacity:.35}
 .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.lrow{cursor:pointer}
+.lrow:hover td{background:#f0f6ff}
+.lgroup td{background:#fafbfc;font-weight:700;color:var(--muted);padding:5px 10px;z-index:1}
 
 /* 分段日期/时刻输入（v1.17）：年4位/月2位/日2位满位自动跳段；图标弹原生选择器 */
 .segwrap{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;background:#fff;padding:0 4px;flex:1}
@@ -627,8 +631,8 @@ function renderListView(){
   for(const it of cal){
     const c=catOf(it.cat);
     rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">
-      <td class="lcell"><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
-      <td class="lcell ltitle">${esc(it.title)}</td>
+      <td><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
+      <td class="ltitle">${esc(it.title)}</td>
       <td class="lcell">${fmt(it.sd,it.st)}</td>
       <td class="lcell">${fmt(it.ed,it.et)}</td>
       <td class="lcell">${fmt(it.dd,it.dt)}</td>
@@ -639,8 +643,8 @@ function renderListView(){
   for(const it of todo){
     const c=catOf(it.cat);
     rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">
-      <td class="lcell"><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
-      <td class="lcell ltitle">${esc(it.title)}</td>
+      <td><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
+      <td class="ltitle">${esc(it.title)}</td>
       <td class="lcell">${fmt(it.sd,it.st)}</td>
       <td class="lcell">${fmt(it.ed,it.et)}</td>
       <td class="lcell">${fmt(it.dd,it.dt)}</td>
@@ -823,11 +827,9 @@ function layoutWeek(weekDates,maxLanes,scope){
 }
 function renderCalendar(){
   if(state.view==='list'){
-    $('#cal').className='';
     $('#cal').innerHTML=renderListView();
     return;
   }
-  $('#cal').className='calwrap';
   const head=['周一','周二','周三','周四','周五','周六','周日']
     .map(d=>`<div>${d}</div>`).join('');
   let rows;
