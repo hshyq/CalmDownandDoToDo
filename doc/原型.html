@@ -212,7 +212,7 @@ input,select,textarea{font:inherit;color:inherit}
 .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lrow{cursor:pointer}
 .lrow:hover td{background:#f0f6ff}
-.lgroup td{background:#fafbfc;font-weight:700;color:var(--muted);padding:5px 10px;z-index:1}
+.lgroup td{position:sticky;left:0;background:#fafbfc;font-weight:700;color:var(--muted);padding:5px 10px;z-index:1;white-space:nowrap}
 
 /* 分段日期/时刻输入（v1.17）：年4位/月2位/日2位满位自动跳段；图标弹原生选择器 */
 .segwrap{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:6px;background:#fff;padding:0 4px;flex:1}
@@ -750,6 +750,7 @@ function nav(d){
 /* 滚轮切换周期（PRD 5.3 v1.13）：悬浮日历区滚动=上/下周·月；内容溢出时不劫持 */
 let wheelAcc=0,wheelT=0;
 document.addEventListener('wheel',e=>{
+  if(state.view==='list')return; // 列表视图：滚轮用于滚动表格，不切换周期
   const el=document.getElementById('cal');
   if(!el||!el.contains(e.target))return;
   if(el.scrollHeight>el.clientHeight+1)return;
