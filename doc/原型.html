@@ -203,6 +203,10 @@ input,select,textarea{font:inherit;color:inherit}
 .lnow-mark{white-space:nowrap}
 .lrange-sel{border:1px solid var(--border);border-radius:6px;padding:4px 6px;font:inherit;color:var(--text);background:#fff}
 
+/* 列表视图：#cal 列布局约束（v1.19）——仅表格内部滚动，消除双滚动条 */
+.calwrap.listmode{display:flex;flex-direction:column;overflow:hidden}
+.calwrap.listmode .ltable-wrap{flex:1;min-height:0;height:auto}
+
 /* 列表视图：今天标记与搜索（v1.19） */
 .today-badge{display:inline-block;margin-left:5px;padding:0 5px;border-radius:8px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;line-height:1.5;vertical-align:middle}
 .lsearch{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border)}
@@ -906,6 +910,7 @@ function layoutWeek(weekDates,maxLanes,scope){
 }
 function renderCalendar(){
   if(state.view==='list'){
+    $('#cal').className='calwrap listmode';
     $('#cal').innerHTML=`<div class="lsearch" id="lsearchbox"></div><div class="ltable-wrap" id="ltablewrap"></div>`;
     renderListFilter();
     renderListTable();
@@ -958,6 +963,7 @@ function renderCalendar(){
     }).join('');
     html+=`<div class="weekrow" style="height:${cellH}px"><div class="barlayer">${bars}${chips}</div>${cells}</div>`;
   }
+  $('#cal').className='calwrap';
   $('#cal').innerHTML=html;
 }
 
