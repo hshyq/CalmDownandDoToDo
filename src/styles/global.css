@@ -412,7 +412,20 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 
 /* ===== 列表视图（PRD 6.10 v1.18）：全部日历+待办事项表格 =====
    分类/标题两列冻结（横向滚动时固定），标题列宽 20 个汉字超出换行；其余列内容宽、整表横向滚动 */
-.ltable-wrap { flex: 1; overflow: auto; height: 100%; }
+/* 列表视图布局（PRD 6.10 v1.19）：筛选区固定、仅表格滚动 */
+.listview { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.lsearch { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); }
+.lsearch input[type="text"] { width: 260px; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font: inherit; color: var(--text); background: #fff; }
+.lsearch input[type="text"]:focus { outline: none; border-color: var(--accent); }
+.lsearch .lrange-sel { border: 1px solid var(--border); border-radius: 6px; padding: 4px 6px; font: inherit; color: var(--text); background: #fff; }
+.lsearch .lcustom { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.lsearch .lcustom input[type="date"] { border: 1px solid var(--border); border-radius: 6px; padding: 3px 4px; font: inherit; color: var(--text); background: #fff; }
+.lsearch .lsearch-count { font-size: 12px; color: var(--muted); }
+.ltable-wrap { flex: 1; min-height: 0; overflow: auto; }
+/* 今日线（同待办时间线：红色虚线） */
+.lnowline td { border-top: 1.5px dashed var(--danger); padding: 3px 10px; background: #fff; }
+/* 归属列 */
+.lkind { white-space: nowrap; color: var(--muted); }
 .ltable { border-collapse: separate; border-spacing: 0; font-size: 12px; background: #fff; }
 .ltable th { position: sticky; top: 0; background: var(--panel); border-bottom: 1.5px solid var(--border); padding: 7px 10px; text-align: left; font-weight: 700; color: var(--muted); white-space: nowrap; z-index: 2; }
 .ltable td { border-bottom: 1px solid var(--border); padding: 6px 10px; vertical-align: top; background: #fff; }
