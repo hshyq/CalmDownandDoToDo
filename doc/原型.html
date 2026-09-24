@@ -197,6 +197,13 @@ input,select,textarea{font:inherit;color:inherit}
 .frow textarea{min-height:56px;resize:vertical}
 .frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
+/* 列表视图：今天标记与搜索（v1.19） */
+.today-badge{display:inline-block;margin-left:5px;padding:0 5px;border-radius:8px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;line-height:1.5;vertical-align:middle}
+.lsearch{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border)}
+.lsearch input{flex:0 0 260px;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:inherit;color:var(--text);background:#fff}
+.lsearch input:focus{outline:none;border-color:var(--accent)}
+.lsearch .lsearch-count{font-size:12px;color:var(--muted)}
+
 /* ===== 列表视图（v1.18）：全部日历+待办事项表格 =====
    分类/标题两列冻结（横向滚动时固定），标题列宽 20 个汉字超出换行；其余列内容宽、整表横向滚动 */
 .ltable-wrap{flex:1;overflow:auto;height:100%}
@@ -616,16 +623,25 @@ function renderToolbar(){
 function setView(v){state.view=v;renderAll()}
 
 /* ================= 列表视图（v1.18）：全部日历+待办事项，表头含全部自定义字段 ================= */
+let listQuery='';
 function renderListView(){
   const scope=activeCatId();
-  const all=state.items.filter(it=>scope===null||it.cat===scope);
+  const q=listQuery.trim().toLowerCase();
+  const all=state.items.filter(it=>(scope===null||it.cat===scope)&&(q===''||it.title.toLowerCase().includes(q)));
+  const today=todayStr();
   const cal=all.filter(it=>it.sd&&it.ed).sort((a,b)=>(a.sd+a.st)<(b.sd+b.st)?-1:(a.sd+a.st)>(b.sd+b.st)?1:a.id-b.id);
   const todo=all.filter(it=>!(it.sd&&it.ed)).sort((a,b)=>{
     const ka=a.dd?a.dd+a.dt:'9999',kb=b.dd?b.dd+b.dt:'9999';
     return ka<kb?-1:ka>kb?1:a.id-b.id;
   });
   const defs=[...state.fields].sort((a,b)=>a.sort-b.sort);
-  const fmt=(d,t)=>d?(t?`${d} ${t}`:d):'—';
+  // 日期显示：值=今天时附「今天」徽章（v1.19）
+  const fmt=(d,t)=>{
+    if(!d)return '<span class="ldim">—</span>';
+    const base=d+(t?` ${t}`:'');
+    const badge=d===today?'<span class="today-badge">今天</span>':'';
+    return `${base}${badge}`;
+  };
   const cell=(v)=>`<td class="lcell">${v==null||v===''?'<span class="ldim">—</span>':esc(String(v))}</td>`;
   const groupRow=(txt)=>`<tr class="lgroup"><td>${txt}</td>${'<td></td>'.repeat(4+defs.length)}</tr>`;
   let rows=groupRow(`日历（${cal.length}）`);
@@ -652,8 +668,12 @@ function renderListView(){
       ${defs.map(f=>cell(it.fv[f.id]!==undefined&&it.fv[f.id]!==null?(Array.isArray(it.fv[f.id])?it.fv[f.id].join('、'):String(it.fv[f.id])):'')).join('')}
     </tr>`;
   }
-  if(!all.length)return `<div class="tempty" style="padding:40px">当前范围暂无事项</div>`;
-  return `<div class="ltable-wrap"><table class="ltable">
+  if(!all.length)return `<div class="lsearch"><input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
+      oninput="listQuery=this.value;renderCalendar();(function(){const i=document.getElementById('lq');if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}})()"></div>
+    <div class="tempty" style="padding:40px">${q?'没有匹配「'+esc(listQuery)+'」的事项':'当前范围暂无事项'}</div>`;
+  return `<div class="lsearch"><input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
+      oninput="listQuery=this.value;renderCalendar();(function(){const i=document.getElementById('lq');if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}})()"><span class="lsearch-count">共 ${all.length} 条</span></div>
+    <div class="ltable-wrap"><table class="ltable">
     <thead><tr>
       <th>分类</th><th>标题</th><th>开始</th><th>结束</th><th>截止</th>
       ${defs.map(f=>`<th>${esc(f.name)}</th>`).join('')}
