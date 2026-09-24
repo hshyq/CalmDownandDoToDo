@@ -635,7 +635,7 @@ function refocusLq(){
   if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}
 }
 function renderListFilter(){
-  const rangeSel=`<select class="lrange-sel" onchange="listRange=this.value;listCS='';listCE='';renderListFilter()">
+  const rangeSel=`<select class="lrange-sel" onchange="listRange=this.value;listCS='';listCE='';renderListFilter();renderListTable()">
       <option value="all" ${listRange==='all'?'selected':''}>全部</option>
       <option value="w" ${listRange==='w'?'selected':''}>一周内</option>
       <option value="m1" ${listRange==='m1'?'selected':''}>一个月内</option>
@@ -710,7 +710,7 @@ function renderListTable(){
       ${defs.map(fvcell).join('')}
     </tr>`;
   };
-  const nowRow=()=>`<tr class="lnowline"><td class="lnow-mark"><span class="today-badge">今天 ${today.slice(5)}</span></td>${'<td></td>'.repeat(5+defs.length)}</tr>`;
+  const nowRow=()=>`<tr class="lnowline">${'<td></td>'.repeat(6+defs.length)}</tr>`;
   let rows='';
   let gi=0;
   if(nowIdx===0)rows+=nowRow();
@@ -730,7 +730,7 @@ function renderListTable(){
 function addMonthsM1(t,months){ // t + N 个月 − 1 天（目标月无同日钳到月末再减一天）
   const [y,m,d]=t.split('-').map(Number);
   const tt=y*12+(m-1)+months,y2=Math.floor(tt/12),m2=tt%12+1;
-  const dim=mm=>mm===2?((y2%4===0&&y2%100!==0)||y2%400===0?29:28):[31,28,31,30,31,30,31,31,30,31,30,31][mm-1];
+  const dim=(yy,mm)=>mm===2?((yy%4===0&&yy%100!==0)||yy%400===0?29:28):[31,28,31,30,31,30,31,31,30,31,30,31][mm-1];
   const cl=Math.min(d,dim(y2,m2));
   if(cl>=2)return `${y2}-${String(m2).padStart(2,'0')}-${String(cl-1).padStart(2,'0')}`;
   const t2=y2*12+(m2-1)-1,y3=Math.floor(t2/12),m3=t2%12+1;
