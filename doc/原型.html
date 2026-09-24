@@ -197,6 +197,12 @@ input,select,textarea{font:inherit;color:inherit}
 .frow textarea{min-height:56px;resize:vertical}
 .frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
+/* 列表视图 v1.19：归属列 / 今日线 / 范围下拉 */
+.lkind{white-space:nowrap;color:var(--muted)}
+.lnowline td{border-top:1.5px dashed var(--danger);padding:3px 10px;background:#fff}
+.lnow-mark{white-space:nowrap}
+.lrange-sel{border:1px solid var(--border);border-radius:6px;padding:4px 6px;font:inherit;color:var(--text);background:#fff}
+
 /* 列表视图：今天标记与搜索（v1.19） */
 .today-badge{display:inline-block;margin-left:5px;padding:0 5px;border-radius:8px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;line-height:1.5;vertical-align:middle}
 .lsearch{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border)}
@@ -627,61 +633,110 @@ let listQuery='';
 function renderListView(){
   const scope=activeCatId();
   const q=listQuery.trim().toLowerCase();
-  const all=state.items.filter(it=>(scope===null||it.cat===scope)&&(q===''||it.title.toLowerCase().includes(q)));
   const today=todayStr();
-  const cal=all.filter(it=>it.sd&&it.ed).sort((a,b)=>(a.sd+a.st)<(b.sd+b.st)?-1:(a.sd+a.st)>(b.sd+b.st)?1:a.id-b.id);
-  const todo=all.filter(it=>!(it.sd&&it.ed)).sort((a,b)=>{
-    const ka=a.dd?a.dd+a.dt:'9999',kb=b.dd?b.dd+b.dt:'9999';
-    return ka<kb?-1:ka>kb?1:a.id-b.id;
+  // 日期范围筛选（v1.19）：全部 / 一周内 / 一月内 / 两月内 / 自定义
+  const rb=(listRange==='all')?null:(()=>{
+    const s=listRange==='w'?addDays(today,7):addMonthsM1(today,listRange==='m1'?1:2);
+    return {s:today,e:s};
+  })();
+  const cs=(listRange==='custom'&&listCS)?listCS:null;
+  const ce=(listRange==='custom'&&listCE)?listCE:null;
+  const all=state.items.filter(it=>{
+    if(!(scope===null||it.cat===scope))return false;
+    if(q!==''&&!it.title.toLowerCase().includes(q))return false;
+    if(rb||cs){
+      const s=rb?rb.s:cs,e=rb?rb.e:ce;
+      if(!s||!e)return true;
+      if(it.sd&&it.ed){if(!(it.sd<=e&&it.ed>=s))return false;}
+      else{if(!it.dd||it.dd<e&&it.dd>s)return false;if(it.dd<s||it.dd>e)return false;}
+    }
+    return true;
   });
   const defs=[...state.fields].sort((a,b)=>a.sort-b.sort);
-  // 日期显示：值=今天时附「今天」徽章（v1.19）
+  // 排序：结束日期升序；无结束以截止参与；均无沉底（v1.19）
+  const sortKey=it=>it.ed||it.dd||'9999-12-31';
+  const sorted=[...all].sort((a,b)=>{
+    const ka=sortKey(a),kb=sortKey(b);
+    return ka<kb?-1:ka>kb?1:a.id-b.id;
+  });
+  // 今日标记：排序后「结束/截止≤今天」的最后一条之后（v1.19，同待办时间线）
+  let nowIdx=0;
+  sorted.forEach((it,i)=>{if(sortKey(it)<=today)nowIdx=i+1;});
   const fmt=(d,t)=>{
     if(!d)return '<span class="ldim">—</span>';
     const base=d+(t?` ${t}`:'');
     const badge=d===today?'<span class="today-badge">今天</span>':'';
     return `${base}${badge}`;
   };
-  const cell=(v)=>`<td class="lcell">${v==null||v===''?'<span class="ldim">—</span>':esc(String(v))}</td>`;
-  const groupRow=(txt)=>`<tr class="lgroup"><td>${txt}</td>${'<td></td>'.repeat(4+defs.length)}</tr>`;
-  let rows=groupRow(`日历（${cal.length}）`);
-  for(const it of cal){
+  const fvcell=f=>{
+    const v=it_cur.fv[f.id];
+    const txt=v===undefined||v===null?'':(Array.isArray(v)?v.join('、'):String(v));
+    return txt===''?'<td class="lcell"><span class="ldim">—</span></td>':`<td class="lcell">${esc(txt)}</td>`;
+  };
+  let it_cur=null;
+  const row=it=>{
+    it_cur=it;
     const c=catOf(it.cat);
-    rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">
+    const kind=(it.sd&&it.ed)?'日历':'待办';
+    return `<tr class="lrow" onclick="openItemModal(${it.id})">
       <td><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
       <td class="ltitle">${esc(it.title)}</td>
+      <td class="lkind">${kind}</td>
       <td class="lcell">${fmt(it.sd,it.st)}</td>
       <td class="lcell">${fmt(it.ed,it.et)}</td>
       <td class="lcell">${fmt(it.dd,it.dt)}</td>
-      ${defs.map(f=>cell(it.fv[f.id]!==undefined&&it.fv[f.id]!==null?(Array.isArray(it.fv[f.id])?it.fv[f.id].join('、'):String(it.fv[f.id])):'')).join('')}
+      ${defs.map(fvcell).join('')}
     </tr>`;
+  };
+  const nowRow=()=>`<tr class="lnowline"><td class="lnow-mark"><span class="today-badge">今天 ${today.slice(5)}</span></td>${'<td></td>'.repeat(5+defs.length)}</tr>`;
+  let rows='';
+  let gi=0;
+  if(nowIdx===0)rows+=nowRow();
+  for(const it of sorted){
+    rows+=row(it);
+    gi++;
+    if(gi===nowIdx)rows+=nowRow();
   }
-  rows+=groupRow(`待办（${todo.length}）`);
-  for(const it of todo){
-    const c=catOf(it.cat);
-    rows+=`<tr class="lrow" onclick="openItemModal(${it.id})">
-      <td><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
-      <td class="ltitle">${esc(it.title)}</td>
-      <td class="lcell">${fmt(it.sd,it.st)}</td>
-      <td class="lcell">${fmt(it.ed,it.et)}</td>
-      <td class="lcell">${fmt(it.dd,it.dt)}</td>
-      ${defs.map(f=>cell(it.fv[f.id]!==undefined&&it.fv[f.id]!==null?(Array.isArray(it.fv[f.id])?it.fv[f.id].join('、'):String(it.fv[f.id])):'')).join('')}
-    </tr>`;
-  }
-  if(!all.length)return `<div class="lsearch"><input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
-      oninput="listQuery=this.value;renderCalendar();(function(){const i=document.getElementById('lq');if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}})()"></div>
+  const rangeSel=`<select class="lrange-sel" onchange="listRange=this.value;listCS='';listCE='';renderCalendar()">
+      <option value="all" ${listRange==='all'?'selected':''}>全部</option>
+      <option value="w" ${listRange==='w'?'selected':''}>一周内</option>
+      <option value="m1" ${listRange==='m1'?'selected':''}>一个月内</option>
+      <option value="m2" ${listRange==='m2'?'selected':''}>两个月内</option>
+      <option value="custom" ${listRange==='custom'?'selected':''}>自定义</option>
+    </select>`;
+  const customDates=listRange==='custom'
+    ?`<input type="date" value="${listCS}" onchange="listCS=this.value;renderCalendar()"> ~ <input type="date" value="${listCE}" onchange="listCE=this.value;renderCalendar()">`
+    :'';
+  const searchBox=`<input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
+      oninput="listQuery=this.value;if(!window.__ime){renderCalendar();refocusLq()}"
+      oncompositionstart="window.__ime=true"
+      oncompositionend="window.__ime=false;listQuery=this.value;renderCalendar();refocusLq()">`;
+  const count=`<span class="lsearch-count">共 ${all.length} 条</span>`;
+  if(!all.length)return `<div class="lsearch">${searchBox}${rangeSel}${customDates}${count}</div>
     <div class="tempty" style="padding:40px">${q?'没有匹配「'+esc(listQuery)+'」的事项':'当前范围暂无事项'}</div>`;
-  return `<div class="lsearch"><input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
-      oninput="listQuery=this.value;renderCalendar();(function(){const i=document.getElementById('lq');if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}})()"><span class="lsearch-count">共 ${all.length} 条</span></div>
+  return `<div class="lsearch">${searchBox}${rangeSel}${customDates}${count}</div>
     <div class="ltable-wrap"><table class="ltable">
     <thead><tr>
-      <th>分类</th><th>标题</th><th>开始</th><th>结束</th><th>截止</th>
+      <th>分类</th><th>标题</th><th>归属</th><th>开始</th><th>结束</th><th>截止</th>
       ${defs.map(f=>`<th>${esc(f.name)}</th>`).join('')}
     </tr></thead><tbody>${rows}</tbody></table></div>`;
 }
-
+function refocusLq(){
+  const i=document.getElementById('lq');
+  if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}
+}
+function addMonthsM1(t,months){ // t + N 个月 − 1 天（目标月无同日钳到月末再减一天）
+  const [y,m,d]=t.split('-').map(Number);
+  const tt=y*12+(m-1)+months,y2=Math.floor(tt/12),m2=tt%12+1;
+  const dim=mm=>mm===2?((y2%4===0&&y2%100!==0)||y2%400===0?29:28):[31,28,31,30,31,30,31,31,30,31,30,31][mm-1];
+  const cl=Math.min(d,dim(y2,m2));
+  if(cl>=2)return `${y2}-${String(m2).padStart(2,'0')}-${String(cl-1).padStart(2,'0')}`;
+  const t2=y2*12+(m2-1)-1,y3=Math.floor(t2/12),m3=t2%12+1;
+  return `${y3}-${String(m3).padStart(2,'0')}-${String(dim(y3,m3)).padStart(2,'0')}`;
+}
 /* ===== 日期类型管理（PRD 方案待确认：班/休/假，默认周一~五工作日、周六日休息日） ===== */
 let dtCursor=TODAY;
+let listRange='all',listCS='',listCE='';
 function dtNav(d){
   if(settingsTab==='daytypes'){
     let y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
