@@ -630,11 +630,37 @@ function setView(v){state.view=v;renderAll()}
 
 /* ================= 列表视图（v1.18）：全部日历+待办事项，表头含全部自定义字段 ================= */
 let listQuery='';
-function renderListView(){
+function refocusLq(){
+  const i=document.getElementById('lq');
+  if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}
+}
+function renderListFilter(){
+  const rangeSel=`<select class="lrange-sel" onchange="listRange=this.value;listCS='';listCE='';renderListFilter()">
+      <option value="all" ${listRange==='all'?'selected':''}>全部</option>
+      <option value="w" ${listRange==='w'?'selected':''}>一周内</option>
+      <option value="m1" ${listRange==='m1'?'selected':''}>一个月内</option>
+      <option value="m2" ${listRange==='m2'?'selected':''}>两个月内</option>
+      <option value="custom" ${listRange==='custom'?'selected':''}>自定义</option>
+    </select>`;
+  const customDates=listRange==='custom'
+    ?`<span class="lcustom">开始 <input type="date" id="lcs" value="${listCS}" onchange="listCS=this.value">
+       结束 <input type="date" id="lce" value="${listCE}" onchange="listCE=this.value"></span>`
+    :'';
+  const count=`<span class="lsearch-count" id="lcount"></span>`;
+  document.getElementById('lsearchbox').innerHTML=`<input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
+      oninput="listQuery=this.value" title="输入后点击「筛选」应用（支持中文输入）">
+    ${rangeSel}${customDates}
+    <button type="button" class="btn-primary" onclick="renderListTable()">筛选</button>
+    <button type="button" class="btn-ghost" onclick="resetListFilter()">重置</button>${count}`;
+}
+function resetListFilter(){
+  listQuery='';listRange='all';listCS='';listCE='';
+  renderListFilter(); // 仅清空筛选条件，不刷新列表数据（用户要求）
+}
+function renderListTable(){
   const scope=activeCatId();
   const q=listQuery.trim().toLowerCase();
   const today=todayStr();
-  // 日期范围筛选（v1.19）：全部 / 一周内 / 一月内 / 两月内 / 自定义
   const rb=(listRange==='all')?null:(()=>{
     const s=listRange==='w'?addDays(today,7):addMonthsM1(today,listRange==='m1'?1:2);
     return {s:today,e:s};
@@ -648,7 +674,7 @@ function renderListView(){
       const s=rb?rb.s:cs,e=rb?rb.e:ce;
       if(!s||!e)return true;
       if(it.sd&&it.ed){if(!(it.sd<=e&&it.ed>=s))return false;}
-      else{if(!it.dd||it.dd<e&&it.dd>s)return false;if(it.dd<s||it.dd>e)return false;}
+      else{if(!it.dd||it.dd<s||it.dd>e)return false;}
     }
     return true;
   });
@@ -659,25 +685,21 @@ function renderListView(){
     const ka=sortKey(a),kb=sortKey(b);
     return ka<kb?-1:ka>kb?1:a.id-b.id;
   });
-  // 今日标记：排序后「结束/截止≤今天」的最后一条之后（v1.19，同待办时间线）
+  // 今日线：排序后「结束/截止≤今天」的最后一条之后（v1.19）
   let nowIdx=0;
   sorted.forEach((it,i)=>{if(sortKey(it)<=today)nowIdx=i+1;});
   const fmt=(d,t)=>{
     if(!d)return '<span class="ldim">—</span>';
-    const base=d+(t?` ${t}`:'');
-    const badge=d===today?'<span class="today-badge">今天</span>':'';
-    return `${base}${badge}`;
+    return d+(t?` ${t}`:'');
   };
-  const fvcell=f=>{
-    const v=it_cur.fv[f.id];
-    const txt=v===undefined||v===null?'':(Array.isArray(v)?v.join('、'):String(v));
-    return txt===''?'<td class="lcell"><span class="ldim">—</span></td>':`<td class="lcell">${esc(txt)}</td>`;
-  };
-  let it_cur=null;
   const row=it=>{
-    it_cur=it;
     const c=catOf(it.cat);
     const kind=(it.sd&&it.ed)?'日历':'待办';
+    const fvcell=f=>{
+      const v=it.fv[f.id];
+      const txt=v===undefined||v===null?'':(Array.isArray(v)?v.join('、'):String(v));
+      return txt===''?'<td class="lcell"><span class="ldim">—</span></td>':`<td class="lcell">${esc(txt)}</td>`;
+    };
     return `<tr class="lrow" onclick="openItemModal(${it.id})">
       <td><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
       <td class="ltitle">${esc(it.title)}</td>
@@ -697,33 +719,13 @@ function renderListView(){
     gi++;
     if(gi===nowIdx)rows+=nowRow();
   }
-  const rangeSel=`<select class="lrange-sel" onchange="listRange=this.value;listCS='';listCE='';renderCalendar()">
-      <option value="all" ${listRange==='all'?'selected':''}>全部</option>
-      <option value="w" ${listRange==='w'?'selected':''}>一周内</option>
-      <option value="m1" ${listRange==='m1'?'selected':''}>一个月内</option>
-      <option value="m2" ${listRange==='m2'?'selected':''}>两个月内</option>
-      <option value="custom" ${listRange==='custom'?'selected':''}>自定义</option>
-    </select>`;
-  const customDates=listRange==='custom'
-    ?`<input type="date" value="${listCS}" onchange="listCS=this.value;renderCalendar()"> ~ <input type="date" value="${listCE}" onchange="listCE=this.value;renderCalendar()">`
-    :'';
-  const searchBox=`<input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
-      oninput="listQuery=this.value;if(!window.__ime){renderCalendar();refocusLq()}"
-      oncompositionstart="window.__ime=true"
-      oncompositionend="window.__ime=false;listQuery=this.value;renderCalendar();refocusLq()">`;
-  const count=`<span class="lsearch-count">共 ${all.length} 条</span>`;
-  if(!all.length)return `<div class="lsearch">${searchBox}${rangeSel}${customDates}${count}</div>
-    <div class="tempty" style="padding:40px">${q?'没有匹配「'+esc(listQuery)+'」的事项':'当前范围暂无事项'}</div>`;
-  return `<div class="lsearch">${searchBox}${rangeSel}${customDates}${count}</div>
-    <div class="ltable-wrap"><table class="ltable">
+  const lc=document.getElementById('lcount');
+  if(lc)lc.textContent=`共 ${all.length} 条`;
+  document.getElementById('ltablewrap').innerHTML=`<table class="ltable">
     <thead><tr>
       <th>分类</th><th>标题</th><th>归属</th><th>开始</th><th>结束</th><th>截止</th>
       ${defs.map(f=>`<th>${esc(f.name)}</th>`).join('')}
-    </tr></thead><tbody>${rows}</tbody></table></div>`;
-}
-function refocusLq(){
-  const i=document.getElementById('lq');
-  if(i){i.focus();const n=i.value.length;i.setSelectionRange(n,n)}
+    </tr></thead><tbody>${rows}</tbody></table>`;
 }
 function addMonthsM1(t,months){ // t + N 个月 − 1 天（目标月无同日钳到月末再减一天）
   const [y,m,d]=t.split('-').map(Number);
@@ -904,7 +906,9 @@ function layoutWeek(weekDates,maxLanes,scope){
 }
 function renderCalendar(){
   if(state.view==='list'){
-    $('#cal').innerHTML=renderListView();
+    $('#cal').innerHTML=`<div class="lsearch" id="lsearchbox"></div><div class="ltable-wrap" id="ltablewrap"></div>`;
+    renderListFilter();
+    renderListTable();
     return;
   }
   const head=['周一','周二','周三','周四','周五','周六','周日']
@@ -1373,16 +1377,7 @@ function dtGridHtml(){
 /* TXT 导出日期工具（全局）：dimDays/limitStart/fillTxtRange（PRD 6.9 v1.14 + 快捷范围 v1.15） */
 function dimDays(yy,mm){return mm===2?((yy%4===0&&yy%100!==0)||yy%400===0?29:28):[31,28,31,30,31,30,31,31,30,31,30,31][mm-1]}
 function p2(n){return String(n).padStart(2,'0')}
-function todayStr(){const n=new Date();return `${n.getFullYear()}-${p2(n.getMonth()+1)}-${p2(n.getDate())}`}
-/* 结束上限=开始+6 个月−1 天（目标月无同日钳到月末再减一天） */
-function limitStart(s){
-  const [a,b,c]=s.split('-').map(Number);
-  const tt=a*12+(b-1)+6, y2=Math.floor(tt/12), m2=tt%12+1;
-  const cl=Math.min(c,dimDays(y2,m2));
-  if(cl>=2)return `${y2}-${p2(m2)}-${p2(cl-1)}`;
-  const t=y2*12+(m2-1)-1, y3=Math.floor(t/12), m3=t%12+1;
-  return `${y3}-${p2(m3)}-${p2(dimDays(y3,m3))}`;
-}
+function todayStr(){return TODAY}
 /* 快捷范围：'w'=今天+7 天；1/2=今天+N 个月−1 天（钳制同上）；开始一律=今天 */
 function fillTxtRange(unit){
   const today=todayStr();
