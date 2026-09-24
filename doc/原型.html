@@ -661,7 +661,7 @@ function renderListTable(){
   const scope=activeCatId();
   const q=listQuery.trim().toLowerCase();
   const today=todayStr();
-  const rb=(listRange==='all')?null:(()=>{
+  const rb=(listRange==='all'||listRange==='custom')?null:(()=>{
     const s=listRange==='w'?addDays(today,7):addMonthsM1(today,listRange==='m1'?1:2);
     return {s:today,e:s};
   })();
