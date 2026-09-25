@@ -7,13 +7,13 @@
 import { useEffect, useRef, useState } from "react";
 import ItemModal from "../Items/ItemModal";
 import { fieldApi, itemApi } from "../../services/ipc";
-import type { CalendarItem, Category, FieldDef, Item, TodoItem } from "../../services/types";
+import type { Category, FieldDef, Item } from "../../services/types";
 import type { FieldType } from "../../services/types";
 import { decodeFieldValue } from "../../features/fields/value";
 import { addDays } from "../../features/calendar/dates";
 
 type RangeKey = "all" | "w" | "m1" | "m2" | "custom";
-type AnyItem = CalendarItem | TodoItem;
+type AnyItem = Item;
 
 interface Props {
   categories: Category[];
@@ -58,8 +58,7 @@ interface RowData {
 }
 
 export default function ListView({ categories, scope }: Props) {
-  const [cal, setCal] = useState<CalendarItem[] | null>(null);
-  const [todo, setTodo] = useState<TodoItem[] | null>(null);
+  const [items, setItems] = useState<Item[] | null>(null);
   const [fields, setFields] = useState<FieldDef[] | null>(null);
   const [valueRows, setValueRows] = useState<Array<{ itemId: number; fieldDefId: number; valueJson: string | null }>>([]);
   const [modal, setModal] = useState<Item | null>(null);
@@ -80,14 +79,12 @@ export default function ListView({ categories, scope }: Props) {
   const load = async () => {
     try {
       // 超大窗口让日历查询返回全部有起止的事项（列表不按周期过滤，PRD 6.10）
-      const [c, t, fs, vs] = await Promise.all([
-        itemApi.calendar("1900-01-01", "2999-12-31", scope),
-        itemApi.todo(scope),
+      const [its, fs, vs] = await Promise.all([
+        itemApi.list(scope),
         fieldApi.listAll(),
         fieldApi.allValues(),
       ]);
-      setCal(c);
-      setTodo(t);
+      setItems(its);
       setFields(fs);
       setValueRows(vs);
     } catch (e) {
@@ -111,7 +108,7 @@ export default function ListView({ categories, scope }: Props) {
   const catOf = (id: number): Category | undefined => categories.find((c) => c.id === id);
   const valueMap = new Map(valueRows.map((r) => [`${r.itemId}:${r.fieldDefId}`, r.valueJson]));
   const today = todayISOStr();
-  const loaded = cal !== null && todo !== null && fields !== null;
+  const loaded = items !== null && fields !== null;
   const fieldList = fields ?? [];
   const cols = 6 + fieldList.length;
 
@@ -132,44 +129,31 @@ export default function ListView({ categories, scope }: Props) {
     return false; // 范围筛选下无截止待办不显示（同 TXT 导出语义）
   };
 
-  const calRows: RowData[] = [];
-  const todoRows: RowData[] = [];
+  const visible: RowData[] = [];
   let nowInsertAt = 0;
   if (loaded) {
     const q = tableFilter.q.toLowerCase();
-    const match = (it: AnyItem): boolean => {
+    const match = (it: Item): boolean => {
       if (!(scope === null || it.category_id === scope)) return false;
       if (q !== "" && !it.title.toLowerCase().includes(q)) return false;
       return inBounds(it, tableFilter);
     };
-    const calSorted = (cal ?? [])
+    // 统一排序：结束日期升序（无结束以截止参与，均无沉底），不分归属段
+    const visibleSorted = (items ?? [])
       .filter(match)
-      .sort((a: CalendarItem, b: CalendarItem) => {
-        const ka = a.start_date + (a.start_time ?? "");
-        const kb = b.start_date + (b.start_time ?? "");
+      .sort((a: Item, b: Item) => {
+        const ka = sortKeyOfItem(a);
+        const kb = sortKeyOfItem(b);
         return ka < kb ? -1 : ka > kb ? 1 : a.id - b.id;
       })
-      .map((it: CalendarItem) => ({ it, kind: "cal" as const }));
-    const todoSorted = (todo ?? [])
-      .filter((it: TodoItem) => match(it) && !!it.due_date)
-      .sort((a: TodoItem, b: TodoItem) => {
-        const ka = a.due_date + (a.due_time ?? "");
-        const kb = b.due_date + (b.due_time ?? "");
-        return ka < kb ? -1 : ka > kb ? 1 : a.id - b.id;
-      })
-      .map((it: TodoItem) => ({ it, kind: "todo" as const }));
+      .map((it: Item) => ({ item: it, kind: ("cal") as const }));
     // 今日线位置：排序键（结束/截止）≤ 今天的最后一条之后
-    [...calSorted, ...todoSorted].forEach((r, i) => {
-      if (sortKeyOfItem(r.it) <= today) nowInsertAt = i + 1;
+    visibleSorted.forEach((r, i) => {
+      if (sortKeyOfItem(r.item) <= today) nowInsertAt = i + 1;
     });
-    calRows.push(...calSorted.map((r) => ({ item: r.it, kind: r.kind })));
-    todoRows.push(...todoSorted.map((r) => ({ item: r.it, kind: r.kind })));
+    visible.push(...visibleSorted);
   }
-  const merged: RowData[] = [...calRows, ...todoRows].sort((a, b) => {
-    const ka = sortKeyOfItem(a.item);
-    const kb = sortKeyOfItem(b.item);
-    return ka < kb ? -1 : ka > kb ? 1 : a.item.id - b.item.id;
-  });
+  const merged: RowData[] = visible;
 
   const applyFilter = () => {
     setTableFilter({
