@@ -146,7 +146,11 @@ export default function ListView({ categories, scope }: Props) {
         const kb = sortKeyOfItem(b);
         return ka < kb ? -1 : ka > kb ? 1 : a.id - b.id;
       })
-      .map((it: Item) => ({ item: it, kind: ("cal") as const }));
+      .map((it: Item) => ({
+        item: it,
+        // 归属按事项实际字段推导：起止完整=日历，否则=待办（PRD 5.1）
+        kind: (it.start_date && it.end_date ? "cal" : "todo") as "cal" | "todo",
+      }));
     // 今日线位置：排序键（结束/截止）≤ 今天的最后一条之后
     visibleSorted.forEach((r, i) => {
       if (sortKeyOfItem(r.item) <= today) nowInsertAt = i + 1;
