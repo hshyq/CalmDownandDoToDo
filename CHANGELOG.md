@@ -417,3 +417,5 @@
 - 本次真正落地：load 改 itemApi.list 全字段查询（commit "fix: 列表视图数据源真正落地全字段查询"）；重打 exe 替换 `release\日历待办工具 v0.3.10\日历待办工具.exe`（同版本号，生产 data\ 原地未动；临时目录启动验证通过后清理）
 ### 重打（同版本 v0.3.10，用户反馈后修正）
 - 修复列表视图归属列全部显示为「日历」的问题（统一排序重写时 kind 笔误写死）；重打 exe 替换 `release\日历待办工具 v0.3.10\日历待办工具.exe`（生产 data\ 原地未动；临时目录启动验证通过后清理）
+### 发布（指令 B+C）
+- GitHub Release **v0.3.10** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.10 ，附件 `CalmDownandDoToDo-v0.3.10.zip`（2.98MB，仅 exe + 使用说明，不含生产 data）；main 与 tag v0.3.10 均已推送
