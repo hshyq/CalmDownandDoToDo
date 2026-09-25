@@ -66,11 +66,11 @@ export default function ListView({ categories, scope }: Props) {
   const [toast, setToast] = useState("");
 
   // 筛选条件（筛选区即时更新状态；点「筛选」才应用到表格——IME 安全）
-  const [range, setRange] = useState<RangeKey>("all");
+  const [range, setRange] = useState<RangeKey>("w");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const queryRef = useRef<HTMLInputElement | null>(null);
-  const [tableFilter, setTableFilter] = useState<TableFilter>({ q: "", range: "all", cs: "", ce: "" });
+  const [tableFilter, setTableFilter] = useState<TableFilter>({ q: "", range: "w", cs: "", ce: "" });
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -165,7 +165,11 @@ export default function ListView({ categories, scope }: Props) {
     calRows.push(...calSorted.map((r) => ({ item: r.it, kind: r.kind })));
     todoRows.push(...todoSorted.map((r) => ({ item: r.it, kind: r.kind })));
   }
-  const merged: RowData[] = [...calRows, ...todoRows];
+  const merged: RowData[] = [...calRows, ...todoRows].sort((a, b) => {
+    const ka = sortKeyOfItem(a.item);
+    const kb = sortKeyOfItem(b.item);
+    return ka < kb ? -1 : ka > kb ? 1 : a.item.id - b.item.id;
+  });
 
   const applyFilter = () => {
     setTableFilter({
@@ -177,8 +181,8 @@ export default function ListView({ categories, scope }: Props) {
   };
 
   const resetFilter = () => {
-    // 仅清空筛选条件，不刷新列表数据（v1.19 用户要求）
-    setRange("all");
+    // 仅清空筛选条件恢复默认（一周内），不刷新列表数据（v1.19 用户要求）
+    setRange("w");
     setCustomStart("");
     setCustomEnd("");
     if (queryRef.current) queryRef.current.value = "";
