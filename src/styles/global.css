@@ -434,6 +434,8 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .ltable th:nth-child(2), .ltable td:nth-child(2) { position: sticky; left: 90px; width: 250px; min-width: 250px; max-width: 250px; white-space: normal; word-break: break-all; z-index: 1; }
 .ltable th:nth-child(1), .ltable th:nth-child(2) { z-index: 3; }
 .ltable td.lcell { white-space: nowrap; }
+/* 描述列（v1.21）：限宽单行省略，悬停 title 看全文 */
+.ltable td.ldesc { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .ldim { opacity: 0.35; }
 .dotc { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
 .lrow { cursor: pointer; }

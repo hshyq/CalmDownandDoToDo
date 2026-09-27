@@ -225,6 +225,8 @@ input,select,textarea{font:inherit;color:inherit}
 .ltable th:nth-child(2),.ltable td:nth-child(2){position:sticky;left:90px;width:250px;min-width:250px;max-width:250px;white-space:normal;word-break:break-all;z-index:1}
 .ltable th:nth-child(1),.ltable th:nth-child(2){z-index:3}
 .ltable td.lcell{white-space:nowrap}
+/* 描述列（v1.21）：限宽单行省略，悬停 title 看全文 */
+.ltable td.ldesc{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
 .ldim{opacity:.35}
 .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lrow{cursor:pointer}
@@ -632,7 +634,7 @@ function renderToolbar(){
 }
 function setView(v){state.view=v;renderAll()}
 
-/* ================= 列表视图（v1.18）：全部日历+待办事项，表头含全部自定义字段 ================= */
+/* ================= 列表视图（v1.18）：全部日历+待办事项，表头含描述与全部自定义字段（v1.21） ================= */
 let listQuery='';
 function refocusLq(){
   const i=document.getElementById('lq');
@@ -704,9 +706,13 @@ function renderListTable(){
       const txt=v===undefined||v===null?'':(Array.isArray(v)?v.join('、'):String(v));
       return txt===''?'<td class="lcell"><span class="ldim">—</span></td>':`<td class="lcell">${esc(txt)}</td>`;
     };
+    const desccell=it.desc
+      ?`<td class="ldesc" title="${esc(it.desc)}">${esc(it.desc)}</td>`
+      :'<td class="ldesc"><span class="ldim">—</span></td>';
     return `<tr class="lrow" onclick="openItemModal(${it.id})">
       <td><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
       <td class="ltitle">${esc(it.title)}</td>
+      ${desccell}
       <td class="lkind">${kind}</td>
       <td class="lcell">${fmt(it.sd,it.st)}</td>
       <td class="lcell">${fmt(it.ed,it.et)}</td>
@@ -714,7 +720,7 @@ function renderListTable(){
       ${defs.map(fvcell).join('')}
     </tr>`;
   };
-  const nowRow=()=>`<tr class="lnowline">${'<td></td>'.repeat(6+defs.length)}</tr>`;
+  const nowRow=()=>`<tr class="lnowline">${'<td></td>'.repeat(7+defs.length)}</tr>`;
   let rows='';
   let gi=0;
   if(nowIdx===0)rows+=nowRow();
@@ -727,7 +733,7 @@ function renderListTable(){
   if(lc)lc.textContent=`共 ${all.length} 条`;
   document.getElementById('ltablewrap').innerHTML=`<table class="ltable">
     <thead><tr>
-      <th>分类</th><th>标题</th><th>归属</th><th>开始</th><th>结束</th><th>截止</th>
+      <th>分类</th><th>标题</th><th>描述</th><th>归属</th><th>开始</th><th>结束</th><th>截止</th>
       ${defs.map(f=>`<th>${esc(f.name)}</th>`).join('')}
     </tr></thead><tbody>${rows}</tbody></table>`;
 }

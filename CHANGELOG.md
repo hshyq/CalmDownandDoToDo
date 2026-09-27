@@ -419,3 +419,15 @@
 - 修复列表视图归属列全部显示为「日历」的问题（统一排序重写时 kind 笔误写死）；重打 exe 替换 `release\日历待办工具 v0.3.10\日历待办工具.exe`（生产 data\ 原地未动；临时目录启动验证通过后清理）
 ### 发布（指令 B+C）
 - GitHub Release **v0.3.10** 已发布：https://github.com/hshyq/CalmDownandDoToDo/releases/tag/v0.3.10 ，附件 `CalmDownandDoToDo-v0.3.10.zip`（2.98MB，仅 exe + 使用说明，不含生产 data）；main 与 tag v0.3.10 均已推送
+
+## 2026-09-27（列表视图新增「描述」列，PRD v1.21）
+
+### 新增/变更（用户反馈）
+- 列表视图表头新增**「描述」列**：位于标题列右侧、归属列前；显示事项描述，限宽 220px 单行超出省略号截断、悬停 tooltip 显示全文、未填显示「—」；今日线列数同步（6→7 基础列）。初版置于截止列后，按用户反馈调整至标题右侧
+### 实现
+- `doc/原型.html`（表头/单元格/今日线/ldesc 样式，浏览器验证通过）→ `doc/测试用例.md` TC-CAL-020 修订 → `doc/PRD.md` 6.10 v1.21 → `ListView.tsx`（表头+descCell+cols）+ `global.css`（.ldesc）
+### 验收
+- `vitest` 68 passed、`tsc`+`vite build` 通过、`cargo test` 55 passed；临时目录启动验证通过
+### 打包（指令 A）
+- 版本号 0.3.10 → **0.3.11**；正式目录重命名为 `release\日历待办工具 v0.3.11\` 并替换 exe（≈7.5MB）与使用说明.txt 版本行（生产 data\ 原地未动，前后核对 1 文件/88KB 一致）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
+- 随本版内容：列表视图新增「描述」列（PRD v1.21）

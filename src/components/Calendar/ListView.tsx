@@ -1,7 +1,7 @@
 // 列表视图（PRD 6.10 v1.19；原型定稿 2026-09-19）：全部日历+待办事项表格。
 // 筛选区（搜索/范围/自定义日期/筛选/重置按钮）与表格分离渲染：
 // 输入只更新状态不刷新表格（IME 安全），点「筛选」应用；「重置」仅清空条件。
-// 表头=分类/标题/归属/开始/结束/截止+全部自定义字段动态列；
+// 表头=分类/标题/描述/归属/开始/结束/截止+全部自定义字段动态列（描述列居标题右侧、限宽省略、悬停看全文，v1.21）；
 // 分类/标题两列冻结（横向滚动固定）、标题列宽 20 个汉字超出换行；
 // 排序按结束日期升序（无结束以截止参与、均无沉底），今日线插在「≤今天」最后一条之后。
 import { useEffect, useRef, useState } from "react";
@@ -110,7 +110,7 @@ export default function ListView({ categories, scope }: Props) {
   const today = todayISOStr();
   const loaded = items !== null && fields !== null;
   const fieldList = fields ?? [];
-  const cols = 6 + fieldList.length;
+  const cols = 7 + fieldList.length;
 
   // —— 按 tableFilter 过滤 + 排序 + 今日线位置 ——
   const inBounds = (it: AnyItem, f: TableFilter): boolean => {
@@ -185,6 +185,13 @@ export default function ListView({ categories, scope }: Props) {
       ) : (
         <td className="lcell">{v}</td>
       );
+    /** 描述单元格：限宽单行省略、悬停 title 看全文、未填显示 —（v1.21）。 */
+    const descCell = (v: string | null): JSX.Element =>
+      v === null || v === "" ? (
+        <td className="ldesc"><span className="ldim">—</span></td>
+      ) : (
+        <td className="ldesc" title={v}>{v}</td>
+      );
     const show = (key: "start" | "end" | "due"): string => {
       const d = item_field(r.item, `${key}_date`);
       const t = item_field(r.item, `${key}_time`);
@@ -197,6 +204,7 @@ export default function ListView({ categories, scope }: Props) {
           {c?.name ?? "—"}
         </td>
         <td className="ltitle">{item_title(r.item)}</td>
+        {descCell(r.item.description)}
         {cell(kind)}
         {cell(show("start"))}
         {cell(show("end"))}
@@ -252,6 +260,7 @@ export default function ListView({ categories, scope }: Props) {
               <tr>
                 <th>分类</th>
                 <th>标题</th>
+                <th>描述</th>
                 <th>归属</th>
                 <th>开始</th>
                 <th>结束</th>
