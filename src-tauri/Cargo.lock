@@ -382,7 +382,7 @@ dependencies = [
 
 [[package]]
 name = "calendar-todo"
-version = "0.3.11"
+version = "0.3.12"
 dependencies = [
  "rusqlite",
  "serde",

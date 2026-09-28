@@ -453,3 +453,6 @@
 - `cargo test` 56 passed（新增 1）、clippy 0、`cargo fmt` 通过（顺带修复 `store/values.rs` 历史遗留格式）；`vitest` 68 passed、`tsc`+`vite build` 通过；待用户手测 TC-CAL-022、TC-UNDO-010；未打包（随下版）
 ### 修复（用户手测反馈）
 - **撤销后列表视图不刷新**：ListView 数据加载仅依赖 scope，未订阅 dataVersion——批量删除后 Ctrl+Z 数据库已恢复但列表仍显示旧数据（"查不到"；再执行一次删除触发重查时恢复的数据"突然出现"）。修复：ListView 订阅 appStore.dataVersion 并加入加载依赖（与日历/待办一致）；TC-CAL-022 补第⑦步防回归
+### 打包（指令 A）
+- 版本号 0.3.11 → **0.3.12**；正式目录重命名为 `release\日历待办工具 v0.3.12\` 并替换 exe（≈7.5MB）与使用说明.txt 版本行（生产 data\ 原地未动，前后核对 1 文件/88KB 一致）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
+- 随本版内容：列表视图默认一个月内 + 待办时间线去标签（v1.22）、列表多选批量删除（v1.23）、撤销后列表刷新修复；用户已手测通过（TC-CAL-021/022、TC-DUE-010、TC-UNDO-010 场景）
