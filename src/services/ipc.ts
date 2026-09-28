@@ -88,6 +88,10 @@ export const itemApi = {
   async remove(id: number): Promise<void> {
     await call<void>("delete_item", { id });
   },
+  /** 列表视图批量删除（PRD 6.10 v1.23）：一步撤销恢复全部；返回实际删除条数。 */
+  async removeBatch(ids: number[]): Promise<number> {
+    return await call<number>("delete_items_batch", { ids });
+  },
 };
 
 

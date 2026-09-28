@@ -431,3 +431,25 @@
 ### 打包（指令 A）
 - 版本号 0.3.10 → **0.3.11**；正式目录重命名为 `release\日历待办工具 v0.3.11\` 并替换 exe（≈7.5MB）与使用说明.txt 版本行（生产 data\ 原地未动，前后核对 1 文件/88KB 一致）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
 - 随本版内容：列表视图新增「描述」列（PRD v1.21）
+
+## 2026-09-27（列表视图默认一个月内 + 待办时间线去标签，PRD v1.22）
+
+### 新增/变更（用户反馈）
+- **列表视图范围筛选默认改「一个月内」**：每次进入列表视图初始即按一个月内过滤（列表视图为条件渲染，重挂载即恢复默认）；「重置」同步恢复一个月内。原默认一周内（v1.19）
+- **待办当前时间线去掉「今天 MM/DD」文字标签**：只保留红色虚线（与列表视图今日线口径一致）
+### 实现
+- 原型（浏览器已验证：默认 m1/重置恢复 m1、时间线无标签有红线）→ 测试用例 TC-CAL-021、TC-DUE-010 修订 → PRD 6.10/5.2 v1.22 → `ListView.tsx`（range/tableFilter 初始与重置改 m1）、`TodoPanel.tsx`（Row 类型与渲染去 label/nowtag）、`global.css` 与原型（删 .nowtag 样式）
+### 验收
+- `vitest` 68 passed、`tsc`+`vite build` 通过；待用户手测 TC-CAL-021、TC-DUE-010；未打包（是否并入 v0.3.11 同版本重打或随下版，待用户定）
+
+## 2026-09-28（列表视图多选与批量删除，PRD v1.23）
+
+### 新增/变更（用户需求）
+- **列表视图多选 + 批量删除**：每行行首复选框（勾选不触发行点击）；表头复选框全选/取消当前显示行（半选态）；勾选 ≥1 时筛选区出现红色「删除所选 (N)」，二态确认（「确认删除 N 条？」+「取消」，同事项删除确认风格）；确认后批量删除、清空勾选、toast 提示
+- **一步撤销**：批量删除为单个撤销命令（Ctrl+Z 一次恢复全部，含字段值）；冻结列扩展为复选框+分类+标题（偏移 0/34/124px）
+### 实现
+- 原型（浏览器已验证：勾选/全选半选/二态确认/删除减行）→ 测试用例 TC-CAL-022、TC-UNDO-010 → PRD 6.10 v1.23 → 后端 `UndoCmd::ItemDeleteBatch`（快照列表，apply=循环删、revert=循环恢复）+ `delete_items_batch` IPC（先全部快照、任一不存在整体报错不删）+ `undo_redo_item_delete_batch` 单测；前端 `ipc.ts` removeBatch、`ListView.tsx`（selected/confirmDel 状态、行与表头复选框、lselbar 按钮条）、`global.css`/原型（.lsel/.lchk/.lselbar + 冻结列偏移）、`mock.ts` removeBatch
+### 验收
+- `cargo test` 56 passed（新增 1）、clippy 0、`cargo fmt` 通过（顺带修复 `store/values.rs` 历史遗留格式）；`vitest` 68 passed、`tsc`+`vite build` 通过；待用户手测 TC-CAL-022、TC-UNDO-010；未打包（随下版）
+### 修复（用户手测反馈）
+- **撤销后列表视图不刷新**：ListView 数据加载仅依赖 scope，未订阅 dataVersion——批量删除后 Ctrl+Z 数据库已恢复但列表仍显示旧数据（"查不到"；再执行一次删除触发重查时恢复的数据"突然出现"）。修复：ListView 订阅 appStore.dataVersion 并加入加载依赖（与日历/待办一致）；TC-CAL-022 补第⑦步防回归

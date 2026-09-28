@@ -165,7 +165,6 @@ input,select,textarea{font:inherit;color:inherit}
 .tempty{color:var(--muted);font-size:12px;padding:14px 6px;text-align:center}
 /* 当前时间线（PRD 5.2 v1.15）：插在「截止日≤今天」的最后一条之后 */
 .nowline{display:flex;align-items:center;gap:6px;margin:7px 2px}
-.nowtag{flex:none;font-size:11px;font-weight:700;color:#fff;background:var(--danger);border-radius:8px;padding:1px 7px}
 .nowrule{flex:1;border-top:1.5px dashed var(--danger);opacity:.5}
 /* 字段管理：全局字段 + 分类可见性（PRD 4.3 v1.17） */
 .vis-tag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -213,6 +212,7 @@ input,select,textarea{font:inherit;color:inherit}
 .lsearch input{flex:0 0 260px;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font:inherit;color:var(--text);background:#fff}
 .lsearch input:focus{outline:none;border-color:var(--accent)}
 .lsearch .lsearch-count{font-size:12px;color:var(--muted)}
+.lselbar{display:flex;align-items:center;gap:6px;margin-left:auto}
 
 /* ===== 列表视图（v1.18）：全部日历+待办事项表格 =====
    分类/标题两列冻结（横向滚动时固定），标题列宽 20 个汉字超出换行；其余列内容宽、整表横向滚动 */
@@ -220,14 +220,18 @@ input,select,textarea{font:inherit;color:inherit}
 .ltable{border-collapse:separate;border-spacing:0;font-size:12px;background:#fff}
 .ltable th{position:sticky;top:0;background:var(--panel);border-bottom:1.5px solid var(--border);padding:7px 10px;text-align:left;font-weight:700;color:var(--muted);white-space:nowrap;z-index:2}
 .ltable td{border-bottom:1px solid var(--border);padding:6px 10px;vertical-align:top;background:#fff}
-/* 冻结列：分类（left:0）与标题（left:90px，宽 20 汉字超出换行） */
-.ltable th:nth-child(1),.ltable td:nth-child(1){position:sticky;left:0;width:90px;min-width:90px;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
-.ltable th:nth-child(2),.ltable td:nth-child(2){position:sticky;left:90px;width:250px;min-width:250px;max-width:250px;white-space:normal;word-break:break-all;z-index:1}
-.ltable th:nth-child(1),.ltable th:nth-child(2){z-index:3}
+/* 冻结列（v1.23 起含复选框）：复选框（.lsel，left:0）与分类（left:34px）与标题（left:124px，宽 20 汉字超出换行） */
+.ltable th:nth-child(2),.ltable td:nth-child(2){position:sticky;left:34px;width:90px;min-width:90px;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1}
+.ltable th:nth-child(3),.ltable td:nth-child(3){position:sticky;left:124px;width:250px;min-width:250px;max-width:250px;white-space:normal;word-break:break-all;z-index:1}
+.ltable th:nth-child(2),.ltable th:nth-child(3){z-index:3}
 .ltable td.lcell{white-space:nowrap}
 /* 描述列（v1.21）：限宽单行省略，悬停 title 看全文 */
 .ltable td.ldesc{max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
 .ldim{opacity:.35}
+/* 多选列（v1.23）：复选框居中，与分类/标题一起冻结 */
+.ltable th.lsel,.ltable td.lsel{position:sticky;left:0;width:34px;min-width:34px;max-width:34px;padding:6px 4px;text-align:center;white-space:nowrap;z-index:1}
+.ltable th.lsel{z-index:3}
+.ltable input.lchk{accent-color:var(--accent);cursor:pointer;margin:0}
 .dotc{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .lrow{cursor:pointer}
 .lrow:hover td{background:#f0f6ff}
@@ -653,14 +657,15 @@ function renderListFilter(){
        结束 <input type="date" id="lce" value="${listCE}" onchange="listCE=this.value"></span>`
     :'';
   const count=`<span class="lsearch-count" id="lcount"></span>`;
+  const selbar=`<span class="lselbar" id="lselbar"></span>`;
   document.getElementById('lsearchbox').innerHTML=`<input id="lq" placeholder="搜索标题…" value="${esc(listQuery)}"
       oninput="listQuery=this.value" title="输入后点击「筛选」应用（支持中文输入）">
     ${rangeSel}${customDates}
     <button type="button" class="btn-primary" onclick="renderListTable()">筛选</button>
-    <button type="button" class="btn-ghost" onclick="resetListFilter()">重置</button>${count}`;
+    <button type="button" class="btn-ghost" onclick="resetListFilter()">重置</button>${count}${selbar}`;
 }
 function resetListFilter(){
-  listQuery='';listRange='all';listCS='';listCE='';
+  listQuery='';listRange='m1';listCS='';listCE='';
   renderListFilter(); // 仅清空筛选条件，不刷新列表数据（用户要求）
 }
 function renderListTable(){
@@ -710,6 +715,7 @@ function renderListTable(){
       ?`<td class="ldesc" title="${esc(it.desc)}">${esc(it.desc)}</td>`
       :'<td class="ldesc"><span class="ldim">—</span></td>';
     return `<tr class="lrow" onclick="openItemModal(${it.id})">
+      <td class="lsel"><input type="checkbox" class="lchk" data-id="${it.id}" ${selIds.has(it.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleSel(${it.id},this.checked)"></td>
       <td><span class="dotc" style="background:${c.color}"></span>${esc(c.name)}</td>
       <td class="ltitle">${esc(it.title)}</td>
       ${desccell}
@@ -720,7 +726,7 @@ function renderListTable(){
       ${defs.map(fvcell).join('')}
     </tr>`;
   };
-  const nowRow=()=>`<tr class="lnowline">${'<td></td>'.repeat(7+defs.length)}</tr>`;
+  const nowRow=()=>`<tr class="lnowline">${'<td></td>'.repeat(8+defs.length)}</tr>`;
   let rows='';
   let gi=0;
   if(nowIdx===0)rows+=nowRow();
@@ -733,9 +739,12 @@ function renderListTable(){
   if(lc)lc.textContent=`共 ${all.length} 条`;
   document.getElementById('ltablewrap').innerHTML=`<table class="ltable">
     <thead><tr>
+      <th class="lsel"><input type="checkbox" class="lchk" id="lall" onchange="toggleAll(this.checked)" title="全选当前显示行"></th>
       <th>分类</th><th>标题</th><th>描述</th><th>归属</th><th>开始</th><th>结束</th><th>截止</th>
       ${defs.map(f=>`<th>${esc(f.name)}</th>`).join('')}
     </tr></thead><tbody>${rows}</tbody></table>`;
+  updateAllBox();
+  renderSelBar();
 }
 function addMonthsM1(t,months){ // t + N 个月 − 1 天（目标月无同日钳到月末再减一天）
   const [y,m,d]=t.split('-').map(Number);
@@ -748,7 +757,39 @@ function addMonthsM1(t,months){ // t + N 个月 − 1 天（目标月无同日�
 }
 /* ===== 日期类型管理（PRD 方案待确认：班/休/假，默认周一~五工作日、周六日休息日） ===== */
 let dtCursor=TODAY;
-let listRange='all',listCS='',listCE='';
+let listRange='m1',listCS='',listCE='';
+let selIds=new Set(),selConfirm=false; // 多选与批量删除（v1.23）：选中 id 集合 + 删除二态确认
+function toggleSel(id,on){on?selIds.add(id):selIds.delete(id);selConfirm=false;renderSelBar();updateAllBox()}
+function toggleAll(on){
+  document.querySelectorAll('.ltable tbody input.lchk').forEach(b=>{
+    b.checked=on;const id=Number(b.dataset.id);on?selIds.add(id):selIds.delete(id);
+  });
+  selConfirm=false;renderSelBar();
+}
+function updateAllBox(){
+  const allBox=document.getElementById('lall');
+  if(!allBox)return;
+  const boxes=[...document.querySelectorAll('.ltable tbody input.lchk')];
+  const n=boxes.filter(b=>b.checked).length;
+  allBox.checked=boxes.length>0&&n===boxes.length;
+  allBox.indeterminate=n>0&&n<boxes.length;
+}
+function renderSelBar(){
+  const bar=document.getElementById('lselbar');
+  if(!bar)return;
+  if(selIds.size===0){bar.innerHTML='';selConfirm=false;return}
+  bar.innerHTML=selConfirm
+    ?`<button type="button" class="btn-danger" onclick="batchDelete()">确认删除 ${selIds.size} 条？</button>
+      <button type="button" class="btn-ghost" onclick="selConfirm=false;renderSelBar()">取消</button>`
+    :`<button type="button" class="btn-danger" onclick="selConfirm=true;renderSelBar()">删除所选 (${selIds.size})</button>`;
+}
+function batchDelete(){ // 演示：直接从 mock 移除；正式版走 IPC 一步撤销
+  const n=selIds.size;
+  state.items=state.items.filter(x=>!selIds.has(x.id));
+  selIds=new Set();selConfirm=false;
+  renderListTable();
+  toast(`已删除 ${n} 条，可 Ctrl+Z 撤销`);
+}
 function dtNav(d){
   if(settingsTab==='daytypes'){
     let y=Number(dtCursor.slice(0,4)),m=Number(dtCursor.slice(5,7));
@@ -1066,7 +1107,7 @@ function renderTodo(){
   let nowIdx=0;
   todos.forEach((it,i)=>{if(it.dd&&it.dd<=today)nowIdx=i+1});
   let gi=0;
-  const nowline=()=>`<div class="nowline"><span class="nowtag">今天 ${today.slice(5)}</span><span class="nowrule"></span></div>`;
+  const nowline=()=>`<div class="nowline"><span class="nowrule"></span></div>`;
   let html='';
   if(!keys.length){html=`<div class="tempty">当前范围暂无待办</div>`}
   for(const k of keys){

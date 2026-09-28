@@ -55,6 +55,8 @@ pub enum UndoCmd {
     },
     /// 删除事项：revert=重建行与字段值，apply=删除。
     ItemDelete { snap: Box<ItemSnapshot> },
+    /// 批量删除事项（列表视图多选，PRD 6.10 v1.23）：一步撤销恢复全部。
+    ItemDeleteBatch { snaps: Vec<Box<ItemSnapshot>> },
     /// 新建字段：revert=删除字段（值级联），apply=重建模板。
     FieldCreate { snap: Box<FieldSnapshot> },
     /// 字段改名/改类型/选项变更：按前后模板+值快照覆盖。
@@ -88,6 +90,12 @@ impl Command for UndoCmd {
             UndoCmd::ItemCreate { snap } => db.restore_item(snap),
             UndoCmd::ItemUpdate { before: _, after } => db.restore_item(after),
             UndoCmd::ItemDelete { snap } => db.delete_item(snap.item.id),
+            UndoCmd::ItemDeleteBatch { snaps } => {
+                for snap in snaps {
+                    db.delete_item(snap.item.id)?;
+                }
+                Ok(())
+            }
             UndoCmd::FieldCreate { snap } => db.restore_field(snap),
             UndoCmd::FieldUpdate { before: _, after } => db.restore_field(after),
             UndoCmd::FieldDelete { snap } => db.delete_field(snap.def.id),
@@ -110,6 +118,12 @@ impl Command for UndoCmd {
             UndoCmd::ItemCreate { snap } => db.delete_item(snap.item.id),
             UndoCmd::ItemUpdate { before, after: _ } => db.restore_item(before),
             UndoCmd::ItemDelete { snap } => db.restore_item(snap),
+            UndoCmd::ItemDeleteBatch { snaps } => {
+                for snap in snaps {
+                    db.restore_item(snap)?;
+                }
+                Ok(())
+            }
             UndoCmd::FieldCreate { snap } => db.delete_field(snap.def.id),
             UndoCmd::FieldUpdate { before, after: _ } => db.restore_field(before),
             UndoCmd::FieldDelete { snap } => db.restore_field(snap),
@@ -135,6 +149,7 @@ impl Command for UndoCmd {
             UndoCmd::ItemCreate { .. } => "新增事项".into(),
             UndoCmd::ItemUpdate { .. } => "编辑事项".into(),
             UndoCmd::ItemDelete { .. } => "删除事项".into(),
+            UndoCmd::ItemDeleteBatch { snaps } => format!("批量删除 {} 条事项", snaps.len()),
             UndoCmd::FieldCreate { .. } => "新增字段".into(),
             UndoCmd::FieldUpdate { .. } => "修改字段".into(),
             UndoCmd::FieldDelete { .. } => "删除字段".into(),
@@ -263,6 +278,39 @@ mod tests {
             end_time: None,
             due_date: None,
             due_time: None,
+        }
+    }
+
+    #[test]
+    fn undo_redo_item_delete_batch() {
+        // 批量删除（列表视图多选，PRD 6.10 v1.23）：一步撤销恢复全部、重做再删全部
+        let dir = tmp_dir("idb");
+        let db = db(&dir);
+        let stack = UndoStack::new(&dir);
+        let cat = work_id(&db);
+
+        let its: Vec<_> = ["甲", "乙", "丙"]
+            .iter()
+            .map(|t| db.create_item(&mk_item(cat, t)).expect("新增"))
+            .collect();
+        let snaps: Vec<_> = its
+            .iter()
+            .map(|it| Box::new(db.snapshot_item(it.id).expect("快照").expect("存在")))
+            .collect();
+        for it in &its {
+            db.delete_item(it.id).expect("删除");
+        }
+        stack.push(Box::new(UndoCmd::ItemDeleteBatch { snaps }));
+        // 撤销：一次恢复全部
+        let desc = stack.undo(&db).expect("撤销").expect("有描述");
+        assert_eq!(desc, "批量删除 3 条事项");
+        for (it, t) in its.iter().zip(["甲", "乙", "丙"]) {
+            assert_eq!(db.get_item(it.id).expect("读").title, t);
+        }
+        // 重做：再次全部删除
+        stack.redo(&db).expect("重做");
+        for it in &its {
+            assert!(db.get_item(it.id).is_err());
         }
     }
 

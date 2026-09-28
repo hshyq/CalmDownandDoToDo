@@ -86,6 +86,7 @@ pub fn run() {
             commands::items::create_item,
             commands::items::update_item,
             commands::items::delete_item,
+            commands::items::delete_items_batch,
             commands::items::get_item_detail,
             commands::items::list_calendar_items,
             commands::items::list_todo_items,

@@ -11,6 +11,7 @@ import type { Category, FieldDef, Item } from "../../services/types";
 import type { FieldType } from "../../services/types";
 import { decodeFieldValue } from "../../features/fields/value";
 import { addDays } from "../../features/calendar/dates";
+import { useAppStore } from "../../stores/appStore";
 
 type RangeKey = "all" | "w" | "m1" | "m2" | "custom";
 type AnyItem = Item;
@@ -58,18 +59,24 @@ interface RowData {
 }
 
 export default function ListView({ categories, scope }: Props) {
+  // 撤销/重做后 dataVersion 变化驱动本视图重查（与日历/待办一致；曾因此漏刷导致撤销后列表不显示恢复数据）
+  const dataVersion = useAppStore((s) => s.dataVersion);
   const [items, setItems] = useState<Item[] | null>(null);
   const [fields, setFields] = useState<FieldDef[] | null>(null);
   const [valueRows, setValueRows] = useState<Array<{ itemId: number; fieldDefId: number; valueJson: string | null }>>([]);
   const [modal, setModal] = useState<Item | null>(null);
   const [toast, setToast] = useState("");
+  // 多选与批量删除（PRD 6.10 v1.23）：选中 id 集合 + 删除二态确认
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [confirmDel, setConfirmDel] = useState(false);
 
   // 筛选条件（筛选区即时更新状态；点「筛选」才应用到表格——IME 安全）
-  const [range, setRange] = useState<RangeKey>("w");
+  // 范围默认「一个月内」（v1.22）：列表视图为条件渲染，每次进入重新挂载即恢复默认
+  const [range, setRange] = useState<RangeKey>("m1");
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const queryRef = useRef<HTMLInputElement | null>(null);
-  const [tableFilter, setTableFilter] = useState<TableFilter>({ q: "", range: "w", cs: "", ce: "" });
+  const [tableFilter, setTableFilter] = useState<TableFilter>({ q: "", range: "m1", cs: "", ce: "" });
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -95,7 +102,7 @@ export default function ListView({ categories, scope }: Props) {
   useEffect(() => {
     void load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scope]);
+  }, [scope, dataVersion]);
 
   const openEdit = async (id: number) => {
     try {
@@ -110,7 +117,7 @@ export default function ListView({ categories, scope }: Props) {
   const today = todayISOStr();
   const loaded = items !== null && fields !== null;
   const fieldList = fields ?? [];
-  const cols = 7 + fieldList.length;
+  const cols = 8 + fieldList.length;
 
   // —— 按 tableFilter 过滤 + 排序 + 今日线位置 ——
   const inBounds = (it: AnyItem, f: TableFilter): boolean => {
@@ -169,11 +176,48 @@ export default function ListView({ categories, scope }: Props) {
   };
 
   const resetFilter = () => {
-    // 仅清空筛选条件恢复默认（一周内），不刷新列表数据（v1.19 用户要求）
-    setRange("w");
+    // 仅清空筛选条件恢复默认（一个月内），不刷新列表数据（v1.19 用户要求、v1.22 默认范围改一个月内）
+    setRange("m1");
     setCustomStart("");
     setCustomEnd("");
     if (queryRef.current) queryRef.current.value = "";
+  };
+
+  // —— 多选与批量删除（v1.23）——
+  const mergedIds = merged.map((r) => item_id(r.item));
+  const allChecked = mergedIds.length > 0 && mergedIds.every((id) => selected.has(id));
+  const someChecked = mergedIds.some((id) => selected.has(id));
+
+  const toggleSelect = (id: number, on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+    setConfirmDel(false);
+  };
+  const toggleAll = (on: boolean) => {
+    // 全选/取消仅作用于当前显示行；不在当前显示的选中项保持不变
+    setSelected((prev) => {
+      const next = new Set(prev);
+      mergedIds.forEach((id) => (on ? next.add(id) : next.delete(id)));
+      return next;
+    });
+    setConfirmDel(false);
+  };
+  const doBatchDelete = async () => {
+    const ids = [...selected];
+    try {
+      const n = await itemApi.removeBatch(ids);
+      setSelected(new Set());
+      setConfirmDel(false);
+      await load();
+      showToast(`已删除 ${n} 条，可 Ctrl+Z 撤销`);
+    } catch (e) {
+      setConfirmDel(false);
+      showToast(e instanceof Error ? e.message : "删除失败，请重试");
+    }
   };
 
   const rowElement = (r: RowData): JSX.Element => {
@@ -199,6 +243,15 @@ export default function ListView({ categories, scope }: Props) {
     };
     return (
       <tr className="lrow" onClick={() => void openEdit(item_id(r.item))}>
+        <td className="lsel">
+          <input
+            type="checkbox"
+            className="lchk"
+            checked={selected.has(item_id(r.item))}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => toggleSelect(item_id(r.item), e.target.checked)}
+          />
+        </td>
         <td>
           <span className="dotc" style={{ background: c?.color ?? "#9E9E9E" }} />
           {c?.name ?? "—"}
@@ -246,6 +299,18 @@ export default function ListView({ categories, scope }: Props) {
         <button type="button" className="btn-primary" onClick={applyFilter}>筛选</button>
         <button type="button" className="btn-ghost" onClick={resetFilter}>重置</button>
         <span className="lsearch-count">{loaded ? `共 ${merged.length} 条` : ""}</span>
+        {selected.size > 0 ? (
+          <span className="lselbar">
+            {confirmDel ? (
+              <>
+                <button type="button" className="btn-danger" onClick={() => void doBatchDelete()}>确认删除 {selected.size} 条？</button>
+                <button type="button" className="btn-ghost" onClick={() => setConfirmDel(false)}>取消</button>
+              </>
+            ) : (
+              <button type="button" className="btn-danger" onClick={() => setConfirmDel(true)}>删除所选 ({selected.size})</button>
+            )}
+          </span>
+        ) : null}
       </div>
       <div className="ltable-wrap">
         {!loaded ? (
@@ -258,6 +323,18 @@ export default function ListView({ categories, scope }: Props) {
           <table className="ltable">
             <thead>
               <tr>
+                <th className="lsel">
+                  <input
+                    type="checkbox"
+                    className="lchk"
+                    checked={allChecked}
+                    ref={(el) => {
+                      if (el) el.indeterminate = someChecked && !allChecked;
+                    }}
+                    onChange={(e) => toggleAll(e.target.checked)}
+                    title="全选当前显示行"
+                  />
+                </th>
                 <th>分类</th>
                 <th>标题</th>
                 <th>描述</th>

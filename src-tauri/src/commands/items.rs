@@ -131,6 +131,35 @@ pub fn delete_item(
     Ok(())
 }
 
+/// 列表视图批量删除（PRD 6.10 v1.23）：先全部快照（任一不存在则整体报错不删），
+/// 再逐条删除，一步撤销恢复全部。
+#[tauri::command]
+pub fn delete_items_batch(
+    db: State<'_, Db>,
+    stack: State<'_, UndoStack>,
+    app: AppHandle,
+    ids: Vec<i64>,
+) -> Result<usize, String> {
+    if ids.is_empty() {
+        return Err("未选择事项".to_string());
+    }
+    let mut snaps = Vec::with_capacity(ids.len());
+    for id in &ids {
+        snaps.push(Box::new(
+            db.snapshot_item(*id)
+                .map_err(|e| e.to_string())?
+                .ok_or_else(|| "事项不存在".to_string())?,
+        ));
+    }
+    for snap in &snaps {
+        db.delete_item(snap.item.id).map_err(|e| e.to_string())?;
+    }
+    let n = snaps.len();
+    stack.push(Box::new(UndoCmd::ItemDeleteBatch { snaps }));
+    emit_depth(&app, &stack);
+    Ok(n)
+}
+
 #[tauri::command]
 pub fn get_item_detail(db: State<'_, Db>, id: i64) -> Result<Item, String> {
     db.get_item(id).map_err(|e| e.to_string())

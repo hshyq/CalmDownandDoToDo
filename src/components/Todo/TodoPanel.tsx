@@ -19,7 +19,7 @@ const OVERSCAN = 6;
 type Row =
   | { kind: "group"; key: string; label: string; count: number }
   | { kind: "item"; item: TodoItem }
-  | { kind: "nowline"; label: string };
+  | { kind: "nowline" };
 
 /** 本地今天（yyyy-MM-dd）。 */
 const todayStr = (): string => {
@@ -95,9 +95,8 @@ export default function TodoPanel() {
   const groups = groupTodos(todos);
   // 时间线插入点=条目流中「截止≤今天」的最后一条之后（PRD 5.2 v1.15）；0=列表最顶部
   const nowIdx = nowLineIndex(todos, today);
-  const nowLabel = `今天 ${today.slice(5).replace("-", "/")}`;
   const rows: Row[] = [];
-  if (nowIdx === 0) rows.push({ kind: "nowline", label: nowLabel });
+  if (nowIdx === 0) rows.push({ kind: "nowline" });
   let done = 0; // 全局条目序号（含折叠组内条目，折叠时不渲染行、时间线随之隐藏）
   for (const g of groups) {
     rows.push({ kind: "group", key: g.key, label: g.label, count: g.items.length });
@@ -105,7 +104,7 @@ export default function TodoPanel() {
       done++;
       if (collapsed[g.key]) continue;
       rows.push({ kind: "item", item: it });
-      if (done === nowIdx) rows.push({ kind: "nowline", label: nowLabel });
+      if (done === nowIdx) rows.push({ kind: "nowline" });
     }
   }
   const total = rows.reduce(
@@ -182,9 +181,8 @@ export default function TodoPanel() {
                   <span className="tcount">{row.count}</span>
                 </div>
               ) : row.kind === "nowline" ? (
-                // 当前时间线（PRD 5.2 v1.15）：区分已到期/今天与未来
+                // 当前时间线（PRD 5.2 v1.15；v1.22 去文字标签只留红色虚线）
                 <div key="nowline" className="nowline" style={{ top, height: NOWLINE_H }}>
-                  <span className="nowtag">{row.label}</span>
                   <span className="nowrule" />
                 </div>
               ) : (

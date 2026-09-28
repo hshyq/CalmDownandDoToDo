@@ -309,9 +309,8 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .titem-title { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 4px 0 8px; flex: 1; min-width: 0; }
 /* 待办条目右侧：截止日期的「日」（PRD 5.2 v1.11；长期规划无截止显示 —） */
 .titem-day { flex: none; padding-right: 10px; font-size: 14px; font-weight: 700; opacity: 0.92; }
-/* 当前时间线（PRD 5.2 v1.15）：截止≤今天最后一条之后的红色虚线 */
+/* 当前时间线（PRD 5.2 v1.15；v1.22 去文字标签）：截止≤今天最后一条之后的红色虚线 */
 .nowline { position: absolute; left: 22px; right: 8px; display: flex; align-items: center; gap: 6px; }
-.nowtag { flex: none; font-size: 11px; font-weight: 700; color: #fff; background: var(--danger); border-radius: 8px; padding: 1px 7px; }
 .nowrule { flex: 1; border-top: 1.5px dashed var(--danger); opacity: 0.5; }
 /* 导出 TXT 快捷范围按钮（PRD 6.9 v1.15） */
 .chips { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -429,11 +428,16 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .ltable { border-collapse: separate; border-spacing: 0; font-size: 12px; background: #fff; }
 .ltable th { position: sticky; top: 0; background: var(--panel); border-bottom: 1.5px solid var(--border); padding: 7px 10px; text-align: left; font-weight: 700; color: var(--muted); white-space: nowrap; z-index: 2; }
 .ltable td { border-bottom: 1px solid var(--border); padding: 6px 10px; vertical-align: top; background: #fff; }
-/* 冻结列：分类（left:0）与标题（left:90px，宽 20 汉字超出换行） */
-.ltable th:nth-child(1), .ltable td:nth-child(1) { position: sticky; left: 0; width: 90px; min-width: 90px; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 1; }
-.ltable th:nth-child(2), .ltable td:nth-child(2) { position: sticky; left: 90px; width: 250px; min-width: 250px; max-width: 250px; white-space: normal; word-break: break-all; z-index: 1; }
-.ltable th:nth-child(1), .ltable th:nth-child(2) { z-index: 3; }
+/* 冻结列（v1.23 起含复选框）：复选框（.lsel，left:0）与分类（left:34px）与标题（left:124px，宽 20 汉字超出换行） */
+.ltable th:nth-child(2), .ltable td:nth-child(2) { position: sticky; left: 34px; width: 90px; min-width: 90px; max-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 1; }
+.ltable th:nth-child(3), .ltable td:nth-child(3) { position: sticky; left: 124px; width: 250px; min-width: 250px; max-width: 250px; white-space: normal; word-break: break-all; z-index: 1; }
+.ltable th:nth-child(2), .ltable th:nth-child(3) { z-index: 3; }
 .ltable td.lcell { white-space: nowrap; }
+/* 多选列（v1.23）：复选框居中，与分类/标题一起冻结 */
+.ltable th.lsel, .ltable td.lsel { position: sticky; left: 0; width: 34px; min-width: 34px; max-width: 34px; padding: 6px 4px; text-align: center; white-space: nowrap; z-index: 1; }
+.ltable th.lsel { z-index: 3; }
+.ltable input.lchk { accent-color: var(--accent); cursor: pointer; margin: 0; }
+.lselbar { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 /* 描述列（v1.21）：限宽单行省略，悬停 title 看全文 */
 .ltable td.ldesc { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
 .ldim { opacity: 0.35; }

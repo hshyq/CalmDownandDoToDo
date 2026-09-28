@@ -81,6 +81,13 @@ export const mockItemApi = {
   async remove(id: number): Promise<void> {
     items = items.filter((i) => i.id !== id);
   },
+  // 批量删除（PRD 6.10 v1.23）：mock 预览与真实 IPC 行为对齐（返回实际删除条数）
+  async removeBatch(ids: number[]): Promise<number> {
+    const set = new Set(ids);
+    const before = items.length;
+    items = items.filter((i) => !set.has(i.id));
+    return before - items.length;
+  },
   async calendar(viewStart: string, viewEnd: string, categoryId: number | null): Promise<CalendarItem[]> {
     return items
       .filter((it) => it.start_date && it.end_date &&
