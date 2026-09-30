@@ -195,6 +195,16 @@ input,select,textarea{font:inherit;color:inherit}
   flex:1;border:1px solid var(--border);border-radius:6px;padding:6px 8px;background:#fff;min-width:0}
 .frow textarea{min-height:56px;resize:vertical}
 .frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--accent)}
+/* 分类下拉（v1.24 带色点，与左侧分类列表一致） */
+.catsel{position:relative;flex:1;min-width:0}
+.catsel-btn{display:flex;align-items:center;gap:6px;width:100%;height:30px;padding:0 8px;border:1px solid var(--border);border-radius:6px;background:#fff;font:inherit;color:var(--text);cursor:pointer}
+.catsel-btn:hover{border-color:var(--accent)}
+.catsel-name{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.catsel-caret{flex:none;color:var(--muted);font-size:10px}
+.catsel-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:60;padding:4px 0}
+.catsel-item{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;font-size:13px}
+.catsel-item:hover{background:var(--panel)}
+.catsel-item.on{color:var(--accent);font-weight:700}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
 /* 列表视图 v1.19：归属列 / 今日线 / 范围下拉 */
 .lkind{white-space:nowrap;color:var(--muted)}
@@ -1182,13 +1192,19 @@ function openItemModal(id,preSd){
   const it=isNew?null:state.items.find(x=>x.id===id);
   const curCat=isNew?activeCatId():it.cat;
   const catId=isNew?(curCat!==null?curCat:state.categories.find(c=>c.kind==='normal').id):it.cat;
-  // 分类下拉顺序与界面标签栏一致：普通分类按序，未分类沉底（v1.17）
-  const catOpts=[...state.categories.filter(c=>c.kind==='normal'),...state.categories.filter(c=>c.kind==='uncategorized')]
-    .map(c=>`<option value="${c.id}" ${c.id===catId?'selected':''}>${esc(c.name)}</option>`).join('');
+  // 分类下拉（v1.24 带色点，与左侧分类列表一致）：普通分类按序，未分类沉底（v1.17）
+  const catList=[...state.categories.filter(c=>c.kind==='normal'),...state.categories.filter(c=>c.kind==='uncategorized')];
+  const catDot=id=>{const c=catList.find(x=>x.id===id);return `<span class="dotc" style="background:${c?c.color:'#9E9E9E'}"></span>`};
+  const catSelHtml=`<div class="catsel" id="if-cat" data-value="${catId}">
+    <button type="button" class="catsel-btn" onclick="event.stopPropagation();toggleCatSel()">${catDot(catId)}<span class="catsel-name">${esc((catList.find(x=>x.id===catId)||{}).name||'')}</span><span class="catsel-caret">▾</span></button>
+    <div class="catsel-menu" id="if-cat-menu" style="display:none">
+      ${catList.map(c=>`<div class="catsel-item ${c.id===catId?'on':''}" data-id="${c.id}" onclick="event.stopPropagation();pickCat(${c.id})">${catDot(c.id)}<span class="catsel-name">${esc(c.name)}</span></div>`).join('')}
+    </div>
+  </div>`;
   modal(`<div class="dhead">${isNew?'新增事项':'编辑事项'}<button class="x" onclick="closeModal()">✕</button></div>
     <div class="dbody" id="item-form">
       <input type="hidden" id="if-id" value="${isNew?'':id}">
-      ${isNew&&curCat!==null?'':`<div class="frow"><label>所属分类</label><select id="if-cat" onchange="onCatChange(this.value)">${catOpts}</select></div>`}
+      ${isNew&&curCat!==null?'':`<div class="frow"><label>所属分类</label>${catSelHtml}</div>`}
       <div class="frow"><label>标题 *</label><input type="text" id="if-title" maxlength="100" value="${it?esc(it.title):''}"></div>
       <div class="frow"><label>描述</label><textarea id="if-desc" rows="5">${it?esc(it.desc):''}</textarea></div>
       <div class="frow"><label>开始时间</label>
@@ -1213,6 +1229,22 @@ function onCatChange(newCat){
   const it=state.items.find(x=>x.id===id);
   $('#if-fields').innerHTML=fieldsSection(Number(newCat),it?it.fv:{});
 }
+/* 分类下拉（v1.24 带色点）：展开/收起与选择；点击空白处收起 */
+function toggleCatSel(){
+  const m=$('#if-cat-menu');
+  if(m)m.style.display=m.style.display==='none'?'block':'none';
+}
+function pickCat(id){
+  const wrap=$('#if-cat');
+  wrap.dataset.value=id;
+  const c=state.categories.find(x=>x.id===id);
+  wrap.querySelector('.catsel-btn').innerHTML=
+    `<span class="dotc" style="background:${c.color}"></span><span class="catsel-name">${esc(c.name)}</span><span class="catsel-caret">▾</span>`;
+  wrap.querySelectorAll('.catsel-item').forEach(el=>el.classList.toggle('on',Number(el.dataset.id)===id));
+  toggleCatSel();
+  onCatChange(id);
+}
+document.addEventListener('click',()=>{const m=$('#if-cat-menu');if(m)m.style.display='none'});
 function collectFV(){
   const fv={};
   document.querySelectorAll('#if-fields [data-fv]').forEach(el=>{
@@ -1233,12 +1265,12 @@ function saveItem(){
   const base={title,desc:$('#if-desc').value,sd,st:segVal('if-st'),ed,et:segVal('if-et'),
     dd:segVal('if-dd'),dt:segVal('if-dt')};
   if(idStr===''){
-    state.items.push({id:itemSeq++,cat:$('#if-cat')?Number($('#if-cat').value):activeCatId(),fv:collectFV(),...base});
+    state.items.push({id:itemSeq++,cat:$('#if-cat')?Number($('#if-cat').dataset.value):activeCatId(),fv:collectFV(),...base});
     toast('已保存：按归属规则进入'+(base.sd&&base.ed?'日历':'待办'));
   }else{
     const id=Number(idStr);
     const it=state.items.find(x=>x.id===id);
-    const catId=$('#if-cat')?Number($('#if-cat').value):it.cat;
+    const catId=$('#if-cat')?Number($('#if-cat').dataset.value):it.cat;
     // 字段值：仅覆盖当前模板内的字段，其他分类的字段值原样保留（PRD 4.3）
     const old=it.fv,newFv=collectFV();
     const merged={...old};

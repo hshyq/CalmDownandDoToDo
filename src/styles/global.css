@@ -196,6 +196,16 @@ input[type="date"], input[type="time"] { cursor: pointer; }
   flex: 1; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; font: inherit; color: var(--text); background: #fff;
 }
 .iform .frow input:focus, .iform .frow textarea:focus, .iform .frow select:focus { outline: none; border-color: var(--accent); }
+/* 所属分类下拉（PRD 6.4 v1.24）：带色点，与左侧分类列表一致 */
+.catsel { position: relative; flex: 1; min-width: 0; }
+.catsel-btn { display: flex; align-items: center; gap: 6px; width: 100%; height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: #fff; font: inherit; color: var(--text); cursor: pointer; }
+.catsel-btn:hover { border-color: var(--accent); }
+.catsel-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.catsel-caret { flex: none; color: var(--muted); font-size: 10px; }
+.catsel-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 220px; overflow: auto; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); z-index: 60; padding: 4px 0; }
+.catsel-item { display: flex; align-items: center; gap: 6px; padding: 7px 10px; cursor: pointer; font-size: 13px; }
+.catsel-item:hover { background: var(--panel); }
+.catsel-item.on { color: var(--accent); font-weight: 700; }
 .ferr { color: var(--danger); font-size: 12px; margin-top: 4px; }
 .btn-danger.left { margin-right: auto; }
 /* ===== P4：日历视图 ===== */

@@ -1,5 +1,6 @@
 // 事项 新增/编辑 弹窗：标准字段 + P6 自定义字段区（PRD 4.3/6.3/6.4）。
 // 字段区按当前所属分类模板渲染；切分类旧值保留在库中不再显示，切回恢复（PRD 4.3）。
+import CatSelect from "./CatSelect";
 import { useEffect, useState } from "react";
 import Modal from "../Modal/Modal";
 import FieldEditor from "../fields/FieldEditor";
@@ -195,11 +196,11 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
         {isEdit || allowCategoryPick ? (
           <div className="frow">
             <label>所属分类</label>
-            <select value={catId} onChange={(e) => setCatId(Number(e.target.value))}>
-              {[...categories.filter((c) => c.kind !== "uncategorized"), ...categories.filter((c) => c.kind === "uncategorized")].map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+            <CatSelect
+              categories={[...categories.filter((c) => c.kind !== "uncategorized"), ...categories.filter((c) => c.kind === "uncategorized")]}
+              value={catId}
+              onChange={(id) => setCatId(id)}
+            />
           </div>
         ) : null}
         <div className="frow">
