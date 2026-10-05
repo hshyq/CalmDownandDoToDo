@@ -108,17 +108,16 @@ export default function CalendarView() {
   // 滚轮切换周期（PRD 5.3 v1.13）：悬浮日历区滚动滚轮=上/下周·月。
   // 内容溢出（窗口较矮）时不劫持，保留内容滚动；按 deltaY 累计阈值触发，防一次滚动连跳。
   const calwrapRef = useRef<HTMLDivElement | null>(null);
-  const viewRef = useRef<ViewMode>("month");
-  viewRef.current = view;
   const navRef = useRef<(dir: 1 | -1) => void>(() => {});
   navRef.current = nav;
 
   useEffect(() => {
+    // 列表/打卡视图不挂载 calwrap（条件渲染），依赖 view 在切回周/月时对新容器重新绑定
+    if (view === "list" || view === "checkin") return;
     const el = calwrapRef.current;
     if (!el) return;
     const acc = { v: 0, t: 0 };
     const onWheel = (e: WheelEvent) => {
-      if (viewRef.current === "list" || viewRef.current === "checkin") return; // 列表/打卡视图：滚轮滚动内容，不切换周期
       if (el.scrollHeight > el.clientHeight + 1) return;
       const now = Date.now();
       if (now - acc.t > 400) acc.v = 0;
@@ -132,7 +131,7 @@ export default function CalendarView() {
     };
     el.addEventListener("wheel", onWheel);
     return () => el.removeEventListener("wheel", onWheel);
-  }, []);
+  }, [view]);
 
   const openEdit = async (id: number) => {
     try {

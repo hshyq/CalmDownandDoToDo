@@ -227,6 +227,10 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .ck-quick-btn { height: 24px; padding: 0 8px; }
 .ckstats { font-size: 12px; color: var(--muted); }
 .ckband { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 2px; }
+/* 紧凑热力带换行（v1.26）：近6月/近1年按自然月每三个月一行 */
+.ckbands { display: flex; flex-direction: column; gap: 3px; }
+.ckband-line { display: flex; align-items: center; gap: 6px; }
+.ckband-lab { flex: none; font-size: 11px; color: var(--muted); min-width: 76px; text-align: right; }
 /* 热力方块：边框独立显色（不整格 opacity），档位 color-mix 深浅（v1.25 原型确认） */
 .cksq { flex: none; width: 11px; height: 11px; border-radius: 2px; background: var(--border); box-sizing: border-box; border: 1.5px solid rgba(0, 0, 0, 0.22); }
 .cksq.lv1 { background: color-mix(in srgb, var(--ck, #4F8EF7) 45%, #fff); }

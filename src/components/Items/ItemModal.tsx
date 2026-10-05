@@ -2,7 +2,7 @@
 // 字段区按当前所属分类模板渲染；切分类旧值保留在库中不再显示，切回恢复（PRD 4.3）。
 // 打卡区（PRD 6.11 v1.25）：勾选后额外计入打卡视图；取消勾选保留打卡项关联（再勾自动带出）。
 import CatSelect from "./CatSelect";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Modal from "../Modal/Modal";
 import FieldEditor from "../fields/FieldEditor";
 import { SegDateInput, SegTimeInput } from "../fields/SegInputs";
@@ -42,6 +42,19 @@ function empty(item: Item | null, presetStartDate = ""): FormState {
   };
 }
 
+/** 打卡项模板字段值「仅补空」合并（PRD 6.11 v1.26）：模板有值且当前字段无值（undefined/null）才写入，已有值不覆盖。 */
+function mergeTplValues(
+  prev: Map<number, string | null>,
+  values: Record<string, string | null>,
+): Map<number, string | null> {
+  const next = new Map(prev);
+  for (const [k, v] of Object.entries(values)) {
+    const id = Number(k);
+    if (v !== null && (next.get(id) === undefined || next.get(id) === null)) next.set(id, v);
+  }
+  return next;
+}
+
 export default function ItemModal({ item, categories, defaultCategoryId, allowCategoryPick = false, presetStartDate = "", onClose, onSaved, onDeleted }: Props) {
   const { createItem, updateItem, deleteItem } = useAppStore();
   const isEdit = item !== null;
@@ -72,20 +85,28 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
     return h.id;
   };
 
-  /** 选打卡项 → 带出模板（v1.25 ③）：分类（编辑/总览弹窗可切时）/标题/字段值；带出后可继续编辑。
-   *  字段值写入 valsMap，经 [defs, valsMap] 重建流程按分类模板预填（与编辑回显同一路径）。 */
+  /** 选打卡项 → 带出模板（v1.25 ③；v1.26 改仅补空）：标题/字段只在当前为空时带入，已有值不覆盖；
+   *  分类仅新增场景（总览新增弹窗）切换，编辑已有事项不改变其分类与标题。
+   *  字段值并入 valsMap（仅补空），经 [defs, valsMap] 重建流程按分类模板预填（与编辑回显同一路径）。 */
   const applyHabitTemplate = (hid: number) => {
     const h = habits.find((x) => x.id === hid);
     const tpl = decodeHabitTemplate(h?.template_json ?? null);
     if (!h) return;
     if (tpl) {
-      if (tpl.categoryId !== null && (isEdit || allowCategoryPick) && tpl.categoryId !== catId) {
+      if (
+        !isEdit && allowCategoryPick && tpl.categoryId !== null && tpl.categoryId !== catId
+      ) {
         setCatId(tpl.categoryId);
       }
-      setValsMap(new Map(Object.entries(tpl.values).map(([k, v]) => [Number(k), v])));
+      // 编辑场景字段值可能尚未加载完（毫秒级窗口）：暂存待加载完成后合并，避免竞态覆盖或丢失
+      if (isEdit && !valsReady) {
+        pendingTplValuesRef.current = tpl.values;
+      } else {
+        setValsMap((prev) => mergeTplValues(prev, tpl.values));
+      }
       setValsReady(true);
     }
-    setF((prev) => ({ ...prev, title: tpl?.title || h.name }));
+    setF((prev) => (prev.title.trim() === "" ? { ...prev, title: tpl?.title || h.name } : prev));
   };
 
   // —— P6 自定义字段状态 ——
@@ -94,6 +115,8 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
   const [valsMap, setValsMap] = useState<Map<number, string | null>>(new Map());
   const [valsReady, setValsReady] = useState(!isEdit);
   const [fv, setFv] = useState<Record<number, FieldEditValue>>({});
+  // 值未加载完时勾打卡选模板的暂存（v1.26 仅补空带出的竞态兜底）
+  const pendingTplValuesRef = useRef<Record<string, string | null> | null>(null);
 
   // 编辑时加载该事项全部字段值（跨分类保留；展示层按当前模板过滤，PRD 4.3）
   useEffect(() => {
@@ -102,7 +125,14 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
     fieldApi.listItemValues(item!.id)
       .then((rows) => {
         if (!alive) return;
-        setValsMap(new Map(rows.map((r) => [r.field_def_id, r.value_json])));
+        const m = new Map(rows.map((r) => [r.field_def_id, r.value_json]));
+        const pending = pendingTplValuesRef.current;
+        if (pending) {
+          pendingTplValuesRef.current = null;
+          setValsMap(mergeTplValues(m, pending)); // 现有值先落，模板仅补空
+        } else {
+          setValsMap(m);
+        }
       })
       .catch((e) => {
         if (alive) setErr(e instanceof Error ? e.message : "加载字段值失败，请重试");

@@ -13,9 +13,6 @@ import { decodeHabitTemplate, encodeHabitTemplate } from "../../features/checkin
 import { useAppStore } from "../../stores/appStore";
 import type { Category, FieldDef, Habit } from "../../services/types";
 
-/** 换色循环色板（与原型演示一致） */
-const HB_COLORS = ["#F0883A", "#3FB950", "#8957E5", "#E3B341", "#39C5CF", "#4F8EF7", "#E5534B", "#D29922"];
-
 export default function HabitPanel() {
   const src = inTauri() ? habitApi : mockHabitApi;
   const categories = useAppStore((s) => s.categories);
@@ -26,6 +23,8 @@ export default function HabitPanel() {
   const [busy, setBusy] = useState(false);
   const [colorDlg, setColorDlg] = useState<Habit | null>(null);
   const [tplDlg, setTplDlg] = useState<Habit | null>(null);
+  // 新增行关联分类（v1.26）：默认颜色=所选分类颜色，创建后可点色块修改
+  const [newCatId, setNewCatId] = useState<number>(categories[0]?.id ?? 0);
 
   const load = async () => {
     try {
@@ -60,7 +59,9 @@ export default function HabitPanel() {
       return;
     }
     void act(async () => {
-      await src.create(name, HB_COLORS[(habits?.length ?? 0) % HB_COLORS.length]);
+      // 默认颜色=所选关联分类的颜色（v1.26；分类缺失兜底主蓝）
+      const cat = categories.find((c) => c.id === newCatId);
+      await src.create(name, cat?.color ?? "#4F8EF7");
       setNewName("");
     });
   };
@@ -128,12 +129,17 @@ export default function HabitPanel() {
               if (e.key === "Enter") add();
             }}
           />
+          <div style={{ width: 150, flex: "none" }} title="默认颜色跟随所选分类">
+            <CatSelect items={categories} value={newCatId} onChange={setNewCatId} />
+          </div>
           <button type="button" className="btn-primary" disabled={busy} onClick={add}>新增</button>
         </div>
       </div>
       {err !== "" ? <div className="note" style={{ color: "var(--danger)" }}>{err}</div> : null}
       <div className="note">
         · 打卡项是打卡记录的归类（改名全局生效，历史不断档）。<br />
+        · 「模板」预设默认分类/标题/字段值，新增打卡或勾选打卡时自动带出（仅填空值，已有值不覆盖）。<br />
+        · 新增打卡项的默认颜色=所选事项分类的颜色，创建后可点色块修改。<br />
         · 删除打卡项仅解除其打卡记录的打卡身份（事项本身保留，回到日历/待办正常展示）。
       </div>
       {colorDlg ? (

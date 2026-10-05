@@ -15,6 +15,7 @@ import {
   RANGE_DAYS,
   RANGE_LABEL,
   attributionDate,
+  bandRows,
   bucketize,
   dateSeq,
   levelOf,
@@ -149,6 +150,8 @@ export default function CheckinView({ categories }: Props) {
     }
     if (focus === null) {
       // 全部总览：每项一条紧凑热力带 + 统计 + 今天打卡（靠右）
+      // 近6月/近1年一行过长需左右滑动，按自然月每三个月一行换行展示（v1.26）；近1月/近3月保持单行
+      const rows = range === "6m" || range === "1y" ? bandRows(start, today) : [{ label: "", days: seq }];
       return habits.map((h) => {
         const st = statsOf(bucket.get(h.id) ?? new Map(), today);
         return (
@@ -171,9 +174,16 @@ export default function CheckinView({ categories }: Props) {
                 今天打卡
               </button>
             </div>
-            <div className="ckband">
-              {seq.map((d) => (
-                <Square key={d} habitId={h.id} date={d} />
+            <div className="ckbands">
+              {rows.map((r) => (
+                <div key={r.label} className="ckband-line">
+                  {r.label !== "" ? <span className="ckband-lab">{r.label}</span> : null}
+                  <div className="ckband">
+                    {r.days.map((d) => (
+                      <Square key={d} habitId={h.id} date={d} />
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
           </div>
