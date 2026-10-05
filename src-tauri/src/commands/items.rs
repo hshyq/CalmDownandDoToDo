@@ -23,6 +23,12 @@ pub struct ItemDraft {
     pub end_time: Option<String>,
     pub due_date: Option<String>,
     pub due_time: Option<String>,
+    /// 打卡身份（PRD 6.11 v1.25）：勾选后额外计入打卡视图；缺省=false。
+    #[serde(default)]
+    pub is_checkin: bool,
+    /// 所属打卡项（取消打卡时前端传原值保留关联，再勾选自动带出）。
+    #[serde(default)]
+    pub habit_id: Option<i64>,
     /// 当前分类模板字段值（可选；切分类时旧值行保留，PRD 4.3）
     #[serde(default)]
     pub field_values: Option<Vec<FieldValuePayload>>,
@@ -48,6 +54,8 @@ impl<'a> From<&'a ItemDraft> for NewItem<'a> {
             end_time: d.end_time.as_deref(),
             due_date: d.due_date.as_deref(),
             due_time: d.due_time.as_deref(),
+            is_checkin: d.is_checkin,
+            habit_id: d.habit_id,
         }
     }
 }
@@ -187,4 +195,10 @@ pub fn list_todo_items(
 #[tauri::command]
 pub fn list_items(db: State<'_, Db>, category_id: Option<i64>) -> Result<Vec<Item>, String> {
     db.list_items(category_id).map_err(|e| e.to_string())
+}
+
+/// 打卡视图数据（PRD 6.11 v1.25）：归属日期（开始优先/截止兜底）在 [start,end] 的打卡事项。
+#[tauri::command]
+pub fn list_checkins(db: State<'_, Db>, start: String, end: String) -> Result<Vec<Item>, String> {
+    db.list_checkins(&start, &end).map_err(|e| e.to_string())
 }

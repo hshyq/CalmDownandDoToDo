@@ -1,11 +1,13 @@
 // IPC 封装：invoke + 错误统一转中文友好提示（AGENTS 第 5 节）。
 import { invoke } from "@tauri-apps/api/core";
-import type { CalendarItem, Category, DayType, DayTypeRow, DeleteMode, FieldDef, FieldValueRow, Item, ItemDraft, TodoItem, UndoDepth } from "./types";
+import type { CalendarItem, Category, DayType, DayTypeRow, DeleteMode, FieldDef, FieldValueRow, Habit, Item, ItemDraft, TodoItem, UndoDepth } from "./types";
 import {
   isCalendarItemArr,
   isCategory,
   isCategoryArray,
   isDayTypeRowArray,
+  isHabit,
+  isHabitArray,
   isItem,
   isItemArray,
   isTodoItemArr,  isFieldDef,  isFieldDefArray,  isFieldValueRowArray,  isUndoDepth,
@@ -92,6 +94,12 @@ export const itemApi = {
   async removeBatch(ids: number[]): Promise<number> {
     return await call<number>("delete_items_batch", { ids });
   },
+  /** 打卡视图数据（PRD 6.11 v1.25）：归属日期在 [start,end] 的打卡事项。 */
+  async checkins(start: string, end: string): Promise<Item[]> {
+    const v = await call<unknown>("list_checkins", { start, end });
+    if (!isItemArray(v)) throw new Error("打卡数据格式异常");
+    return v;
+  },
 };
 
 
@@ -171,6 +179,34 @@ export const dayTypeApi = {
   /** 设置（dayType=work/rest/holiday）或清除（null）某日类型。 */
   async set(date: string, dayType: DayType | null): Promise<void> {
     await call<void>("set_day_type", { date, dayType });
+  },
+};
+
+/** 打卡项 IPC（PRD 6.11 v1.25；写操作一步撤销；删除仅解除打卡身份不删事项）。 */
+export const habitApi = {
+  async list(): Promise<Habit[]> {
+    const v = await call<unknown>("list_habits");
+    if (!isHabitArray(v)) throw new Error("打卡项数据格式异常");
+    return v;
+  },
+  async create(name: string, color: string): Promise<Habit> {
+    const v = await call<unknown>("create_habit", { name, color });
+    if (!isHabit(v)) throw new Error("打卡项数据格式异常");
+    return v;
+  },
+  async rename(id: number, name: string): Promise<void> {
+    await call<void>("rename_habit", { id, name });
+  },
+  async setColor(id: number, color: string): Promise<void> {
+    await call<void>("set_habit_color", { id, color });
+  },
+  /** 设置/清除模板（v1.25 ③）；tpl=null 清除。 */
+  async setTemplate(id: number, json: string | null): Promise<void> {
+    await call<void>("set_habit_template", { id, template: json });
+  },
+  /** 删除打卡项；返回被解除打卡身份的事项条数。 */
+  async remove(id: number): Promise<number> {
+    return await call<number>("delete_habit", { id });
   },
 };
 

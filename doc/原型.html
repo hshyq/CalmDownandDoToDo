@@ -201,10 +201,59 @@ input,select,textarea{font:inherit;color:inherit}
 .catsel-btn:hover{border-color:var(--accent)}
 .catsel-name{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .catsel-caret{flex:none;color:var(--muted);font-size:10px}
-.catsel-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:220px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:60;padding:4px 0}
+.catsel-menu{position:absolute;top:calc(100% + 4px);left:0;right:0;max-height:300px;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:60;padding:4px 0}
 .catsel-item{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;font-size:13px}
 .catsel-item:hover{background:var(--panel)}
 .catsel-item.on{color:var(--accent);font-weight:700}
+/* ===== 打卡视图（PRD 6.11 v1.25）===== */
+.calwrap.checkinmode{display:flex;flex-direction:column;overflow:hidden}
+.ckview{display:flex;flex-direction:column;height:100%;overflow:hidden}
+.ckbar{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--border);flex-wrap:wrap}
+.ckchips{display:flex;gap:6px;flex-wrap:wrap}
+.ckchip{display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border:1px solid var(--border);border-radius:13px;background:#fff;font:inherit;font-size:12px;cursor:pointer}
+.ckchip.on{border-color:var(--accent);color:var(--accent);font-weight:700}
+.ckranges{display:flex;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.ckranges button{border:none;background:#fff;padding:4px 8px;font:inherit;font-size:12px;cursor:pointer;color:var(--muted)}
+.ckranges button.on{background:var(--accent);color:#fff;font-weight:700}
+.ckbody{flex:1;overflow:auto;padding:10px}
+.ckband-row{padding:6px 2px;border-bottom:1px solid var(--border);cursor:pointer}
+.ckband-row:hover{background:rgba(0,0,0,.02)}
+.ckband-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.ckstats{font-size:12px;color:var(--muted)}
+.ckband{display:flex;gap:2px;overflow-x:auto;padding-bottom:2px}
+/* 热力方块（v1.25 原型调整）：边框加粗加深；档位用 color-mix 表达（不整格 opacity，避免边框被压淡） */
+.cksq{flex:none;width:11px;height:11px;border-radius:2px;background:var(--border);box-sizing:border-box;border:1.5px solid rgba(0,0,0,.22)}
+.cksq.lv1{background:color-mix(in srgb,var(--ck,#4F8EF7) 45%,#fff)}
+.cksq.lv2{background:color-mix(in srgb,var(--ck,#4F8EF7) 72%,#fff)}
+.cksq.lv3{background:var(--ck)}
+.cksq.void{visibility:hidden}
+.cksq[data-today]{outline:1px solid var(--accent);outline-offset:1px}
+.ckhead{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+/* 聚焦大图（v1.25 原型调整）：带月份/星期坐标轴，窄范围居中、超宽横向滚动 */
+.ckbig-wrap{overflow-x:auto;padding-bottom:4px}
+.ckgrid{display:grid;grid-template-columns:auto auto;grid-template-rows:auto auto;width:max-content;margin:0 auto}
+.ckmonths{display:flex;gap:3px;height:14px;margin-bottom:4px}
+.ckm{flex:none;width:13px;font-size:10px;line-height:14px;color:var(--muted);white-space:nowrap;overflow:visible}
+/* 即时悬浮提示（v1.25）：data-tip 元素 hover 即显示，替代原生 title 的 1 秒延迟 */
+.cktip{position:fixed;display:none;background:rgba(0,0,0,.78);color:#fff;font-size:11px;padding:3px 7px;border-radius:4px;z-index:999;pointer-events:none;white-space:nowrap}
+.ckweeks{display:flex;flex-direction:column;gap:3px;margin-right:6px}
+.ckweeks span{height:13px;line-height:13px;font-size:10px;color:var(--muted)}
+.ckcols{display:flex;gap:3px}
+.ckcol{display:flex;flex-direction:column;gap:3px}
+.ckbig .cksq,.ckcols .cksq{width:13px;height:13px}
+.cksub{font-size:12px;color:var(--muted);margin:10px 0 4px}
+.cklist{display:flex;flex-direction:column;gap:2px}
+.ckitem{padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px}
+.ckitem:hover{background:var(--panel)}
+.ckitem .ldim{margin-right:8px}
+.ckbox{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer;white-space:nowrap}
+/* 打卡项管理页签 */
+.hb-list{display:flex;flex-direction:column;gap:6px}
+.hb-row{display:flex;align-items:center;gap:8px}
+.hb-color{width:22px;height:22px;border-radius:6px;border:1px solid rgba(0,0,0,.08);cursor:pointer;flex:none}
+.hb-name{flex:1;border:1px solid transparent;border-radius:6px;padding:4px 6px;font:inherit;background:#fff}
+.hb-name:hover,.hb-name:focus{border-color:var(--border);outline:none}
+.hb-meta{font-size:12px;color:var(--muted);white-space:nowrap}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
 /* 列表视图 v1.19：归属列 / 今日线 / 范围下拉 */
 .lkind{white-space:nowrap;color:var(--muted)}
@@ -434,8 +483,35 @@ const state={
     {id:23,cat:5,title:'整理旧相册',desc:'',sd:'',st:'',ed:'',et:'',dd:'',dt:'',fv:{}},
     {id:24,cat:5,title:'待确认：订阅服务退订',desc:'',sd:'',st:'',ed:'',et:'',dd:'',dt:'',fv:{}},
   ],
+  // 打卡项（PRD 6.11 v1.25）：独立实体，打卡记录（items.ck=1）按 habit 归类
+  habits:[
+    {id:101,name:'健身',color:'#F0883A',sort:1,tpl:{cat:1,title:'健身房训练',fv:{13:'卧推 3 组 + 跑步 20 分钟'}}},
+    {id:102,name:'英语单词',color:'#3FB950',sort:2,tpl:{cat:4,title:'',fv:{41:'书籍'}}},
+    {id:103,name:'读书',color:'#8957E5',sort:3},
+    {id:104,name:'早起',color:'#E3B341',sort:4},
+    {id:105,name:'冥想',color:'#39C5CF',sort:5},
+  ],
   collapsed:{},
 };
+let habitSeq=106;
+// 生成近 120 天演示打卡记录（确定性伪随机，刷新不变）：归属日期=开始优先/截止兜底
+(function(){
+  const seed=20260831;
+  const rnd=(i)=>{const x=Math.sin(seed+i*97.13)*10000;return x-Math.floor(x)};
+  let n=0;
+  for(let d=119;d>=0;d--){
+    const day=addDays(TODAY,-d);
+    state.habits.forEach((h,hi)=>{
+      const p=[0.75,0.8,0.55,0.9,0.6][hi]; // 各打卡项出勤率
+      if(rnd(n++)<p){
+        const times=rnd(n++)<0.15?2:1; // 少量天两次
+        for(let t=0;t<times;t++){
+          state.items.push({id:itemSeq++,cat:5,title:h.name,desc:'',sd:day,st:'',ed:day,et:'',dd:'',dt:'',fv:{},ck:1,hid:h.id});
+        }
+      }
+    });
+  }
+})();
 
 /* ================= 工具 ================= */
 const $=s=>document.querySelector(s);
@@ -638,8 +714,9 @@ function renderToolbar(){
       <button class="${state.view==='week'?'on':''}" onclick="setView('week')">周</button>
       <button class="${state.view==='month'?'on':''}" onclick="setView('month')">月</button>
       <button class="${state.view==='list'?'on':''}" onclick="setView('list')">列表</button>
+      <button class="${state.view==='checkin'?'on':''}" onclick="setView('checkin')">打卡</button>
     </div>
-    <span class="title" title="点击选择${state.view==='week'?'周':'年月'}" onclick="openPickPanel(this)" style="${state.view==='list'?'display:none':''}">${title}</span>
+    <span class="title" title="点击选择${state.view==='week'?'周':'年月'}" onclick="openPickPanel(this)" style="${state.view==='list'||state.view==='checkin'?'display:none':''}">${title}</span>
     <span class="spacer"></span>
     <button class="tbtn icon" title="撤销 Ctrl+Z" onclick="undoDemo()">↶</button>
     <button class="tbtn icon" title="重做 Ctrl+Y" onclick="redoDemo()">↷</button>
@@ -765,6 +842,162 @@ function addMonthsM1(t,months){ // t + N 个月 − 1 天（目标月无同日�
   const t2=y2*12+(m2-1)-1,y3=Math.floor(t2/12),m3=t2%12+1;
   return `${y3}-${String(m3).padStart(2,'0')}-${String(dim(y3,m3)).padStart(2,'0')}`;
 }
+
+/* ================= 打卡视图（PRD 6.11 v1.25）：全部=紧凑热力带总览；点单项=大热力图 ================= */
+let ckRange='3m', ckFocus=null;
+/* 即时悬浮提示（v1.25）：带 data-tip 的元素 hover 即显示（原生 title 有 ~1s 延迟） */
+const ckTip=document.createElement('div');
+ckTip.className='cktip';
+document.body.appendChild(ckTip);
+document.addEventListener('mousemove',e=>{
+  const t=e.target.closest?e.target.closest('[data-tip]'):null;
+  if(t){
+    ckTip.textContent=t.dataset.tip;
+    ckTip.style.display='block';
+    const w=ckTip.offsetWidth;
+    ckTip.style.left=Math.max(4,Math.min(e.clientX-w/2,innerWidth-w-6))+'px';
+    ckTip.style.top=Math.max(4,e.clientY-32)+'px';
+  }else ckTip.style.display='none';
+});
+const CK_RANGES={ '1m':30, '3m':91, '6m':183, '1y':365 };
+const CK_RANGE_LABEL={ '1m':'近1月','3m':'近3月','6m':'近6月','1y':'近1年' };
+/** 打卡归属日期（v1.25）：开始日期优先，开始为空用截止日期；均空不参与统计 */
+function ckDateOf(it){ return it.sd||it.dd||'' }
+/** 次数→色阶档位：0 无 / 1 一次 / 2~3 次 / 4 次+（GitHub 式 4 档） */
+function ckLevel(n){ return n<=0?0:n===1?1:n<=3?2:3 }
+/** 统计：今日次数 / 连续天数（今天无打卡则从最近打卡日起算）/ 本月次数 */
+function ckStats(hid){
+  const daysMap={};
+  state.items.forEach(it=>{ if(it.ck&&it.hid===hid){ const d=ckDateOf(it); if(d)daysMap[d]=(daysMap[d]||0)+1 } });
+  const t=todayStr(), month=t.slice(0,7);
+  let monthCnt=0; Object.keys(daysMap).forEach(d=>{ if(d.slice(0,7)===month)monthCnt+=daysMap[d] });
+  let streak=0,cur=daysMap[t]>0?t:Object.keys(daysMap).sort().pop();
+  while(cur&&daysMap[cur]>0){ streak++; cur=addDays(cur,-1) }
+  return {today:daysMap[t]||0,streak,monthCnt};
+}
+function renderCheckin(){
+  const habits=state.habits;
+  const days=CK_RANGES[ckRange];
+  const end=todayStr(), start=addDays(end,-(days-1));
+  // 分桶：hid|日期 → 次数（仅勾打卡的事项，按归属日期聚合）
+  const cnt={};
+  state.items.forEach(it=>{ if(!it.ck)return; const d=ckDateOf(it); if(!d||d<start||d>end)return; const k=it.hid+'|'+d; cnt[k]=(cnt[k]||0)+1 });
+  const sq=(hid,d)=>{ const n=cnt[hid+'|'+d]||0, h=habits.find(x=>x.id===hid);
+    return `<span class="cksq lv${ckLevel(n)}" style="--ck:${h?h.color:'#4F8EF7'}" data-tip="${d}，${n} 次"${d===todayStr()?' data-today="1"':''}></span>` };
+  const dayList=()=>{ const a=[]; for(let d=start;d<=end;d=addDays(d,1))a.push(d); return a };
+  const chips=`<button class="ckchip ${ckFocus===null?'on':''}" onclick="ckFocus=null;renderCheckin()">全部</button>`+
+    habits.map(h=>`<button class="ckchip ${ckFocus===h.id?'on':''}" onclick="ckFocus=${h.id};renderCheckin()"><span class="dotc" style="background:${h.color}"></span>${esc(h.name)}</button>`).join('');
+  const ranges=`<div class="ckranges">${Object.keys(CK_RANGES).map(r=>`<button class="${ckRange===r?'on':''}" onclick="ckRange='${r}';renderCheckin()">${CK_RANGE_LABEL[r]}</button>`).join('')}</div>`;
+  let body='';
+  if(habits.length===0){
+    body=`<div class="tempty" style="padding:40px">还没有打卡项——点击右上「＋ 添加打卡」创建第一个</div>`;
+  }else if(ckFocus===null){
+    body=habits.map(h=>{
+      const st=ckStats(h.id);
+      return `<div class="ckband-row" onclick="ckFocus=${h.id};renderCheckin()" title="点击查看大图">
+        <div class="ckband-head"><span class="dotc" style="background:${h.color}"></span><b>${esc(h.name)}</b>
+          <span class="ckstats">今日${st.today?'√'+st.today:'—'} · 连续 ${st.streak} 天 · 本月 ${st.monthCnt} 次</span>
+          <span style="flex:1"></span>
+          <button class="btn-primary" style="height:24px;padding:0 8px" onclick="event.stopPropagation();quickCheckin(${h.id})">今天打卡</button>
+        </div>
+        <div class="ckband">${dayList().map(d=>sq(h.id,d)).join('')}</div>
+      </div>`;
+    }).join('');
+  }else{
+    const h=habits.find(x=>x.id===ckFocus);
+    const st=ckStats(h.id);
+    const w0=weekStart(start);
+    const cols=[]; for(let d=w0;parseD(d)<=parseD(end);d=addDays(d,7))cols.push(d);
+    const grid=cols.map(w=>`<div class="ckcol">${[0,1,2,3,4,5,6].map(i=>{const d=addDays(w,i);return d<start||d>end?'<span class="cksq void"></span>':sq(h.id,d)}).join('')}</div>`).join('');
+    // 坐标轴（v1.25 原型调整）：横轴=月份（每月首个周列标注，相邻标签列距<2 时去掉前一个、保留数据主体月）
+    const marks=[]; let lastM=-1;
+    cols.forEach((w,i)=>{ const m=Number(w.slice(5,7)); if(m!==lastM){marks.push({i,m});lastM=m} });
+    for(let k=1;k<marks.length;){
+      if(marks[k].i-marks[k-1].i<2)marks.splice(k-1,1); else k++;
+    }
+    const months=cols.map((w,i)=>{
+      const mk=marks.find(x=>x.i===i);
+      return `<span class="ckm">${mk?mk.m+'月':''}</span>`;
+    }).join('');
+    const weeks=['一','二','三','四','五','六','日'].map(x=>`<span>${x}</span>`).join('');
+    const recs=state.items.filter(it=>it.ck&&it.hid===h.id).sort((a,b)=>(ckDateOf(b)||'').localeCompare(ckDateOf(a)||'')).slice(0,12);
+    body=`<div class="ckhead"><span class="dotc" style="background:${h.color}"></span><b>${esc(h.name)}</b>
+        <span class="ckstats">今日${st.today?'√'+st.today+' 次':'—'} · 连续 ${st.streak} 天 · 本月 ${st.monthCnt} 次</span>
+        <span style="flex:1"></span><button class="btn-primary" onclick="quickCheckin(${h.id})">今天打卡</button></div>
+      <div class="ckbig-wrap"><div class="ckgrid">
+        <div class="ckcorner"></div><div class="ckmonths">${months}</div>
+        <div class="ckweeks">${weeks}</div><div class="ckcols">${grid}</div>
+      </div></div>
+      <div class="cksub">记录（近 ${recs.length} 条，点击编辑）</div>
+      <div class="cklist">${recs.map(it=>`<div class="ckitem" onclick="openItemModal(${it.id})"><span class="ldim">${ckDateOf(it)}</span>${esc(it.desc||it.title)}</div>`).join('')||'<div class="ldim">暂无记录</div>'}</div>`;
+  }
+  $('#cal').innerHTML=`<div class="ckview">
+    <div class="ckbar"><div class="ckchips">${chips}</div>${ranges}<span style="flex:1"></span>
+      <button class="btn-primary" onclick="openCheckinModal()">＋ 添加打卡</button></div>
+    <div class="ckbody">${body}</div>
+  </div>`;
+}
+/** 一键打卡今天（habit 项）：创建 start=end=今天 的打卡事项；带出打卡项模板（v1.25 ③） */
+function quickCheckin(hid){
+  const h=state.habits.find(x=>x.id===hid);
+  const t=h.tpl||{};
+  state.items.push({id:itemSeq++,cat:t.cat||5,title:t.title||h.name,desc:'',sd:todayStr(),st:'',ed:todayStr(),et:'',dd:'',dt:'',fv:t.fv?{...t.fv}:{},ck:1,hid});
+  toast(`已打卡「${h.name}」（今天）`);
+  renderCheckin();
+}
+function openCheckinModal(){
+  const opts=state.habits.map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join('');
+  const catOpts=()=>state.categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+  modal(`<div class="dhead">添加打卡<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody">
+      <div class="frow"><label>打卡项</label><select id="ck-habit">${opts}<option value="new">＋ 新打卡项…</option></select></div>
+      <div class="frow" id="ck-newrow" style="display:none"><label>新名称</label><input type="text" id="ck-new" maxlength="30" placeholder="输入新打卡项名称"></div>
+      <div class="frow"><label>所属分类</label><select id="ck-cat">${catOpts()}</select></div>
+      <div class="frow"><label>标题</label><input type="text" id="ck-title" maxlength="100" placeholder="默认用打卡项名称"></div>
+      <div class="frow"><label>日期</label><input type="date" id="ck-date" value="${todayStr()}"></div>
+      <div class="frow"><label>备注</label><textarea id="ck-desc" rows="3" placeholder="存入描述字段，可空"></textarea></div>
+      <div id="ck-fields"></div>
+      <div class="ferr" id="ck-err"></div>
+    </div>
+    <div class="dfoot"><button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="saveCheckin()">保存</button></div>`);
+  $('#ck-habit').onchange=function(){
+    $('#ck-newrow').style.display=this.value==='new'?'':'none';
+    ckApplyTpl(this.value);
+  };
+  ckApplyTpl($('#ck-habit').value);
+}
+/** 选中打卡项 → 带出模板（分类/标题/字段值），带出后可改（v1.25 ③） */
+function ckApplyTpl(sel){
+  const h=sel&&sel!=='new'?state.habits.find(x=>x.id===Number(sel)):null;
+  const t=h&&h.tpl||{};
+  const catId=t.cat||5; // 无模板默认未分类
+  $('#ck-cat').value=catId;
+  $('#ck-title').value=t.title||(h?h.name:'');
+  $('#ck-fields').innerHTML=fieldsSection(catId,t.fv||{});
+  $('#ck-cat').onchange=function(){$('#ck-fields').innerHTML=fieldsSection(Number(this.value),{})};
+}
+function saveCheckin(){
+  const sel=$('#ck-habit').value, date=$('#ck-date').value, desc=$('#ck-desc').value.trim();
+  const err=$('#ck-err');
+  let hid;
+  if(sel==='new'){
+    const name=$('#ck-new').value.trim();
+    if(!name){err.textContent='请输入新打卡项名称';return}
+    if(state.habits.some(h=>h.name===name)){err.textContent='已存在同名打卡项';return}
+    const h={id:habitSeq++,name,color:'#4F8EF7',sort:state.habits.length+1};
+    state.habits.push(h); hid=h.id;
+  }else hid=Number(sel);
+  if(!date){err.textContent='请选择打卡日期';return}
+  const h=state.habits.find(x=>x.id===hid);
+  const catId=Number($('#ck-cat').value);
+  const title=$('#ck-title').value.trim()||h.name;
+  // 字段值：仅收集当前分类模板内字段（同事项保存语义，多选归数组）
+  const fv=collectFields('#ck-fields');
+  state.items.push({id:itemSeq++,cat:catId,title,desc,sd:date,st:'',ed:date,et:'',dd:'',dt:'',fv,ck:1,hid});
+  toast(`已添加打卡「${h.name}」 ${date}`);
+  closeModal(); renderCheckin();
+}
 /* ===== 日期类型管理（PRD 方案待确认：班/休/假，默认周一~五工作日、周六日休息日） ===== */
 let dtCursor=TODAY;
 let listRange='m1',listCS='',listCE='';
@@ -854,7 +1087,8 @@ function initSegs(root){
     if(icon)icon.addEventListener('click',()=>{try{native.showPicker()}catch(_){native.focus()}});
     if(native)native.addEventListener('change',()=>{
       const v=native.value;if(!v)return;
-      const parts=icon.textContent.includes('日')?v.split('-'):v.split(':');
+      // 按原生控件类型选拆分符（图标是 emoji，不能用其文本判断日期/时刻）
+      const parts=v.split(native.type==='date'?'-':':');
       parts.forEach((pv,idx)=>{if(segs[idx])segs[idx].value=pv});
     });
   });
@@ -889,7 +1123,7 @@ function nav(d){
 /* 滚轮切换周期（PRD 5.3 v1.13）：悬浮日历区滚动=上/下周·月；内容溢出时不劫持 */
 let wheelAcc=0,wheelT=0;
 document.addEventListener('wheel',e=>{
-  if(state.view==='list')return; // 列表视图：滚轮用于滚动表格，不切换周期
+  if(state.view==='list'||state.view==='checkin')return; // 列表/打卡视图：滚轮用于滚动内容，不切换周期
   const el=document.getElementById('cal');
   if(!el||!el.contains(e.target))return;
   if(el.scrollHeight>el.clientHeight+1)return;
@@ -971,6 +1205,11 @@ function renderCalendar(){
     $('#cal').innerHTML=`<div class="lsearch" id="lsearchbox"></div><div class="ltable-wrap" id="ltablewrap"></div>`;
     renderListFilter();
     renderListTable();
+    return;
+  }
+  if(state.view==='checkin'){
+    $('#cal').className='calwrap checkinmode';
+    renderCheckin();
     return;
   }
   const head=['周一','周二','周三','周四','周五','周六','周日']
@@ -1205,6 +1444,11 @@ function openItemModal(id,preSd){
     <div class="dbody" id="item-form">
       <input type="hidden" id="if-id" value="${isNew?'':id}">
       ${isNew&&curCat!==null?'':`<div class="frow"><label>所属分类</label>${catSelHtml}</div>`}
+      <div class="frow"><label>打卡</label>
+        <label class="ckbox"><input type="checkbox" id="if-ck" ${it&&it.ck?'checked':''}
+          onchange="document.getElementById('if-ckrow').style.display=this.checked?'':'none'"> 勾选则计入打卡视图</label>
+      </div>
+      <div class="frow" id="if-ckrow" style="display:${it&&it.ck?'':'none'}"><label>打卡项</label>${habitSelHtml(it&&it.hid?it.hid:null)}</div>
       <div class="frow"><label>标题 *</label><input type="text" id="if-title" maxlength="100" value="${it?esc(it.title):''}"></div>
       <div class="frow"><label>描述</label><textarea id="if-desc" rows="5">${it?esc(it.desc):''}</textarea></div>
       <div class="frow"><label>开始时间</label>
@@ -1229,6 +1473,40 @@ function onCatChange(newCat){
   const it=state.items.find(x=>x.id===id);
   $('#if-fields').innerHTML=fieldsSection(Number(newCat),it?it.fv:{});
 }
+/* 打卡项下拉（v1.25）：复用 catsel 形态；选中只更新值不刷字段区 */
+function habitSelHtml(selId){
+  const list=state.habits;
+  if(!list.length)return `<span class="ldim" style="align-self:center">暂无打卡项——可在「设置→打卡项」或打卡视图创建</span>`;
+  const sel=selId&&list.some(h=>h.id===selId)?selId:list[0].id;
+  const dot=id=>{const h=list.find(x=>x.id===id);return `<span class="dotc" style="background:${h.color}"></span>`};
+  return `<div class="catsel" id="if-habit" data-value="${sel}">
+    <button type="button" class="catsel-btn" onclick="event.stopPropagation();toggleHabitSel()">${dot(sel)}<span class="catsel-name">${esc(list.find(x=>x.id===sel).name)}</span><span class="catsel-caret">▾</span></button>
+    <div class="catsel-menu" id="if-habit-menu" style="display:none">
+      ${list.map(h=>`<div class="catsel-item ${h.id===sel?'on':''}" data-id="${h.id}" onclick="event.stopPropagation();pickHabit(${h.id})">${dot(h.id)}<span class="catsel-name">${esc(h.name)}</span></div>`).join('')}
+    </div>
+  </div>`;
+}
+function toggleHabitSel(){
+  const m=$('#if-habit-menu');
+  if(m)m.style.display=m.style.display==='none'?'block':'none';
+}
+function pickHabit(id){
+  const wrap=$('#if-habit');
+  wrap.dataset.value=id;
+  const h=state.habits.find(x=>x.id===id);
+  wrap.querySelector('.catsel-btn').innerHTML=
+    `<span class="dotc" style="background:${h.color}"></span><span class="catsel-name">${esc(h.name)}</span><span class="catsel-caret">▾</span>`;
+  wrap.querySelectorAll('.catsel-item').forEach(el=>el.classList.toggle('on',Number(el.dataset.id)===id));
+  toggleHabitSel();
+  // 带出打卡项模板（v1.25 ③）：分类（弹窗显示分类下拉时切换）/标题/字段值；带出后可继续编辑
+  if(h.tpl){
+    const t=h.tpl;
+    const catWrap=$('#if-cat');
+    if(catWrap&&t.cat){catWrap.dataset.value=t.cat;pickCat(t.cat)} // pickCat 会按新分类重渲染字段区
+    $('#if-title').value=t.title||h.name;
+    if(t.fv)fillFields('#if-fields',t.fv);
+  }
+}
 /* 分类下拉（v1.24 带色点）：展开/收起与选择；点击空白处收起 */
 function toggleCatSel(){
   const m=$('#if-cat-menu');
@@ -1244,10 +1522,11 @@ function pickCat(id){
   toggleCatSel();
   onCatChange(id);
 }
-document.addEventListener('click',()=>{const m=$('#if-cat-menu');if(m)m.style.display='none'});
-function collectFV(){
+document.addEventListener('click',()=>{['#if-cat-menu','#if-habit-menu'].forEach(s=>{const m=document.querySelector(s);if(m)m.style.display='none'})});
+/** 通用字段值收集（含多选 checkbox 归数组；容器选择器参数化） */
+function collectFields(sel){
   const fv={};
-  document.querySelectorAll('#if-fields [data-fv]').forEach(el=>{
+  document.querySelectorAll(sel+' [data-fv]').forEach(el=>{
     const k=el.dataset.fv;
     if(el.type==='checkbox'){
       if(el.checked){(fv[k]=fv[k]||[]).push(el.value)}
@@ -1255,6 +1534,15 @@ function collectFV(){
   });
   return fv;
 }
+/** 通用字段值回填（按控件类型分派：多选设 checked，其余设 value） */
+function fillFields(sel,fv){
+  document.querySelectorAll(sel+' [data-fv]').forEach(el=>{
+    const v=fv[el.dataset.fv];
+    if(el.type==='checkbox')el.checked=Array.isArray(v)&&v.includes(el.value);
+    else el.value=v!=null?v:'';
+  });
+}
+function collectFV(){return collectFields('#if-fields')}
 function saveItem(){
   const idStr=$('#if-id').value;
   const title=$('#if-title').value.trim();
@@ -1262,11 +1550,17 @@ function saveItem(){
   const sd=segVal('if-sd'),ed=segVal('if-ed');
   if(!title){err.textContent='标题不能为空';err.classList.add('show');return}
   if(sd&&ed&&ed<sd){err.textContent='结束时间的日期不能早于开始时间';err.classList.add('show');return}
+  // 打卡身份（v1.25）：勾选需打卡项与归属日期（开始优先/截止兜底）
+  const ck=$('#if-ck')?$('#if-ck').checked:false;
+  const hidSel=$('#if-habit')?Number($('#if-habit').dataset.value):null;
+  if(ck&&!state.habits.length){err.textContent='暂无打卡项，请先在「设置→打卡项」或打卡视图创建';err.classList.add('show');return}
+  if(ck&&!hidSel){err.textContent='请选择打卡项';err.classList.add('show');return}
+  if(ck&&!sd&&!segVal('if-dd')){err.textContent='勾选打卡需要开始或截止日期（打卡归属日期）';err.classList.add('show');return}
   const base={title,desc:$('#if-desc').value,sd,st:segVal('if-st'),ed,et:segVal('if-et'),
     dd:segVal('if-dd'),dt:segVal('if-dt')};
   if(idStr===''){
-    state.items.push({id:itemSeq++,cat:$('#if-cat')?Number($('#if-cat').dataset.value):activeCatId(),fv:collectFV(),...base});
-    toast('已保存：按归属规则进入'+(base.sd&&base.ed?'日历':'待办'));
+    state.items.push({id:itemSeq++,cat:$('#if-cat')?Number($('#if-cat').dataset.value):activeCatId(),fv:collectFV(),...base,ck,hid:ck?hidSel:null});
+    toast('已保存：按归属规则进入'+(base.sd&&base.ed?'日历':'待办')+(ck?'（已计入打卡）':''));
   }else{
     const id=Number(idStr);
     const it=state.items.find(x=>x.id===id);
@@ -1275,7 +1569,8 @@ function saveItem(){
     const old=it.fv,newFv=collectFV();
     const merged={...old};
     fieldsOf(catId).forEach(f=>{merged[f.id]=newFv[f.id]!==undefined?newFv[f.id]:null});
-    Object.assign(it,base,{cat:catId,fv:merged});
+    // 取消打卡保留 hid（再勾选时自动带出原打卡项，v1.25）
+    Object.assign(it,base,{cat:catId,fv:merged,ck,hid:ck?hidSel:(it.hid??null)});
     toast('已保存：归属已按规则自动迁移');
   }
   closeModal();renderAll();
@@ -1411,6 +1706,73 @@ function fmDeleteAsk(fid){
 function openSettings(){settingsTab='backup';renderSettings()}
 let settingsTab='backup';
 function settingsTabSwitch(t){settingsTab=t;renderSettings()}
+/* 打卡项管理（v1.25）：增删改名/色盘选色（同分类）/模板；删除仅解除打卡身份不删事项 */
+const HB_COLORS=['#F0883A','#3FB950','#8957E5','#E3B341','#39C5CF','#4F8EF7','#E5534B','#D29922'];
+function hbAdd(){
+  const name=$('#hb-new').value.trim();
+  if(!name){toast('请输入打卡项名称');return}
+  if(state.habits.some(h=>h.name===name)){toast('已存在同名打卡项');return}
+  state.habits.push({id:habitSeq++,name,color:'#4F8EF7',sort:state.habits.length+1});
+  renderSettings();toast('已新增打卡项');
+}
+function hbRename(id,name){
+  name=name.trim();
+  const h=state.habits.find(x=>x.id===id);
+  if(!name){toast('名称不能为空');renderSettings();return}
+  if(state.habits.some(x=>x.name===name&&x.id!==id)){toast('已存在同名打卡项');renderSettings();return}
+  h.name=name;toast('已改名（全部历史记录同步生效）');
+}
+/* 色盘选色（v1.25 ②）：点击色块弹墨刀色板，同分类色盘交互 */
+function hbOpenPalette(id,el){
+  const tag='hbpal-'+id;
+  if(popOpen===tag){closePop();return}
+  closePop();
+  const h=state.habits.find(x=>x.id===id);
+  const cur=h.color.toLowerCase();
+  const grid=PAL_ROWS.map(row=>row.map(c=>
+    `<div class="sw ${c===cur?'sel':''}" style="background:${c}" title="${c}" onclick="hbPickColor(${id},'${c}')"></div>`).join('')).join('');
+  showPop(el,`<div class="pal-grid">${grid}</div><div class="note" style="margin-top:6px">正式版含「更多颜色」取色面板（同分类）</div>`,tag,'palette');
+}
+function hbPickColor(id,color){
+  const h=state.habits.find(x=>x.id===id);
+  h.color=color;closePop();renderSettings();
+}
+function hbDel(id){
+  const h=state.habits.find(x=>x.id===id);
+  const n=state.items.filter(it=>it.ck&&it.hid===id).length;
+  confirmBox(`删除打卡项【${esc(h.name)}】？${n?`其 ${n} 条打卡记录将解除打卡身份（事项保留）`:''}`,
+    {danger:true,okText:'删除',onOk(){
+      state.items.forEach(it=>{if(it.hid===id){it.ck=0;it.hid=null}});
+      state.habits=state.habits.filter(x=>x.id!==id);
+      renderSettings();renderAll();toast('打卡项已删除');
+    }});
+}
+/* 打卡项模板（v1.25 ③，方案确认中）：预设默认分类/标题/字段值，新增打卡或勾选打卡时带出（可编辑） */
+function openHabitTpl(id){
+  const h=state.habits.find(x=>x.id===id);
+  const tpl=h.tpl||{};
+  const catId=tpl.cat||state.categories[0].id;
+  const catSel=`<select id="hb-tpl-cat" onchange="hbTplCatChange()">${
+    state.categories.map(c=>`<option value="${c.id}" ${c.id===catId?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`;
+  modal(`<div class="dhead">模板 · ${esc(h.name)}<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody">
+      <div class="cbody sub" style="margin-bottom:6px">新增打卡 / 勾选该打卡项时自动带出以下值，带出后可修改。</div>
+      <div class="frow"><label>所属分类</label>${catSel}</div>
+      <div class="frow"><label>标题</label><input type="text" id="hb-tpl-title" maxlength="100" value="${esc(tpl.title||'')}" placeholder="默认用打卡项名称"></div>
+      <div id="hb-tpl-fields">${fieldsSection(catId,tpl.fv||{})}</div>
+    </div>
+    <div class="dfoot"><button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="saveHabitTpl(${id})">保存</button></div>`);
+}
+function hbTplCatChange(){
+  // 切分类：字段区按新分类模板重渲染（值不跨分类迁移，同 PRD 4.3 语义）
+  $('#hb-tpl-fields').innerHTML=fieldsSection(Number($('#hb-tpl-cat').value),{});
+}
+function saveHabitTpl(id){
+  const h=state.habits.find(x=>x.id===id);
+  h.tpl={cat:Number($('#hb-tpl-cat').value),title:$('#hb-tpl-title').value.trim(),fv:collectFields('#hb-tpl-fields')};
+  closeModal();renderSettings();toast('模板已保存');
+}
 function renderSettings(){
   const daytypesBody=`
       <div class="set-body">
@@ -1433,12 +1795,29 @@ function renderSettings(){
           · 数据库位于 exe 同目录 data\calendar.db，删除目录即卸载干净。
         </div>
       </div>`;
-  const body=settingsTab==='daytypes'?daytypesBody:backupBody;
+  const habitsBody=`
+      <div class="set-body">
+        <div class="hb-list">${state.habits.map(h=>`
+          <div class="hb-row" data-id="${h.id}">
+            <button class="hb-color" style="background:${h.color}" title="点击选色（同分类色盘）" onclick="event.stopPropagation();hbOpenPalette(${h.id},this)"></button>
+            <input class="hb-name" value="${esc(h.name)}" maxlength="30" onchange="hbRename(${h.id},this.value)">
+            ${h.tpl?`<span class="hb-meta" title="已配置模板">模</span>`:''}
+            <button class="btn-ghost" onclick="openHabitTpl(${h.id})">模板</button>
+            <button class="btn-ghost" onclick="hbDel(${h.id})">删除</button>
+          </div>`).join('')||'<div class="note">暂无打卡项</div>'}</div>
+        <div class="frow" style="margin-top:10px"><input id="hb-new" placeholder="新打卡项名称" maxlength="30" style="flex:1">
+          <button class="btn-primary" onclick="hbAdd()">新增</button></div>
+        <div class="note">· 打卡项是打卡记录的归类（改名全局生效，历史不断档）。<br>
+          · 「模板」预设默认分类/标题/字段值，新增打卡或勾选打卡时自动带出（可改）。<br>
+          · 删除打卡项仅解除其打卡记录的打卡身份（事项本身保留，回到日历/待办正常展示）。</div>
+      </div>`;
+  const body=settingsTab==='daytypes'?daytypesBody:settingsTab==='habits'?habitsBody:backupBody;
   modal(`<div class="dhead">设置<button class="x" onclick="closeModal()">✕</button></div>
     <div class="dbody" style="padding:0"><div class="set-wrap">
       <div class="set-tabs">
         <button class="${settingsTab==='backup'?'on':''}" onclick="settingsTabSwitch('backup')">数据备份</button>
         <button class="${settingsTab==='daytypes'?'on':''}" onclick="settingsTabSwitch('daytypes')">日期类型</button>
+        <button class="${settingsTab==='habits'?'on':''}" onclick="settingsTabSwitch('habits')">打卡项</button>
         <button class="dis">邮箱绑定 <span class="badge">二期</span></button>
         <button class="dis">提醒发送记录 <span class="badge">二期</span></button>
       </div>

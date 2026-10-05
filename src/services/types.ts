@@ -65,6 +65,10 @@ export interface Item {
   due_date: string | null;
   due_time: string | null;
   created_at: string;
+  /** 打卡身份（PRD 6.11 v1.25）：勾选后额外计入打卡视图 */
+  is_checkin: boolean;
+  /** 所属打卡项（取消打卡时保留，再勾选自动带出） */
+  habit_id: number | null;
 }
 
 /** 新增/编辑表单载荷（对应 commands::items::ItemDraft，camelCase） */
@@ -78,6 +82,9 @@ export interface ItemDraft {
   endTime: string | null;
   dueDate: string | null;
   dueTime: string | null;
+  /** 打卡身份与所属打卡项（PRD 6.11 v1.25；取消打卡时 habitId 传原值保留关联） */
+  isCheckin?: boolean;
+  habitId?: number | null;
   /** 当前分类模板字段值（P6：仅覆盖当前模板字段，切分类不迁移旧值，PRD 4.3） */
   fieldValues?: FieldValuePayload[];
 }
@@ -113,6 +120,37 @@ export function isCategory(v: unknown): v is Category {
 
 export function isCategoryArray(v: unknown): v is Category[] {
   return Array.isArray(v) && v.every(isCategory);
+}
+
+/** 打卡项（对应 store::habits::Habit，PRD 6.11 v1.25） */
+export interface Habit {
+  id: number;
+  name: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+  /** 模板 JSON 原文（v1.25 ③；null=未配置）。结构见 HabitTemplate，编解码见 features/checkin/template.ts */
+  template_json: string | null;
+}
+
+/** 打卡项模板（v1.25 ③）：默认分类/标题/字段值，新增打卡或勾选打卡时带出（可编辑）。
+ *  values：fieldDefId → 字段值 JSON 文本（与 item_field_values.value_json 同格式）。 */
+export interface HabitTemplate {
+  categoryId: number | null;
+  title: string;
+  values: Record<string, string | null>;
+}
+
+export function isHabit(v: unknown): v is Habit {
+  if (typeof v !== "object" || v === null) return false;
+  const o = v as Record<string, unknown>;
+  return (
+    typeof o.id === "number" && typeof o.name === "string" && typeof o.color === "string"
+  );
+}
+
+export function isHabitArray(v: unknown): v is Habit[] {
+  return Array.isArray(v) && v.every(isHabit);
 }
 
 // ===== P6 自定义字段（PRD 4.3/6.5/6.6；与 store::fields::FieldDef / fieldconvert 对齐） =====

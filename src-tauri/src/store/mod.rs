@@ -9,6 +9,7 @@ pub mod daytypes;
 pub mod export;
 pub mod fieldconvert;
 pub mod fields;
+pub mod habits;
 pub mod items;
 pub mod schema;
 pub mod snapshot;
@@ -366,6 +367,84 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
         items::list(&guard, category_id)
     }
 
+    /// 打卡视图数据（PRD 6.11 v1.25）：范围内全部打卡事项。
+    pub fn list_checkins(&self, start: &str, end: &str) -> Result<Vec<items::Item>> {
+        let guard = self.lock()?;
+        items::list_checkins(&guard, start, end)
+    }
+
+    // ---- 打卡项（PRD 6.11 v1.25）----
+
+    pub fn list_habits(&self) -> Result<Vec<habits::Habit>> {
+        let guard = self.lock()?;
+        habits::list(&guard)
+    }
+
+    pub fn create_habit(&self, name: &str, color: &str) -> Result<habits::Habit> {
+        let guard = self.lock()?;
+        habits::create(&guard, name, color)
+    }
+
+    pub fn get_habit(&self, id: i64) -> Result<habits::Habit> {
+        let guard = self.lock()?;
+        habits::get(&guard, id)
+    }
+
+    pub fn rename_habit(&self, id: i64, name: &str) -> Result<()> {
+        let guard = self.lock()?;
+        habits::rename(&guard, id, name)
+    }
+
+    pub fn set_habit_color(&self, id: i64, color: &str) -> Result<()> {
+        let guard = self.lock()?;
+        habits::set_color(&guard, id, color)
+    }
+
+    /// 设置/清除打卡项模板（v1.25 ③）。
+    pub fn set_habit_template(&self, id: i64, template: Option<&str>) -> Result<()> {
+        let guard = self.lock()?;
+        habits::set_template(&guard, id, template)
+    }
+
+    /// 删除打卡项（仅解除打卡身份，事项保留）；返回受影响事项 id（撤销恢复用）。
+    pub fn delete_habit(&self, id: i64) -> Result<Vec<i64>> {
+        let mut guard = self.lock()?;
+        habits::delete(&mut guard, id)
+    }
+
+    /** 恢复被解除身份的事项（撤销删除打卡项用）：重建打卡身份关联。 */
+    pub fn restore_habit_checkins(&self, habit_id: i64, item_ids: &[i64]) -> Result<()> {
+        let guard = self.lock()?;
+        for id in item_ids {
+            guard.execute(
+                "UPDATE items SET is_checkin = 1, habit_id = ?2 WHERE id = ?1",
+                rusqlite::params![id, habit_id],
+            )?;
+        }
+        Ok(())
+    }
+
+    /// 重建打卡项行（撤销删除/重做新建用；UPSERT 含 id/created_at/template 精确还原）。
+    pub fn restore_habit_row(&self, habit: &habits::Habit) -> Result<()> {
+        let guard = self.lock()?;
+        guard.execute(
+            "INSERT INTO habits (id, name, color, sort_order, created_at, template_json)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+             ON CONFLICT(id) DO UPDATE SET name=excluded.name, color=excluded.color,
+                 sort_order=excluded.sort_order, created_at=excluded.created_at,
+                 template_json=excluded.template_json",
+            rusqlite::params![
+                habit.id,
+                habit.name,
+                habit.color,
+                habit.sort_order,
+                habit.created_at,
+                habit.template_json
+            ],
+        )?;
+        Ok(())
+    }
+
     // ---- P7：撤销快照与恢复原语（SQL 实现见 store::snapshot，push 由命令层负责） ----
 
     pub fn snapshot_item(&self, id: i64) -> Result<Option<snapshot::ItemSnapshot>> {
@@ -525,7 +604,7 @@ mod tests {
                 r.get(0)
             })
             .expect("查询版本失败");
-        assert_eq!(v, 3, "应迁移到最新版本 v3（字段全局化）");
+        assert_eq!(v, 5, "应迁移到最新版本 v5（打卡项模板）");
     }
 
     #[test]

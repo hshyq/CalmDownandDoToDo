@@ -57,6 +57,20 @@ pub enum UndoCmd {
     ItemDelete { snap: Box<ItemSnapshot> },
     /// 批量删除事项（列表视图多选，PRD 6.10 v1.23）：一步撤销恢复全部。
     ItemDeleteBatch { snaps: Vec<Box<ItemSnapshot>> },
+    /// 新建打卡项（PRD 6.11 v1.25）：revert=删除行，apply=重建行。
+    HabitCreate {
+        habit: Box<crate::store::habits::Habit>,
+    },
+    /// 打卡项改名/改色：按行前后快照覆盖。
+    HabitUpdate {
+        before: Box<crate::store::habits::Habit>,
+        after: Box<crate::store::habits::Habit>,
+    },
+    /// 删除打卡项：revert=重建行并恢复受影响事项的打卡身份，apply=重放删除（再解除身份）。
+    HabitDelete {
+        habit: Box<crate::store::habits::Habit>,
+        affected: Vec<i64>,
+    },
     /// 新建字段：revert=删除字段（值级联），apply=重建模板。
     FieldCreate { snap: Box<FieldSnapshot> },
     /// 字段改名/改类型/选项变更：按前后模板+值快照覆盖。
@@ -96,6 +110,12 @@ impl Command for UndoCmd {
                 }
                 Ok(())
             }
+            UndoCmd::HabitCreate { habit } => db.restore_habit_row(habit),
+            UndoCmd::HabitUpdate { before: _, after } => db.restore_habit_row(after),
+            UndoCmd::HabitDelete { habit, .. } => {
+                let _ = db.delete_habit(habit.id)?;
+                Ok(())
+            }
             UndoCmd::FieldCreate { snap } => db.restore_field(snap),
             UndoCmd::FieldUpdate { before: _, after } => db.restore_field(after),
             UndoCmd::FieldDelete { snap } => db.delete_field(snap.def.id),
@@ -124,6 +144,15 @@ impl Command for UndoCmd {
                 }
                 Ok(())
             }
+            UndoCmd::HabitCreate { habit } => {
+                let _ = db.delete_habit(habit.id)?;
+                Ok(())
+            }
+            UndoCmd::HabitUpdate { before, after: _ } => db.restore_habit_row(before),
+            UndoCmd::HabitDelete { habit, affected } => {
+                db.restore_habit_row(habit)?;
+                db.restore_habit_checkins(habit.id, affected)
+            }
             UndoCmd::FieldCreate { snap } => db.delete_field(snap.def.id),
             UndoCmd::FieldUpdate { before, after: _ } => db.restore_field(before),
             UndoCmd::FieldDelete { snap } => db.restore_field(snap),
@@ -150,6 +179,9 @@ impl Command for UndoCmd {
             UndoCmd::ItemUpdate { .. } => "编辑事项".into(),
             UndoCmd::ItemDelete { .. } => "删除事项".into(),
             UndoCmd::ItemDeleteBatch { snaps } => format!("批量删除 {} 条事项", snaps.len()),
+            UndoCmd::HabitCreate { .. } => "新增打卡项".into(),
+            UndoCmd::HabitUpdate { .. } => "修改打卡项".into(),
+            UndoCmd::HabitDelete { .. } => "删除打卡项".into(),
             UndoCmd::FieldCreate { .. } => "新增字段".into(),
             UndoCmd::FieldUpdate { .. } => "修改字段".into(),
             UndoCmd::FieldDelete { .. } => "删除字段".into(),
@@ -278,6 +310,8 @@ mod tests {
             end_time: None,
             due_date: None,
             due_time: None,
+            is_checkin: false,
+            habit_id: None,
         }
     }
 

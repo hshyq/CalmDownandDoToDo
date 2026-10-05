@@ -1,20 +1,35 @@
-// 所属分类下拉（PRD 6.4 v1.24）：带色点样式，与左侧分类列表一致。
-// 原生 select 的 option 无法渲染色点，故用按钮 + 浮层菜单模拟；
-// 列表顺序由调用方传入（普通分类按序、未分类沉底，v1.17 规则不变）。
+// 通用色点下拉（PRD 6.4 v1.24 起）：所属分类（Category）/打卡项（Habit）共用。
+// 原生 select 的 option 无法渲染色点，故用按钮 + 浮层菜单模拟。
+// 可选 onCreate：菜单底部出现「＋ 新建…」，输入名称创建后自动选中（PRD 6.11 打卡项入口）。
 import { useEffect, useRef, useState } from "react";
-import type { Category } from "../../services/types";
 
-interface Props {
-  categories: Category[];
-  value: number;
-  onChange: (id: number) => void;
+export interface CatSelectItem {
+  id: number;
+  name: string;
+  color: string;
 }
 
-export default function CatSelect({ categories, value, onChange }: Props) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
+interface Props {
+  items: CatSelectItem[];
+  value: number;
+  onChange: (id: number) => void;
+  /** 无可选项时的提示文案（替代下拉） */
+  emptyText?: string;
+  /** 新建回调：成功返回新 id 并自动选中；失败抛错由调用方提示 */
+  onCreate?: (name: string) => Promise<number>;
+}
 
-  // 展开时监听页面按下：点击组件外收起（选人与收口路径同原型契约）
+export default function CatSelect({ items, value, onChange, emptyText, onCreate }: Props) {
+  const [open, setOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [createErr, setCreateErr] = useState("");
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // 展开时监听页面按下：点击组件外收起
   useEffect(() => {
     if (!open) return;
     const onDocDown = (e: MouseEvent) => {
@@ -24,7 +39,40 @@ export default function CatSelect({ categories, value, onChange }: Props) {
     return () => document.removeEventListener("mousedown", onDocDown);
   }, [open]);
 
-  const cur = categories.find((c) => c.id === value);
+  // 展开时滚动到当前选中项（分类较多超出可视高时保证当前值可见）
+  useEffect(() => {
+    if (!open) return;
+    menuRef.current?.querySelector(".catsel-item.on")?.scrollIntoView({ block: "nearest" });
+  }, [open]);
+
+  useEffect(() => {
+    if (creating) inputRef.current?.focus();
+  }, [creating]);
+
+  const cur = items.find((c) => c.id === value);
+
+  if (items.length === 0) {
+    return <span className="ldim" style={{ alignSelf: "center" }}>{emptyText ?? "暂无可选项"}</span>;
+  }
+
+  const submitCreate = async () => {
+    if (!onCreate || busy) return;
+    const name = newName.trim();
+    if (name === "") return;
+    setBusy(true);
+    setCreateErr("");
+    try {
+      const id = await onCreate(name);
+      setOpen(false);
+      setCreating(false);
+      setNewName("");
+      onChange(id);
+    } catch (e) {
+      setCreateErr(e instanceof Error ? e.message : "创建失败，请重试");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <div className="catsel" ref={rootRef}>
@@ -34,8 +82,8 @@ export default function CatSelect({ categories, value, onChange }: Props) {
         <span className="catsel-caret">▾</span>
       </button>
       {open ? (
-        <div className="catsel-menu">
-          {categories.map((c) => (
+        <div className="catsel-menu" ref={menuRef}>
+          {items.map((c) => (
             <div
               key={c.id}
               className={`catsel-item${c.id === value ? " on" : ""}`}
@@ -48,6 +96,30 @@ export default function CatSelect({ categories, value, onChange }: Props) {
               <span className="catsel-name">{c.name}</span>
             </div>
           ))}
+          {onCreate ? (
+            creating ? (
+              <div className="catsel-create">
+                <input
+                  ref={inputRef}
+                  value={newName}
+                  maxLength={30}
+                  placeholder="新名称"
+                  disabled={busy}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void submitCreate();
+                    if (e.key === "Escape") setCreating(false);
+                  }}
+                />
+                <button type="button" className="btn-primary" disabled={busy || newName.trim() === ""} onClick={() => void submitCreate()}>
+                  建
+                </button>
+              </div>
+            ) : (
+              <div className="catsel-item catsel-new" onClick={() => setCreating(true)}>＋ 新建…</div>
+            )
+          ) : null}
+          {createErr !== "" ? <div className="catsel-err">{createErr}</div> : null}
         </div>
       ) : null}
     </div>

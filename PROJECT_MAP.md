@@ -1,6 +1,6 @@
 # PROJECT_MAP.md — 代码地图
 
-> **当前状态**：开发阶段 · **P10 一期增强迭代**（P0~P9 完成；P10=v1.16 色条/今日染色、v1.17 字段全局化 schema v3、v1.18/v1.19/v1.20 列表视图与搜索筛选、v1.21 列表视图描述列、v1.22 列表默认一个月内+待办时间线去标签、v1.23 列表多选批量删除、v1.24 弹窗分类下拉带色点、分段日期输入、日期类型入口移入设置；v0.3.12 已打包含 v1.21~v1.23、本地未推送，v1.24 待随下版打包）。下方目录树为**当前实际结构**；改动必须同步本图（只写现状，禁止写变更过程）。
+> **当前状态**：开发阶段 · **P10 一期增强迭代**（P0~P9 完成；P10=v1.16 色条/今日染色、v1.17 字段全局化 schema v3、v1.18/v1.19/v1.20 列表视图与搜索筛选、v1.21 列表视图描述列、v1.22 列表默认一个月内+待办时间线去标签、v1.23 列表多选批量删除、v1.24 弹窗分类下拉带色点、v1.25 打卡功能（schema v4）、分段日期输入、日期类型入口移入设置；v0.3.13 已打包含 v1.21~v1.24、本地未推送，v1.25 待随下版打包）。下方目录树为**当前实际结构**；改动必须同步本图（只写现状，禁止写变更过程）。
 >
 >
 > **P1 已落地**（2026-09-03）：`src-tauri/src/store/`（mod.rs / schema.rs / validation.rs）——schema_migrations 幂等迁移（v1 建 6 表 + 3 索引 + `items.created_at`）；`Db::open`；`list_calendar_items`（窗口交集）/ `list_todo_items`（COALESCE 哨兵沉底）查询；应用层校验函数；12 项单测通过。schema 数据字典同步见技术方案 v1.3。
@@ -44,16 +44,17 @@
 │  ├─ components/             组件（按模块目录组织）
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；ColorPicker 墨刀式色盘（色板+SV 取色面板+色相条+HEX）
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部；closeOnOverlayClick 时点遮罩等效取消，仅事项弹窗开启）
-│  │  ├─ Calendar/            日历视图 CalendarView（周/月/列表三态、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；ListView（列表视图，v1.18 起；含描述列 v1.21）；DayTypePanel（日期类型月历管理面板，v1.18 起嵌设置弹窗）
-│  │  ├─ Items/               事项弹窗 ItemModal（标准字段 + 自定义字段区按分类可见过滤；分段日期/时刻输入；「+」新增预填开始=结束=格日期）；CatSelect 所属分类下拉（带色点，v1.24）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月/列表/打卡四态、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；ListView（列表视图，v1.18 起；含描述列 v1.21）；CheckinView（打卡视图：热力带+聚焦大图+添加打卡，v1.25）；DayTypePanel（日期类型月历管理面板，v1.18 起嵌设置弹窗）
+│  │  ├─ Items/               事项弹窗 ItemModal（标准字段+打卡区 v1.25 + 自定义字段区按分类可见过滤；分段日期/时刻输入；「+」新增预填开始=结束=格日期）；CatSelect 通用色点下拉（分类/打卡项共用，输新名即建，v1.24/v1.25）
 │  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期；接收日历横条拖入转待办，v1.16；右侧显示截止日数字；当前时间线无文字标签，v1.22）
-│  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入/TXT 导出；日期类型页签，v1.18）
+│  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入/TXT 导出；日期类型页签，v1.18；打卡项页签 HabitPanel，v1.25）
 │  │  └─ fields/              自定义字段：FieldEditor 六类型控件 / FieldManager 字段管理弹窗（全局字段+分类可见性，v1.17）/ SegInputs 分段日期/时刻输入（v1.17）
 │  ├─ features/               纯函数 + vitest 单测
 │  │  ├─ calendar/            dates.ts / layout.ts（周月网格、横条布局）/ drag.ts（拖拽改期：平移、待办拖入、头尾钳制、横条拖入待办转换）/ daytype.test.ts（默认星期推算）
 │  │  ├─ todo/                group.ts（待办分组纯函数）/ nowline.ts（当前时间线插入序号，v1.15）
 │  │  ├─ color/               palette.ts（墨刀式色板/标准行取色/色块字色自适应/HSV 转换纯函数）
 │  │  ├─ fields/              value.ts（字段值 JSON 编解码/选项解析纯函数）
+│  │  ├─ checkin/             heatmap.ts（打卡视图纯函数：归属日期/分桶/4 档分档/连续统计/周列与月份标注，v1.25）
 │  │  └─ export/              dates.ts（TXT 导出默认范围/结束上限/快捷范围纯函数）
 │  ├─ test/                   前端冒烟测试 smoke.test.ts（vitest 可运行验证）
 │  ├─ stores/
@@ -80,14 +81,16 @@
 │     │  ├─ export.rs         TXT 导出 default_txt_path/export_items_txt（PRD 6.9）
 │     │  ├─ fields.rs         list_fields_all/set_field_visibility/create_field(visible)/list_all_field_values（PRD 4.3/6.10）
 │     │  ├─ undo.rs           undo / redo / undo_depth
+│     │  ├─ habits.rs         打卡项 list/create/rename/set_color/delete（PRD 6.11 v1.25，写经 undo）
 │     │  └─ mail.rs           （二期）邮箱配置/发送测试/失败手动重试 retry_send/同步 send_queue
 │     ├─ store/               SQLite 唯一写库方（P1 已落地）
 │     │  ├─ mod.rs            Db(Mutex 单连接)/open/迁移调用；日历窗口交集、待办 COALESCE 排序查询
 │     │  ├─ backup.rs        P8 整库 dump/导入 + 语义校验（TC-BAK-006）+ 默认导出路径
 │     │  ├─ export.rs        P10 TXT 导出（窗口交集/截止过滤 + 格式化 + UTF-8 BOM，PRD 6.9）
-│     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（一期全表）/ v2（day_types）/ v3（字段全局化+category_fields，只增不改历史）
+│     │  ├─ schema.rs         schema_migrations 管理 + 迁移 v1（一期全表）/ v2（day_types）/ v3（字段全局化+category_fields）/ v4（habits 打卡项+items.is_checkin/habit_id，v1.25）
 │     │  └─ validation.rs     应用层校验（分类名/颜色/标题/日期时刻成对/结束不早于开始）
-│     │  └─ snapshot.rs   P7 撤销快照/恢复原语（行级/字段/整分类级联）
+│     │  ├─ snapshot.rs   P7 撤销快照/恢复原语（行级/字段/整分类级联）
+│     │  ├─ habits.rs     打卡项 CRUD/删除解除打卡身份（PRD 6.11 v1.25）
 │     │  └─ daytypes.rs   日期类型覆盖项 list/get/set（PRD 5.5 v1.12；日期与类型值校验）
 │     ├─ undo/                UndoStack 双栈（上限 10、重启清空）+ UndoCmd 命令枚举
 │     ├─ mailer.rs            （二期）lettre SMTP + TLS，失败重试 3 次
@@ -125,6 +128,7 @@
 | 备份导入导出 | `store/backup.rs` + `commands/backup.rs` + `components/Settings/SettingsDialog.tsx` | 对照 TC-BAK-001~006；导入前整库快照落 undo_tmp（D10） |
 | 列表视图（PRD 6.10） | `src/components/Calendar/ListView.tsx`（冻结列/统一排序/描述列/多选批量删除/动态字段列）；批量删除命令 `src-tauri/src/commands/items.rs::delete_items_batch` + `UndoCmd::ItemDeleteBatch` | 对照 TC-CAL-020~022、TC-UNDO-010；数据源=itemApi.list 全字段查询+全表字段值 |
 | 日期类型管理 | 设置弹窗「日期类型」页签（`DayTypePanel.tsx`） | 对照 TC-DT-001~007；日历格色条点击同样可切换 |
+| 打卡功能（PRD 6.11） | `CheckinView.tsx`/`HabitPanel.tsx`/`ItemModal` 打卡区/`features/checkin/heatmap.ts`（纯函数）；后端 `store/habits.rs`+`commands/habits.rs`+`list_checkins` | 对照 TC-CK-001~015；归属日期=开始优先截止兜底（后端校验+heatmap.ts 双侧对齐，改一侧必改另一侧）；删除打卡项仅解除身份不删事项 |
 | TXT 导出（PRD 6.9） | `store/export.rs` + `commands/export.rs` + `features/export/dates.ts` + `SettingsDialog.tsx` | 对照 TC-EXP-001~006；上限规则前端 dates.ts 与后端 half_year_limit 对齐，改一侧必改另一侧 |
 | 二期邮件/调度 | `mailer.rs` / `scheduler.rs` / `mail.rs` | 对照 TC-MAIL-001~011；确认符合 AGENTS 红线 1 |
 | 界面文案 / 友好报错 | 组件内 + `services/ipc.ts` 错误转换 | 中文；AGENTS 第 5 节 |

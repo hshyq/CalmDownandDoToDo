@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ItemModal from "../Items/ItemModal";
 import FieldManager from "../fields/FieldManager";
 import ListView from "./ListView";
+import CheckinView from "./CheckinView";
 import { useUndoStore } from "../../stores/undoStore";
 import { useAppStore } from "../../stores/appStore";
 import { itemApi, dayTypeApi } from "../../services/ipc";
@@ -16,7 +17,7 @@ import { BAR_MIME, TODO_MIME, clampEdge, shiftRange, todoDropDates } from "../..
 import type { ShiftedDates } from "../../features/calendar/drag";
 import { textColorOn } from "../../features/color/palette";
 
-type ViewMode = "week" | "month" | "list";
+type ViewMode = "week" | "month" | "list" | "checkin";
 
 interface ModalState {
   open: boolean;
@@ -117,7 +118,7 @@ export default function CalendarView() {
     if (!el) return;
     const acc = { v: 0, t: 0 };
     const onWheel = (e: WheelEvent) => {
-      if (viewRef.current === "list") return; // 列表视图：滚轮滚动表格，不切换周期
+      if (viewRef.current === "list" || viewRef.current === "checkin") return; // 列表/打卡视图：滚轮滚动内容，不切换周期
       if (el.scrollHeight > el.clientHeight + 1) return;
       const now = Date.now();
       if (now - acc.t > 400) acc.v = 0;
@@ -454,11 +455,12 @@ export default function CalendarView() {
           <button type="button" className={view === "week" ? "on" : ""} onClick={() => setView("week")}>周</button>
           <button type="button" className={view === "month" ? "on" : ""} onClick={() => setView("month")}>月</button>
           <button type="button" className={view === "list" ? "on" : ""} onClick={() => setView("list")}>列表</button>
+          <button type="button" className={view === "checkin" ? "on" : ""} onClick={() => setView("checkin")}>打卡</button>
         </div>
         <span style={{ position: "relative", marginLeft: 12 }}>
           <span
             className="title cal-title"
-            style={view === "list" ? { display: "none" } : undefined}
+            style={view === "list" || view === "checkin" ? { display: "none" } : undefined}
             title="点击选择年月"
             onClick={() => (pick ? setPick(null) : openPick())}
           >{title}</span>
@@ -488,6 +490,8 @@ export default function CalendarView() {
       </div>
       {view === "list" ? (
         <ListView categories={categories} scope={scope} />
+      ) : view === "checkin" ? (
+        <CheckinView categories={categories} />
       ) : (
       <div className="calwrap" ref={calwrapRef}>
         <div className="calhead">

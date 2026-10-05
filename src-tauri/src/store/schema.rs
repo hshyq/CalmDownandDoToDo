@@ -105,6 +105,25 @@ ALTER TABLE field_defs_new RENAME TO field_defs;
 CREATE INDEX idx_field_defs_sort ON field_defs(sort_order);
 "#,
         ),
+        // v4：打卡（PRD 6.11 v1.25）——habits 打卡项实体表；items 加打卡身份双属性
+        (
+            4,
+            r#"
+CREATE TABLE habits (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    name       TEXT NOT NULL UNIQUE,
+    color      TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+ALTER TABLE items ADD COLUMN is_checkin INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE items ADD COLUMN habit_id INTEGER REFERENCES habits(id);
+CREATE INDEX idx_items_habit ON items(habit_id);
+"#,
+        ),
+        // v5：打卡项模板（PRD 6.11 v1.25 ③）——默认分类/标题/字段值，新增打卡或勾选打卡时带出
+        (5, r#"ALTER TABLE habits ADD COLUMN template_json TEXT;"#),
     ]
 }
 
@@ -154,7 +173,7 @@ mod tests {
         let first: i64 = conn
             .query_row("SELECT COUNT(*) FROM schema_migrations", [], |r| r.get(0))
             .expect("查询版本数失败");
-        assert_eq!(first, 3, "v1+v2+v3 三条迁移");
+        assert_eq!(first, 5, "v1~v5 五条迁移");
 
         migrate(&mut conn).expect("重复迁移失败");
         let second: i64 = conn

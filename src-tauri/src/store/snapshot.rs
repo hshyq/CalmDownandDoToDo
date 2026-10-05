@@ -130,12 +130,13 @@ fn upsert_field_def(tx: &Connection, def: &FieldDef) -> Result<()> {
 fn upsert_item(tx: &Connection, item: &Item) -> Result<()> {
     tx.execute(
         "INSERT INTO items (id, category_id, title, description, start_date, start_time,
-                            end_date, end_time, due_date, due_time, created_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+                            end_date, end_time, due_date, due_time, created_at, is_checkin, habit_id)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
          ON CONFLICT(id) DO UPDATE SET category_id=excluded.category_id, title=excluded.title,
              description=excluded.description, start_date=excluded.start_date,
              start_time=excluded.start_time, end_date=excluded.end_date, end_time=excluded.end_time,
-             due_date=excluded.due_date, due_time=excluded.due_time, created_at=excluded.created_at",
+             due_date=excluded.due_date, due_time=excluded.due_time, created_at=excluded.created_at,
+             is_checkin=excluded.is_checkin, habit_id=excluded.habit_id",
         rusqlite::params![
             item.id,
             item.category_id,
@@ -147,7 +148,9 @@ fn upsert_item(tx: &Connection, item: &Item) -> Result<()> {
             item.end_time,
             item.due_date,
             item.due_time,
-            item.created_at
+            item.created_at,
+            item.is_checkin,
+            item.habit_id
         ],
     )?;
     Ok(())
@@ -283,6 +286,8 @@ mod tests {
                 end_time: None,
                 due_date: None,
                 due_time: None,
+                is_checkin: false,
+                habit_id: None,
             },
         )
         .expect("新增事项")
@@ -311,6 +316,8 @@ mod tests {
                 end_time: None,
                 due_date: None,
                 due_time: None,
+                is_checkin: false,
+                habit_id: None,
             },
         )
         .expect("更新");

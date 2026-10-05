@@ -90,6 +90,8 @@ describe("calendarToTodoDraft 日历横条拖入待办（TC-IT-016，PRD 5.2 v1.
     due_date: null,
     due_time: null,
     created_at: "2026-09-01T08:00:00",
+    is_checkin: false,
+    habit_id: null,
   };
 
   it("结束日期/时刻转截止并清空结束，开始保留", () => {

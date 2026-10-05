@@ -497,6 +497,8 @@ mod tests {
                 end_time: None,
                 due_date: None,
                 due_time: None,
+                is_checkin: false,
+                habit_id: None,
             },
         )
         .expect("新增事项");
@@ -517,6 +519,8 @@ mod tests {
                 end_time: None,
                 due_date: None,
                 due_time: None,
+                is_checkin: false,
+                habit_id: None,
             },
         )
         .expect("建多余事项");
@@ -556,6 +560,8 @@ mod tests {
                 end_time: None,
                 due_date: None,
                 due_time: None,
+                is_checkin: false,
+                habit_id: None,
             },
         )
         .expect("建事项");
@@ -577,6 +583,8 @@ mod tests {
                 end_time: None,
                 due_date: None,
                 due_time: None,
+                is_checkin: false,
+                habit_id: None,
             },
         )
         .expect("建事项");

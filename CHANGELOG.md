@@ -468,3 +468,31 @@
 ### 打包（指令 A）
 - 版本号 0.3.12 → **0.3.13**；正式目录重命名为 `release\日历待办工具 v0.3.13\` 并替换 exe 与使用说明.txt 版本行（生产 data\ 原地未动，前后核对 1 文件/88KB 一致）；临时目录启动验证通过后清理；未推送、未建 Release（等指令 B/C）
 - 随本版内容：事项弹窗所属分类下拉带色点（v1.24，用户手测通过）
+
+## 2026-10-04（打卡功能，PRD v1.25）
+
+### 新增/变更（用户需求；方案经三轮讨论定稿，原型两轮调整后确认）
+- **打卡双身份**：打卡记录=一条普通事项+`is_checkin`/`habit_id` 双属性——日历/待办/列表展示零变化，勾选后额外计入打卡视图；取消勾选退出打卡视图且打卡项关联保留（再勾自动带出）
+- **归属日期**：开始优先、截止兜底；均空保存拦截；动态计算不冗余存储（改日期热力图自动跟随）；多天事项仅开始日亮格
+- **打卡项实体**：habits 表（schema v4）；设置「打卡项」页签管理（增删改名/换色，可撤销）；三入口创建（设置页签/添加打卡弹窗输新名/事项弹窗下拉输新名）；删除仅解除打卡身份（事项保留）
+- **打卡视图**（工具栏「打卡」第四态）：chips（全部/单项）；全部=每项紧凑热力带+统计（今日/连续/本月）+「今天打卡」靠右；聚焦=大热力图（列=周行=周一~日，月份标注相邻列距<2 去前留后；窄范围居中、超宽左起滚动）+记录列表（点击编辑）；方块 4 档 color-mix 着色+边框；悬停即时 tooltip「yyyy-MM-dd，n 次」；范围近1月/3月/6月/1年
+- **添加打卡**：弹窗（打卡项可选/新名即建、日期默认今天可补卡、备注入描述）；「今天打卡」一键；一天多条按次数分档
+### 实现
+- 原型（浏览器全交互验证）→ 测试用例 TC-CK 全模块 15 条 → PRD 6.11 v1.25 → 后端 schema v4（habits 表+items 双属性+索引）、`store/habits.rs`（CRUD+删除解除身份+3 单测）、items 双属性全链路（COLUMNS/INSERT/UPDATE/快照 upsert）+打卡校验+`list_checkins`+归属单测、undo `HabitCreate/Update/Delete`（删除撤销恢复身份关联）、`commands/habits.rs` 5 IPC；前端 `CheckinView.tsx`（视图+添加弹窗+tooltip）、`HabitPanel.tsx`（设置页签）、CatSelect 泛化（色点下拉+输新名即建，分类/打卡项共用）、ItemModal 打卡区（勾选+打卡项+校验）、`features/checkin/heatmap.ts` 纯函数+7 vitest、CalendarView 第四态、types/ipc/mock 同步
+### 验收
+- `cargo test` 60 passed（新增 4）、clippy 0、fmt OK；`vitest` 75 passed（新增 7）、`tsc`+`vite build` 通过；待用户手测 TC-CK；未打包（攒批随下版）
+### 增补 ③打卡项模板（用户确认方案与原型后开发）
+- **schema v5**：habits 加 `template_json`（默认分类/标题/字段值 JSON）；`set_habit_template` IPC（合法 JSON 校验、空=清除）+ store 单测（往返/清除/非法拒绝）；撤销复用 HabitUpdate 整行快照（restore 同步模板列）
+- **设置页签**：每个打卡项「模板」按钮 → 模板编辑弹窗（分类色点下拉/标题/按分类渲染的字段区 FieldEditor，多选正确收集）；已配置标「模」；「新增」按钮右对齐；色块改弹与分类相同的墨刀色盘（ColorPicker）
+- **三处带出（可编辑）**：「＋ 添加打卡」弹窗扩展分类/标题/字段区，选打卡项带出；事项弹窗选打卡项带出（分类自动切换仅编辑/总览；字段值经 valsMap 走编辑回显同一路径）；「今天打卡」按模板创建（fieldValues 直传）
+- 前端基础：`Habit.template_json` + `features/checkin/template.ts` 编解码纯函数（坏数据防御）+4 vitest；ipc/mock setTemplate
+- 原型同步修复两处历史 bug：多选字段收集（checkbox 按 checked 归数组，模板/添加打卡/事项弹窗带出三处统一）；日期原生选择器拆分符误用 icon 文本判断（emoji 不含"日"字导致日期只填年段，改按 native.type 判断；正式版 SegInputs 无此问题）
+- 验收：`cargo test` 61 passed、clippy 0、fmt OK；`vitest` 79 passed、`tsc`+`vite build` 通过；TC-CK-016~018 补充；待手测
+
+## 2026-10-05（打卡项页签手测修复）
+
+### 修复（用户手测反馈）
+- 设置-打卡项「新增」按钮未右对齐：新增行 `.frow` 在设置页签容器（非 `.iform`）下没有 flex 布局，input 的 `flex:1` 被忽略——外包 `.iform` 复用表单布局，输入框撑满、按钮贴右
+- 模板弹窗所属分类下拉选不到排在后面的分类（如「测试」）：`.catsel-menu` max-height 220px，7 个分类约 232px 刚好截断在滚动区外——放宽到 300px，并增加展开时自动滚动到当前选中项（scrollIntoView 兜底）；三处色点下拉（事项弹窗分类/打卡项、模板弹窗分类）同时生效；原型同步
+### 验收
+- `vitest` 79 passed、`tsc`+`vite build` 通过；用户手测通过；随 v0.3.14 打包

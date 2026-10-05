@@ -202,10 +202,62 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .catsel-btn:hover { border-color: var(--accent); }
 .catsel-name { flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .catsel-caret { flex: none; color: var(--muted); font-size: 10px; }
-.catsel-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 220px; overflow: auto; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); z-index: 60; padding: 4px 0; }
+.catsel-menu { position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 300px; overflow: auto; background: #fff; border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12); z-index: 60; padding: 4px 0; }
 .catsel-item { display: flex; align-items: center; gap: 6px; padding: 7px 10px; cursor: pointer; font-size: 13px; }
 .catsel-item:hover { background: var(--panel); }
 .catsel-item.on { color: var(--accent); font-weight: 700; }
+.catsel-create { display: flex; gap: 6px; padding: 6px 10px; }
+.catsel-create input { flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font: inherit; }
+.catsel-create .btn-primary { height: 26px; padding: 0 10px; }
+.catsel-new { color: var(--muted); }
+.catsel-err { padding: 4px 10px 6px; font-size: 12px; color: var(--danger); }
+/* ===== 打卡视图（PRD 6.11 v1.25）===== */
+.ckview { display: flex; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
+.ckbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.ckchips { display: flex; gap: 6px; flex-wrap: wrap; }
+.ckchip { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border: 1px solid var(--border); border-radius: 13px; background: #fff; font: inherit; font-size: 12px; cursor: pointer; }
+.ckchip.on { border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.ckranges { display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.ckranges button { border: none; background: #fff; padding: 4px 8px; font: inherit; font-size: 12px; cursor: pointer; color: var(--muted); }
+.ckranges button.on { background: var(--accent); color: #fff; font-weight: 700; }
+.ckbody { flex: 1; overflow: auto; padding: 10px; }
+.ckband-row { padding: 6px 2px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.ckband-row:hover { background: rgba(0, 0, 0, 0.02); }
+.ckband-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.ck-quick-btn { height: 24px; padding: 0 8px; }
+.ckstats { font-size: 12px; color: var(--muted); }
+.ckband { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 2px; }
+/* 热力方块：边框独立显色（不整格 opacity），档位 color-mix 深浅（v1.25 原型确认） */
+.cksq { flex: none; width: 11px; height: 11px; border-radius: 2px; background: var(--border); box-sizing: border-box; border: 1.5px solid rgba(0, 0, 0, 0.22); }
+.cksq.lv1 { background: color-mix(in srgb, var(--ck, #4F8EF7) 45%, #fff); }
+.cksq.lv2 { background: color-mix(in srgb, var(--ck, #4F8EF7) 72%, #fff); }
+.cksq.lv3 { background: var(--ck, #4F8EF7); }
+.cksq.void { visibility: hidden; }
+.ckhead { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+/* 聚焦大图：月份/星期坐标轴；窄范围居中、超宽从左起横向滚动 */
+.ckbig-wrap { overflow-x: auto; padding-bottom: 4px; }
+.ckgrid { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; width: max-content; margin: 0 auto; }
+.ckmonths { display: flex; gap: 3px; height: 14px; margin-bottom: 4px; }
+.ckm { flex: none; width: 13px; font-size: 10px; line-height: 14px; color: var(--muted); white-space: nowrap; overflow: visible; }
+.ckweeks { display: flex; flex-direction: column; gap: 3px; margin-right: 6px; }
+.ckweeks span { height: 13px; line-height: 13px; font-size: 10px; color: var(--muted); }
+.ckcols { display: flex; gap: 3px; }
+.ckcol { display: flex; flex-direction: column; gap: 3px; }
+.ckcols .cksq { width: 13px; height: 13px; }
+.cksub { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+.cklist { display: flex; flex-direction: column; gap: 2px; }
+.ckitem { padding: 5px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.ckitem:hover { background: var(--panel); }
+.ckitem .ldim { margin-right: 8px; }
+/* 悬浮即时提示（fixed 跟随鼠标，不受滚动容器裁剪） */
+.cktip { position: fixed; background: rgba(0, 0, 0, 0.78); color: #fff; font-size: 11px; padding: 3px 7px; border-radius: 4px; z-index: 999; pointer-events: none; white-space: nowrap; transform: translateX(-50%); }
+.ckbox { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text); cursor: pointer; white-space: nowrap; }
+/* 打卡项管理页签 */
+.hb-list { display: flex; flex-direction: column; gap: 6px; }
+.hb-row { display: flex; align-items: center; gap: 8px; }
+.hb-color { width: 22px; height: 22px; border-radius: 6px; border: 1px solid rgba(0, 0, 0, 0.08); cursor: pointer; flex: none; }
+.hb-name { flex: 1; border: 1px solid transparent; border-radius: 6px; padding: 4px 6px; font: inherit; background: #fff; min-width: 0; }
+.hb-name:hover, .hb-name:focus { border-color: var(--border); outline: none; }
 .ferr { color: var(--danger); font-size: 12px; margin-top: 4px; }
 .btn-danger.left { margin-right: auto; }
 /* ===== P4：日历视图 ===== */

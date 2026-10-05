@@ -6,5 +6,6 @@ pub mod categories;
 pub mod daytypes;
 pub mod export;
 pub mod fields;
+pub mod habits;
 pub mod items;
 pub mod undo;

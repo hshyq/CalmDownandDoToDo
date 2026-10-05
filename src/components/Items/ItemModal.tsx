@@ -1,15 +1,18 @@
 // 事项 新增/编辑 弹窗：标准字段 + P6 自定义字段区（PRD 4.3/6.3/6.4）。
 // 字段区按当前所属分类模板渲染；切分类旧值保留在库中不再显示，切回恢复（PRD 4.3）。
+// 打卡区（PRD 6.11 v1.25）：勾选后额外计入打卡视图；取消勾选保留打卡项关联（再勾自动带出）。
 import CatSelect from "./CatSelect";
 import { useEffect, useState } from "react";
 import Modal from "../Modal/Modal";
 import FieldEditor from "../fields/FieldEditor";
 import { SegDateInput, SegTimeInput } from "../fields/SegInputs";
 import { useAppStore } from "../../stores/appStore";
-import { fieldApi } from "../../services/ipc";
+import { fieldApi, habitApi, inTauri } from "../../services/ipc";
+import { mockHabitApi } from "../../services/mock";
 import { buildFieldPayloads, decodeFieldValue } from "../../features/fields/value";
 import type { FieldEditValue } from "../../features/fields/value";
-import type { Category, FieldDef, Item } from "../../services/types";
+import { decodeHabitTemplate } from "../../features/checkin/template";
+import type { Category, FieldDef, Habit, Item } from "../../services/types";
 
 interface Props {
   item: Item | null; // null=新增
@@ -47,6 +50,43 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
   const [err, setErr] = useState("");
   const [confirmDel, setConfirmDel] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // —— 打卡区状态（PRD 6.11 v1.25）——
+  const [isCheckin, setIsCheckin] = useState(isEdit ? item!.is_checkin : false);
+  const [habitId, setHabitId] = useState<number | null>(isEdit ? item!.habit_id : null);
+  const [habits, setHabits] = useState<Habit[]>([]);
+
+  // 弹窗打开即加载打卡项（勾选时下拉可选；支持下拉内输新名即建）
+  useEffect(() => {
+    let alive = true;
+    (inTauri() ? habitApi : mockHabitApi)
+      .list()
+      .then((hs) => { if (alive) setHabits(hs); })
+      .catch(() => { /* 打卡项加载失败不阻塞普通事项编辑；勾选时校验兜底 */ });
+    return () => { alive = false; };
+  }, []);
+
+  const createHabitHere = async (name: string): Promise<number> => {
+    const h = await (inTauri() ? habitApi : mockHabitApi).create(name, "#4F8EF7");
+    setHabits((prev) => [...(prev ?? []), h]);
+    return h.id;
+  };
+
+  /** 选打卡项 → 带出模板（v1.25 ③）：分类（编辑/总览弹窗可切时）/标题/字段值；带出后可继续编辑。
+   *  字段值写入 valsMap，经 [defs, valsMap] 重建流程按分类模板预填（与编辑回显同一路径）。 */
+  const applyHabitTemplate = (hid: number) => {
+    const h = habits.find((x) => x.id === hid);
+    const tpl = decodeHabitTemplate(h?.template_json ?? null);
+    if (!h) return;
+    if (tpl) {
+      if (tpl.categoryId !== null && (isEdit || allowCategoryPick) && tpl.categoryId !== catId) {
+        setCatId(tpl.categoryId);
+      }
+      setValsMap(new Map(Object.entries(tpl.values).map(([k, v]) => [Number(k), v])));
+      setValsReady(true);
+    }
+    setF((prev) => ({ ...prev, title: tpl?.title || h.name }));
+  };
 
   // —— P6 自定义字段状态 ——
   const [defs, setDefs] = useState<FieldDef[]>([]);
@@ -113,6 +153,12 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
     if (f.et && !f.ed) return "结束时间未填日期时不能只填时刻";
     if (f.dt && !f.dd) return "截止时间未填日期时不能只填时刻";
     if (f.sd && f.ed && f.ed < f.sd) return "结束时间的日期不能早于开始时间";
+    // 打卡校验（PRD 6.11 v1.25）：勾选需打卡项与归属日期（开始优先/截止兜底）
+    if (isCheckin) {
+      if (habits.length === 0) return "暂无打卡项，请先在「设置→打卡项」或打卡视图创建";
+      if (habitId === null) return "请选择打卡项";
+      if (!f.sd && !f.dd) return "勾选打卡需要开始或截止日期（打卡归属日期）";
+    }
     return null;
   };
 
@@ -131,6 +177,9 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
       endTime: f.et || null,
       dueDate: f.dd || null,
       dueTime: f.dt || null,
+      // 打卡身份（v1.25）：取消勾选时 habitId 传原值保留关联（再勾选自动带出）
+      isCheckin,
+      habitId: isCheckin ? habitId : isEdit ? item!.habit_id : null,
       // P6：仅覆盖当前分类模板字段；切分类不传旧分类字段 → 库中旧值保留（PRD 4.3）
       fieldValues: defs.length > 0 ? buildFieldPayloads(defs, fv) : undefined,
     };
@@ -197,9 +246,39 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
           <div className="frow">
             <label>所属分类</label>
             <CatSelect
-              categories={[...categories.filter((c) => c.kind !== "uncategorized"), ...categories.filter((c) => c.kind === "uncategorized")]}
+              items={[...categories.filter((c) => c.kind !== "uncategorized"), ...categories.filter((c) => c.kind === "uncategorized")]}
               value={catId}
               onChange={(id) => setCatId(id)}
+            />
+          </div>
+        ) : null}
+        <div className="frow">
+          <label>打卡</label>
+          <label className="ckbox">
+            <input
+              type="checkbox"
+              checked={isCheckin}
+              onChange={(e) => {
+                setIsCheckin(e.target.checked);
+                // 首次勾选且未有关联时默认选第一个打卡项
+                if (e.target.checked && habitId === null && habits.length > 0) setHabitId(habits[0].id);
+              }}
+            />
+            勾选则计入打卡视图
+          </label>
+        </div>
+        {isCheckin ? (
+          <div className="frow">
+            <label>打卡项</label>
+            <CatSelect
+              items={habits}
+              value={habitId ?? (habits[0]?.id ?? 0)}
+              onChange={(id) => {
+                setHabitId(id);
+                applyHabitTemplate(id);
+              }}
+              emptyText="暂无打卡项——可在下方输入框新建，或到「设置→打卡项」/打卡视图创建"
+              onCreate={createHabitHere}
             />
           </div>
         ) : null}
