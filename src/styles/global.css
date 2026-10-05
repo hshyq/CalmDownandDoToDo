@@ -226,11 +226,8 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .ckband-head { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
 .ck-quick-btn { height: 24px; padding: 0 8px; }
 .ckstats { font-size: 12px; color: var(--muted); }
-.ckband { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 2px; }
-/* 紧凑热力带换行（v1.26）：近6月/近1年按自然月每三个月一行 */
-.ckbands { display: flex; flex-direction: column; gap: 3px; }
-.ckband-line { display: flex; align-items: center; gap: 6px; }
-.ckband-lab { flex: none; font-size: 11px; color: var(--muted); min-width: 76px; text-align: right; }
+/* 紧凑热力带按页面宽度自适应换行（v1.27）：等宽方块自动折行，每行格数一致（末行除外） */
+.ckband { display: flex; flex-wrap: wrap; gap: 2px; padding-bottom: 2px; }
 /* 热力方块：边框独立显色（不整格 opacity），档位 color-mix 深浅（v1.25 原型确认） */
 .cksq { flex: none; width: 11px; height: 11px; border-radius: 2px; background: var(--border); box-sizing: border-box; border: 1.5px solid rgba(0, 0, 0, 0.22); }
 .cksq.lv1 { background: color-mix(in srgb, var(--ck, #4F8EF7) 45%, #fff); }
@@ -467,7 +464,7 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .seg-native { opacity: 0; width: 1px; height: 1px; position: absolute; pointer-events: none; }
 
 /* ===== 字段管理：全局字段 + 分类可见性（PRD 4.3 v1.17） ===== */
-.vis-tag { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; color: var(--muted); cursor: pointer; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vis-tag { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; color: var(--muted); cursor: pointer; width: 110px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vis-tag:hover { border-color: var(--accent); color: var(--accent); }
 .fm-vis { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 4px 8px 6px 26px; border-bottom: 1px dashed var(--border); }
 .vis-chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; font-size: 11px; cursor: pointer; color: var(--text); user-select: none; }

@@ -15,7 +15,6 @@ import {
   RANGE_DAYS,
   RANGE_LABEL,
   attributionDate,
-  bandRows,
   bucketize,
   dateSeq,
   levelOf,
@@ -41,7 +40,7 @@ export default function CheckinView({ categories }: Props) {
   const createItem = useAppStore((s) => s.createItem);
   const [habits, setHabits] = useState<Habit[] | null>(null);
   const [items, setItems] = useState<Item[] | null>(null);
-  const [range, setRange] = useState<CkRange>("3m");
+  const [range, setRange] = useState<CkRange>("1m");
   const [focus, setFocus] = useState<number | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState<Item | null>(null);
@@ -149,9 +148,8 @@ export default function CheckinView({ categories }: Props) {
       return <div className="tempty" style={{ padding: 40 }}>还没有打卡项——点击右上「＋ 添加打卡」创建第一个</div>;
     }
     if (focus === null) {
-      // 全部总览：每项一条紧凑热力带 + 统计 + 今天打卡（靠右）
-      // 近6月/近1年一行过长需左右滑动，按自然月每三个月一行换行展示（v1.26）；近1月/近3月保持单行
-      const rows = range === "6m" || range === "1y" ? bandRows(start, today) : [{ label: "", days: seq }];
+      // 全部总览：每项一条紧凑热力带 + 统计 + 今天打卡（靠右）。
+      // 热力带按页面宽度自适应换行（v1.27）：flex-wrap 等宽方块自动折行，每行格数一致（末行除外），无需左右滑动。
       return habits.map((h) => {
         const st = statsOf(bucket.get(h.id) ?? new Map(), today);
         return (
@@ -174,16 +172,9 @@ export default function CheckinView({ categories }: Props) {
                 今天打卡
               </button>
             </div>
-            <div className="ckbands">
-              {rows.map((r) => (
-                <div key={r.label} className="ckband-line">
-                  {r.label !== "" ? <span className="ckband-lab">{r.label}</span> : null}
-                  <div className="ckband">
-                    {r.days.map((d) => (
-                      <Square key={d} habitId={h.id} date={d} />
-                    ))}
-                  </div>
-                </div>
+            <div className="ckband">
+              {seq.map((d) => (
+                <Square key={d} habitId={h.id} date={d} />
               ))}
             </div>
           </div>

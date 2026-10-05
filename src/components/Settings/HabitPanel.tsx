@@ -132,7 +132,7 @@ export default function HabitPanel() {
           <div style={{ width: 150, flex: "none" }} title="默认颜色跟随所选分类">
             <CatSelect items={categories} value={newCatId} onChange={setNewCatId} />
           </div>
-          <button type="button" className="btn-primary" disabled={busy} onClick={add}>新增</button>
+          <button type="button" className="btn-primary" style={{ flex: "none", whiteSpace: "nowrap" }} disabled={busy} onClick={add}>新增</button>
         </div>
       </div>
       {err !== "" ? <div className="note" style={{ color: "var(--danger)" }}>{err}</div> : null}

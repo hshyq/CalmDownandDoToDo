@@ -205,7 +205,7 @@ export default function FieldManager({ categories, onClose }: Props) {
   return (
     <Modal title="字段管理" onClose={onClose} width={520}>
       <div className="note" style={{ marginBottom: 6 }}>
-        · 自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。
+        自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。
       </div>
       {fields === null ? (
         <div className="iempty">加载中…</div>

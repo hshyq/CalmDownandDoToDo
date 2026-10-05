@@ -190,7 +190,7 @@ export default function SettingsDialog({ onClose }: Props) {
   );
 
   return (
-    <Modal title="设置" onClose={onClose} width={560}>
+    <Modal title="设置" onClose={onClose} width={620}>
       <div className="set-wrap">
         <div className="set-tabs">
           {tabBtn("backup", "数据备份")}

@@ -167,7 +167,7 @@ input,select,textarea{font:inherit;color:inherit}
 .nowline{display:flex;align-items:center;gap:6px;margin:7px 2px}
 .nowrule{flex:1;border-top:1.5px dashed var(--danger);opacity:.5}
 /* 字段管理：全局字段 + 分类可见性（PRD 4.3 v1.17） */
-.vis-tag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vis-tag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vis-tag:hover{border-color:var(--accent);color:var(--accent)}
 .fm-vis{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 8px 6px 26px;border-bottom:1px dashed var(--border)}
 .vis-chip{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);border-radius:10px;padding:1px 8px;font-size:11px;cursor:pointer;color:var(--text);user-select:none}
@@ -220,10 +220,7 @@ input,select,textarea{font:inherit;color:inherit}
 .ckband-row:hover{background:rgba(0,0,0,.02)}
 .ckband-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .ckstats{font-size:12px;color:var(--muted)}
-.ckband{display:flex;gap:2px;overflow-x:auto;padding-bottom:2px}
-.ckbands{display:flex;flex-direction:column;gap:3px}
-.ckband-line{display:flex;align-items:center;gap:6px}
-.ckband-lab{flex:none;font-size:11px;color:var(--muted);min-width:76px;text-align:right}
+.ckband{display:flex;flex-wrap:wrap;gap:2px;padding-bottom:2px}
 /* 热力方块（v1.25 原型调整）：边框加粗加深；档位用 color-mix 表达（不整格 opacity，避免边框被压淡） */
 .cksq{flex:none;width:11px;height:11px;border-radius:2px;background:var(--border);box-sizing:border-box;border:1.5px solid rgba(0,0,0,.22)}
 .cksq.lv1{background:color-mix(in srgb,var(--ck,#4F8EF7) 45%,#fff)}
@@ -847,7 +844,7 @@ function addMonthsM1(t,months){ // t + N 个月 − 1 天（目标月无同日�
 }
 
 /* ================= 打卡视图（PRD 6.11 v1.25）：全部=紧凑热力带总览；点单项=大热力图 ================= */
-let ckRange='3m', ckFocus=null;
+let ckRange='1m', ckFocus=null;
 /* 即时悬浮提示（v1.25）：带 data-tip 的元素 hover 即显示（原生 title 有 ~1s 延迟） */
 const ckTip=document.createElement('div');
 ckTip.className='cktip';
@@ -878,29 +875,6 @@ function ckStats(hid){
   while(cur&&daysMap[cur]>0){ streak++; cur=addDays(cur,-1) }
   return {today:daysMap[t]||0,streak,monthCnt};
 }
-/** 紧凑热力带分段（v1.26）：近6月/近1年一行太长需左右滑动，按自然月每 3 个月一行换行展示。
- *  返回 [{label,days}]，label 如「2025.7~9」/「2025.11~2026.1」（同年省年）。 */
-function ckBandRows(start,end,perRow){
-  perRow=perRow||3;
-  const rows=[];
-  let cur=start.slice(0,8)+'01'; // 首段从 start 所在月 1 日起（首行含 start 前的空档用数据范围截断）
-  while(cur<=end){
-    let [y,m]=cur.split('-').map(Number);
-    m+=perRow; y+=Math.floor((m-1)/12); m=(m-1)%12+1;
-    const nextFirst=y+'-'+String(m).padStart(2,'0')+'-01';
-    const rowEnd=addDays(nextFirst,-1);
-    // ISO 日期按字典序比较（等价时间序）；Math.max 会把日期字符串转成 NaN
-    const from=cur>start?cur:start, to=rowEnd<end?rowEnd:end;
-    const days=[]; for(let d=from;d<=to;d=addDays(d,1))days.push(d);
-    if(days.length){
-      const fmt=iso=>({y:iso.slice(0,4),m:Number(iso.slice(5,7))});
-      const a=fmt(cur),b=fmt(rowEnd>end?end:rowEnd);
-      rows.push({label:a.y===b.y?a.y+'.'+a.m+'~'+b.m:a.y+'.'+a.m+'~'+b.y+'.'+b.m,days});
-    }
-    cur=nextFirst;
-  }
-  return rows;
-}
 function renderCheckin(){
   const habits=state.habits;
   const days=CK_RANGES[ckRange];
@@ -918,9 +892,6 @@ function renderCheckin(){
   if(habits.length===0){
     body=`<div class="tempty" style="padding:40px">还没有打卡项——点击右上「＋ 添加打卡」创建第一个</div>`;
   }else if(ckFocus===null){
-    // 近6月/近1年一行三个月换行展示（v1.26），近1月/近3月保持单行
-    const wrap=ckRange==='6m'||ckRange==='1y';
-    const bandRows=wrap?ckBandRows(start,end):[{label:'',days:dayList()}];
     body=habits.map(h=>{
       const st=ckStats(h.id);
       return `<div class="ckband-row" onclick="ckFocus=${h.id};renderCheckin()" title="点击查看大图">
@@ -929,7 +900,7 @@ function renderCheckin(){
           <span style="flex:1"></span>
           <button class="btn-primary" style="height:24px;padding:0 8px" onclick="event.stopPropagation();quickCheckin(${h.id})">今天打卡</button>
         </div>
-        <div class="ckbands">${bandRows.map(r=>`<div class="ckband-line">${r.label?`<span class="ckband-lab">${r.label}</span>`:''}<div class="ckband">${r.days.map(d=>sq(h.id,d)).join('')}</div></div>`).join('')}</div>
+        <div class="ckband">${dayList().map(d=>sq(h.id,d)).join('')}</div>
       </div>`;
     }).join('');
   }else{
@@ -1415,10 +1386,11 @@ function renderTodo(){
 function toggleGroup(k){state.collapsed[k]=!state.collapsed[k];renderTodo()}
 
 /* ================= 弹窗基座 ================= */
-function modal(inner,topmost,dismissable){
+function modal(inner,topmost,dismissable,width){
   // dismissable=true 时点击遮罩（弹窗以外区域）关闭弹窗；默认不关闭，仅事项弹窗开启（对齐 v0.3.2+ 实现与 TC-IT-014）
+  // width：弹窗宽度（默认 520；设置弹窗等宽内容用 640，v1.27）
   const root=topmost?$('#confirm-root'):$('#modal-root');
-  root.innerHTML=`<div class="overlay ${topmost?'top':''}" onclick="if(event.target===this&&${!!dismissable})closeModal(${topmost})"><div class="dialog">${inner}</div></div>`;
+  root.innerHTML=`<div class="overlay ${topmost?'top':''}" onclick="if(event.target===this&&${!!dismissable})closeModal(${topmost})"><div class="dialog" ${width?`style="width:${width}px"`:''}>${inner}</div></div>`;
 }
 function closeModal(topmost){
   (topmost?$('#confirm-root'):$('#modal-root')).innerHTML='';
@@ -1667,7 +1639,7 @@ function renderFm(){
     </div>`:'';
   modal(`<div class="dhead">字段管理<button class="x" onclick="closeModal()">✕</button></div>
     <div class="dbody" style="min-width:460px">
-      <div class="note" style="margin-bottom:6px">· 自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。</div>
+      <div class="note" style="margin-bottom:6px">自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。</div>
       ${list.length?list.map((f,i)=>`
         <div class="fm-row">
           <span class="fname">${esc(f.name)}</span>
@@ -1847,8 +1819,8 @@ function renderSettings(){
             <button class="btn-ghost" onclick="hbDel(${h.id})">删除</button>
           </div>`).join('')||'<div class="note">暂无打卡项</div>'}</div>
         <div class="frow" style="margin-top:10px"><input id="hb-new" placeholder="新打卡项名称" maxlength="30" style="flex:1">
-          <select id="hb-cat" style="width:140px" title="默认颜色跟随所选分类">${globalCatOpts()}</select>
-          <button class="btn-primary" onclick="hbAdd()">新增</button></div>
+          <select id="hb-cat" style="width:140px;flex:none" title="默认颜色跟随所选分类">${globalCatOpts()}</select>
+          <button class="btn-primary" style="flex:none;white-space:nowrap" onclick="hbAdd()">新增</button></div>
         <div class="note">· 打卡项是打卡记录的归类（改名全局生效，历史不断档）。<br>
           · 「模板」预设默认分类/标题/字段值，新增打卡或勾选打卡时自动带出（可改；已有值不会被覆盖）。<br>
           · 新增打卡项的默认颜色=所选事项分类的颜色，创建后可点色块修改。<br>
@@ -1865,7 +1837,7 @@ function renderSettings(){
         <button class="dis">提醒发送记录 <span class="badge">二期</span></button>
       </div>
       ${body}
-    </div></div>`);
+    </div></div>`,false,true,640);
 }
 function dtGridHtml(){
   const first=dtCursor.slice(0,8)+'01',ws=weekStart(first);
