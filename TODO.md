@@ -4,6 +4,8 @@
 
 **2026-10-05 v0.3.16 已发布（指令 A+B+C 全部完成）**：推送 `0778169..c6ee7fe`（13 个提交，main 与远程同步）；GitHub Release **v0.3.16（便携绿色版）** 已上线（正式非 draft，tag v0.3.16 指向 main），附件 `CalmDownandDoToDo-v0.3.16.zip`（仅 exe+使用说明，3.0MB，下载地址已验证）；notes 涵盖 v0.3.8 之后全部更新（打卡功能为主）。随本版内容——PRD v1.27 四项 UI 修订（设置弹窗加宽+按钮横排、默认近1月、热力带 flex-wrap 自适应换行、字段管理对齐去「· 」）。正式目录 `release\日历待办工具 v0.3.16\`。发布方式备忘：本机无 gh CLI，用 git credential 取 token 走 GitHub REST API；Release notes JSON 必须用 python 生成（bash heredoc 会把 `\\` 折叠成 `\` 造成非法 JSON）。
 
+**2026-10-05 文档一致性审计与修复（用户要求检查自相矛盾）**：修复 7 处——①README 版本行 v0.3.10→v0.3.16、功能特性补打卡与列表增强（描述列/默认一个月内/多选批量删除）、删重复的「拖拽转待办」条目②技术方案数据字典补 schema v4/v5（habits 表含 template_json、items.is_checkin/habit_id、idx_items_habit）+修订记录 v1.5（此前停留在 v3，打卡表结构完全缺失）③PROJECT_MAP 状态行更至 v0.3.16 已发布、habits.rs 补 set_template、TC-CK 用例号 015→021④PRD 补「默认近 1 月（v1.27）」与「添加打卡按模板带出（无模板回落打卡项名/未分类）」消除与 6.11 模板段的矛盾。测试用例/CHANGELOG/原型/开发批次计划检查无矛盾。
+
 **2026-10-05 v1.27 四项已提交（d90747d，用户手测通过）**：①设置弹窗 560→620+按钮防压缩②默认近1月③热力带 flex-wrap 自适应（bandRows+3 单测删除）④字段管理 vis-tag 定宽 110px+描述去「· 」。TC-CK-021 修订、PRD v1.27；vitest 79/tsc/build 全绿。
 
 **2026-10-05 v1.26 四项改动已提交（12af7c4，用户手测通过）**：①滚轮翻页修复（视图切换后监听重绑）②模板带出仅补空（编辑不覆盖分类/标题/已有值字段；含值加载竞态兜底）③设置-打卡项新增行=名称+关联分类下拉，默认色=分类色④全部总览近6月/近1年热力带按三个月换行（heatmap.bandRows+3 vitest）。原型同步验证通过；TC-CK-019~021 新增；PRD v1.26。vitest 82/tsc/build 全绿。
