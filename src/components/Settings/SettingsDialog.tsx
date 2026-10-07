@@ -8,6 +8,7 @@ import { backupApi, txtExportApi } from "../../services/ipc";
 import { defaultExportRange, maxEndDate, shortcutRange } from "../../features/export/dates";
 import { SegDateInput } from "../fields/SegInputs";
 import DayTypePanel from "../Calendar/DayTypePanel";
+import FieldPanel from "../fields/FieldPanel";
 import HabitPanel from "./HabitPanel";
 import type { ShortcutUnit } from "../../features/export/dates";
 import { useAppStore } from "../../stores/appStore";
@@ -16,7 +17,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = "backup" | "daytypes" | "habits" | "mail" | "records";
+type Tab = "backup" | "daytypes" | "fields" | "habits" | "mail" | "records";
 
 const JSON_FILTER = [{ name: "JSON 备份", extensions: ["json"] }];
 const TXT_FILTER = [{ name: "文本文件", extensions: ["txt"] }];
@@ -195,12 +196,15 @@ export default function SettingsDialog({ onClose }: Props) {
         <div className="set-tabs">
           {tabBtn("backup", "数据备份")}
           {tabBtn("daytypes", "日期类型")}
+          {tabBtn("fields", "字段管理")}
           {tabBtn("habits", "打卡项")}
           {tabBtn("mail", "邮箱绑定", "二期")}
           {tabBtn("records", "提醒发送记录", "二期")}
         </div>
         {tab === "daytypes" ? (
           <DayTypePanel />
+        ) : tab === "fields" ? (
+          <FieldPanel />
         ) : tab === "habits" ? (
           <HabitPanel />
         ) : (

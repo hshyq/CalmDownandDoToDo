@@ -229,6 +229,18 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
         categories::delete(&mut guard, id, mode)
     }
 
+    /// 分类拖拽重排（v1.28 ④）：ordered_ids=拖拽后普通分类完整顺序；未分类自动沉底。
+    pub fn reorder_categories(&self, ordered_ids: &[i64]) -> Result<()> {
+        let mut guard = self.lock()?;
+        categories::reorder(&mut guard, ordered_ids)
+    }
+
+    /// 单行分类 sort 更新（撤销/重做恢复用）。
+    pub fn set_category_sort(&self, id: i64, sort_order: i64) -> Result<()> {
+        let guard = self.lock()?;
+        categories::set_sort(&guard, id, sort_order)
+    }
+
     // ---- 字段（P6；SQL 实现见 store::fields / store::values，写操作 P7 接入 undo）----
 
     /// 某分类可见字段（事项弹窗字段区，PRD 4.3 v1.17）。
@@ -410,6 +422,18 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
     pub fn delete_habit(&self, id: i64) -> Result<Vec<i64>> {
         let mut guard = self.lock()?;
         habits::delete(&mut guard, id)
+    }
+
+    /// 打卡项拖拽重排（v1.28 ①）：ordered_ids=拖拽后完整顺序。
+    pub fn reorder_habits(&self, ordered_ids: &[i64]) -> Result<()> {
+        let mut guard = self.lock()?;
+        habits::reorder(&mut guard, ordered_ids)
+    }
+
+    /// 单行打卡项 sort 更新（撤销/重做恢复用）。
+    pub fn set_habit_sort(&self, id: i64, sort_order: i64) -> Result<()> {
+        let guard = self.lock()?;
+        habits::set_sort(&guard, id, sort_order)
     }
 
     /** 恢复被解除身份的事项（撤销删除打卡项用）：重建打卡身份关联。 */

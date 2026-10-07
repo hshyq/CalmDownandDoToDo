@@ -36,6 +36,21 @@ export const mockApi = {
   async remove(id: number, _mode: DeleteMode): Promise<void> {
     cats = cats.filter((c) => c.id !== id);
   },
+  /** 左侧拖拽重排（v1.28 ④）：仅普通分类参与；未分类保持在普通分类之后（沉底）。 */
+  async reorder(orderedIds: number[]): Promise<void> {
+    const normals = cats.filter((c) => c.kind === "normal");
+    const set = new Set(orderedIds);
+    if (orderedIds.length !== normals.length || !normals.every((c) => set.has(c.id))) {
+      throw new Error("分类顺序数据不完整，请刷新后重试");
+    }
+    const pos = new Map(orderedIds.map((id, i) => [id, i]));
+    const uncatSort = normals.length;
+    cats = cats.map((c) =>
+      c.kind === "normal"
+        ? { ...c, sort_order: pos.get(c.id) ?? c.sort_order }
+        : { ...c, sort_order: uncatSort },
+    );
+  },
   /** 仅预览用：重置为种子（开发调试）。 */
   reset(): void {
     cats = [...seed];
@@ -172,5 +187,14 @@ export const mockHabitApi = {
     });
     habits = habits.filter((h) => h.id !== id);
     return n;
+  },
+  /** 拖拽重排（v1.28 ①）：orderedIds=拖拽后完整顺序。 */
+  async reorder(orderedIds: number[]): Promise<void> {
+    const set = new Set(orderedIds);
+    if (orderedIds.length !== habits.length || !habits.every((h) => set.has(h.id))) {
+      throw new Error("打卡项顺序数据不完整，请刷新后重试");
+    }
+    const pos = new Map(orderedIds.map((id, i) => [id, i]));
+    habits = habits.map((h) => ({ ...h, sort_order: pos.get(h.id) ?? h.sort_order }));
   },
 };

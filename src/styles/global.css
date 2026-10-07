@@ -401,11 +401,12 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .fv-check { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; }
 .fv-empty { color: var(--muted); font-size: 12px; }
 
-/* ===== P6：字段管理弹窗 ===== */
+/* ===== P6：字段管理（v1.28 起为设置弹窗「字段管理」页签） ===== */
 .fm-list { max-height: 40vh; overflow: auto; margin-bottom: 8px; }
+/* v1.28 ④：各列固定宽硬对齐——fname 收缩省略（min-width:0），不挤压后续列 */
 .fm-row { display: flex; align-items: center; gap: 8px; padding: 7px 6px; border-bottom: 1px solid #f0f2f5; }
 .fm-row:last-child { border-bottom: none; }
-.fm-row .fname { flex: 1; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fm-row .fname { flex: 1; min-width: 0; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fm-row .ftype { color: var(--muted); font-size: 12px; width: 64px; flex: none; }
 .fm-row .fopt { color: var(--muted); font-size: 12px; width: 56px; flex: none; }
 .fm-row .op {
@@ -466,11 +467,18 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 /* ===== 字段管理：全局字段 + 分类可见性（PRD 4.3 v1.17） ===== */
 .vis-tag { border: 1px solid var(--border); background: #fff; border-radius: 10px; padding: 2px 8px; font-size: 11px; color: var(--muted); cursor: pointer; width: 110px; flex: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vis-tag:hover { border-color: var(--accent); color: var(--accent); }
-.fm-vis { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 4px 8px 6px 26px; border-bottom: 1px dashed var(--border); }
+/* v1.28 ④：展开勾选区左缘与字段名对齐（fm-row 内容起点 padding 6px） */
+.fm-vis { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 4px 8px 6px 6px; border-bottom: 1px dashed var(--border); }
 .vis-chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid var(--border); border-radius: 10px; padding: 1px 8px; font-size: 11px; cursor: pointer; color: var(--text); user-select: none; }
 .vis-chip.on { border-color: var(--accent); background: #e8f0fe; color: var(--accent); }
 .vis-chip input { display: none; }
 .fm-vis-tip { font-size: 11px; color: var(--muted); }
+
+/* ===== 拖拽排序（v1.28 ①④）：打卡项 ⠿ 手柄 + 左侧分类整行；指示线=上/下半区插入位置 ===== */
+.hb-grip { width: 14px; flex: none; text-align: center; color: #b9c0c9; font-size: 13px; cursor: grab; user-select: none; }
+.hb-row.dragging, .tab.dragging { opacity: 0.4; }
+.hb-row.drop-before, .tab.drop-before { box-shadow: inset 0 2px 0 var(--accent); }
+.hb-row.drop-after, .tab.drop-after { box-shadow: inset 0 -2px 0 var(--accent); }
 
 /* ===== 列表视图（PRD 6.10 v1.18）：全部日历+待办事项表格 =====
    分类/标题两列冻结（横向滚动时固定），标题列宽 20 个汉字超出换行；其余列内容宽、整表横向滚动 */

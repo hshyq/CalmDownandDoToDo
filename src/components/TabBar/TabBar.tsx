@@ -6,6 +6,8 @@ import { useAppStore } from "../../stores/appStore";
 import { categoryApi } from "../../services/ipc";
 import { inTauri } from "../../services/ipc";
 import { leastUsedColor } from "../../features/color/palette";
+import { dropLineClass, useListDrag } from "../../features/dnd/useListDrag";
+import { reorderById } from "../../features/dnd/reorder";
 import { OVERVIEW } from "../../services/types";
 import type { Category, TabId } from "../../services/types";
 
@@ -20,7 +22,7 @@ type Dialog =
 const UNCAT_KIND = "uncategorized";
 
 export default function TabBar() {
-  const { categories, activeTab, switchTab, create, rename, setColor, remove } =
+  const { categories, activeTab, switchTab, create, rename, setColor, remove, reorder } =
     useAppStore();
   const [menu, setMenu] = useState<{ cat: Category; x: number; y: number } | null>(null);
   const [dlg, setDlg] = useState<Dialog | null>(null);
@@ -28,6 +30,26 @@ export default function TabBar() {
   const [toast, setToast] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [nameInput, setNameInput] = useState("");
+  // 左侧拖拽排序（v1.28 ④）：仅普通分类可拖（总览/未分类不绑定拖拽且被 canDrag 拦截）；
+  // 落定后按新全量顺序经 IPC 持久化（一步撤销）
+  const [reordering, setReordering] = useState(false);
+  const drag = useListDrag(
+    (id) => !reordering && !busy && normals.some((c) => c.id === id),
+    async (fromId, toId, before) => {
+      const next = reorderById(normals, fromId, toId, before);
+      if (!next) return;
+      const orderedIds = next.map((c) => c.id);
+      setReordering(true);
+      try {
+        await reorder(orderedIds);
+        showToast("已调整分类顺序");
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : "排序失败，请重试");
+      } finally {
+        setReordering(false);
+      }
+    },
+  );
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -146,7 +168,16 @@ export default function TabBar() {
       <div className="tab-mid">
         {normals.map((c) => (
           <div key={c.id}>
-            <div className={`tab ${activeTab === c.id ? "active" : ""}`} onClick={() => switchTo(c.id)}>
+            <div
+              className={`tab ${activeTab === c.id ? "active" : ""} ${drag.dragId === c.id ? "dragging" : ""} ${dropLineClass(drag.over, c.id)}`}
+              draggable={!busy && !reordering}
+              onDragStart={drag.onDragStart(c.id)}
+              onDragOver={drag.onDragOver(c.id)}
+              onDragLeave={drag.onDragLeave}
+              onDrop={drag.onDrop(c.id)}
+              onDragEnd={drag.onDragEnd}
+              onClick={() => switchTo(c.id)}
+            >
               <span className="dotc" style={{ background: c.color }} />
               <span className="tname" title={c.name}>{c.name}</span>
               <span

@@ -149,6 +149,62 @@ pub fn set_color(conn: &Connection, id: i64, color: &str) -> Result<()> {
     Ok(())
 }
 
+/// 单行 sort 更新（撤销/重做恢复用）。
+pub fn set_sort(conn: &Connection, id: i64, sort_order: i64) -> Result<()> {
+    let affected = conn.execute(
+        "UPDATE categories SET sort_order = ?2 WHERE id = ?1",
+        rusqlite::params![id, sort_order],
+    )?;
+    if affected == 0 {
+        return Err(Error::Business("分类不存在".to_string()));
+    }
+    Ok(())
+}
+
+/// 拖拽重排（v1.28 ④）：仅普通分类参与，按传入 id 顺序重写 sort_order（0 起步递增）；
+/// 未分类不参与且事务内保持在普通分类之后（沉底）。传入集合须=全部普通分类 id 且无重复。
+pub fn reorder(conn: &mut Connection, ordered_ids: &[i64]) -> Result<()> {
+    let normal_total: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM categories WHERE kind = 'normal'",
+        [],
+        |r| r.get(0),
+    )?;
+    if ordered_ids.len() as i64 != normal_total {
+        return Err(Error::Business(
+            "分类顺序数据不完整，请刷新后重试".to_string(),
+        ));
+    }
+    let mut seen = std::collections::HashSet::new();
+    for id in ordered_ids {
+        if !seen.insert(*id) {
+            return Err(Error::Business(
+                "分类顺序数据重复，请刷新后重试".to_string(),
+            ));
+        }
+    }
+    let tx = conn.transaction()?;
+    for (i, id) in ordered_ids.iter().enumerate() {
+        let n = tx.execute(
+            "UPDATE categories SET sort_order = ?2 WHERE id = ?1 AND kind = 'normal'",
+            rusqlite::params![id, i as i64],
+        )?;
+        if n == 0 {
+            return Err(Error::Business(
+                "分类不存在或不可排序（未分类固定）".to_string(),
+            ));
+        }
+    }
+    // 防御：未分类排序值紧跟普通分类最大值之后，保证 ORDER BY 沉底
+    tx.execute(
+        "UPDATE categories SET sort_order = \
+         (SELECT COALESCE(MAX(sort_order), -1) + 1 FROM categories WHERE kind = 'normal') \
+         WHERE kind = 'uncategorized'",
+        [],
+    )?;
+    tx.commit()?;
+    Ok(())
+}
+
 /// 删除分类（PRD 6.2 / TC-CL-003~005）。未分类不可删除。
 pub fn delete(conn: &mut Connection, id: i64, mode: DeleteMode) -> Result<()> {
     let cat = get(conn, id)?;
@@ -209,6 +265,52 @@ mod tests {
         let mut conn2 = conn;
         ensure_seeded(&mut conn2).expect("重复播种失败");
         assert_eq!(list(&conn2).expect("查询失败").len(), 5);
+    }
+
+    #[test]
+    fn reorder_updates_sort_and_validates() {
+        // 拖拽重排（v1.28 ④）：仅普通分类参与、未分类始终沉底；非法输入整批拒绝
+        let mut conn = db();
+        let seed = |conn: &Connection| {
+            list(conn)
+                .expect("查询失败")
+                .into_iter()
+                .filter(|c| c.kind == "normal")
+                .map(|c| (c.id, c.name))
+                .collect::<Vec<_>>()
+        };
+        let cats = seed(&conn);
+        assert_eq!(cats.len(), 4); // 生活/工作/娱乐/学习
+
+        // 逆序重排：未分类仍在最后
+        let ids: Vec<i64> = cats.iter().rev().map(|(id, _)| *id).collect();
+        reorder(&mut conn, &ids).expect("重排失败");
+        let after = list(&conn).expect("查询失败");
+        let names: Vec<&str> = after.iter().map(|c| c.name.as_str()).collect();
+        assert_eq!(names, vec!["学习", "娱乐", "工作", "生活", "未分类"]);
+        let normal_sorts: Vec<i64> = after
+            .iter()
+            .filter(|c| c.kind == "normal")
+            .map(|c| c.sort_order)
+            .collect();
+        assert_eq!(normal_sorts, vec![0, 1, 2, 3]);
+        assert!(after.last().expect("非空").sort_order > 3);
+
+        // 非法输入：数量不齐 / 未知 id / 重复 id / 混入未分类
+        let uncat = after
+            .iter()
+            .find(|c| c.kind == "uncategorized")
+            .expect("未分类存在")
+            .id;
+        assert!(reorder(&mut conn, &ids[..3]).is_err());
+        assert!(reorder(&mut conn, &[ids[0], ids[1], ids[2], 99999]).is_err());
+        assert!(reorder(&mut conn, &[ids[0], ids[1], ids[2], ids[2]]).is_err());
+        assert!(reorder(&mut conn, &[ids[0], ids[1], ids[2], uncat]).is_err());
+
+        // set_sort 单行更新与存在校验
+        set_sort(&conn, ids[0], 42).expect("更新失败");
+        assert_eq!(get(&conn, ids[0]).expect("查询失败").sort_order, 42);
+        assert!(set_sort(&conn, 99999, 0).is_err());
     }
 
     #[test]

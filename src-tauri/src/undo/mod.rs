@@ -85,6 +85,16 @@ pub enum UndoCmd {
         before: Vec<(i64, i64)>,
         after: Vec<(i64, i64)>,
     },
+    /// 打卡项拖拽重排（v1.28 ①）：恢复受影响打卡项的 sort_order。
+    HabitSort {
+        before: Vec<(i64, i64)>,
+        after: Vec<(i64, i64)>,
+    },
+    /// 分类拖拽重排（v1.28 ④）：恢复受影响分类的 sort_order。
+    CategorySort {
+        before: Vec<(i64, i64)>,
+        after: Vec<(i64, i64)>,
+    },
     /// 备份导入：revert=恢复导入前整库快照（落盘 undo_tmp，D10）；apply=重放导入内容。
     Import { before: TmpFile, import: String },
     /// 日期类型设置/清除（PRD 5.5 v1.12）：None=无覆盖（删除行）。
@@ -125,6 +135,18 @@ impl Command for UndoCmd {
                 }
                 Ok(())
             }
+            UndoCmd::HabitSort { before: _, after } => {
+                for (id, sort) in after {
+                    db.set_habit_sort(*id, *sort)?;
+                }
+                Ok(())
+            }
+            UndoCmd::CategorySort { before: _, after } => {
+                for (id, sort) in after {
+                    db.set_category_sort(*id, *sort)?;
+                }
+                Ok(())
+            }
             UndoCmd::Import { before: _, import } => db.import_json(import),
             UndoCmd::DayTypeSet { date, after, .. } => db.set_day_type(date, after.as_deref()),
         }
@@ -162,6 +184,18 @@ impl Command for UndoCmd {
                 }
                 Ok(())
             }
+            UndoCmd::HabitSort { before, after: _ } => {
+                for (id, sort) in before {
+                    db.set_habit_sort(*id, *sort)?;
+                }
+                Ok(())
+            }
+            UndoCmd::CategorySort { before, after: _ } => {
+                for (id, sort) in before {
+                    db.set_category_sort(*id, *sort)?;
+                }
+                Ok(())
+            }
             UndoCmd::Import { before, import: _ } => {
                 let text = fs::read_to_string(before.path()).map_err(crate::store::Error::Io)?;
                 db.import_json(&text)
@@ -186,6 +220,8 @@ impl Command for UndoCmd {
             UndoCmd::FieldUpdate { .. } => "修改字段".into(),
             UndoCmd::FieldDelete { .. } => "删除字段".into(),
             UndoCmd::FieldSort { .. } => "调整字段排序".into(),
+            UndoCmd::HabitSort { .. } => "调整打卡项顺序".into(),
+            UndoCmd::CategorySort { .. } => "调整分类顺序".into(),
             UndoCmd::Import { .. } => "导入备份".into(),
             UndoCmd::DayTypeSet { .. } => "设置日期类型".into(),
         }
@@ -469,6 +505,91 @@ mod tests {
         assert_eq!(
             db.list_item_field_values(it.id).expect("值"),
             vec![(field.id, Some("\"v\"".to_string()))]
+        );
+    }
+
+    #[test]
+    fn undo_redo_sort_orders() {
+        // 分类/打卡项拖拽重排（v1.28）：撤销恢复 sort 快照、重做再应用
+        let dir = tmp_dir("sort");
+        let db = db(&dir);
+        let stack = UndoStack::new(&dir);
+
+        // 分类：普通分类按当前顺序逆序重排（未分类不参与）
+        let cats: Vec<(i64, i64)> = db
+            .list_categories()
+            .expect("分类")
+            .into_iter()
+            .filter(|c| c.kind == "normal")
+            .map(|c| (c.id, c.sort_order))
+            .collect();
+        let mut reversed: Vec<i64> = cats.iter().map(|(id, _)| *id).collect();
+        reversed.reverse();
+        let before = cats.clone();
+        db.reorder_categories(&reversed).expect("重排");
+        let after: Vec<(i64, i64)> = db
+            .list_categories()
+            .expect("分类")
+            .into_iter()
+            .filter(|c| c.kind == "normal")
+            .map(|c| (c.id, c.sort_order))
+            .collect();
+        stack.push(Box::new(UndoCmd::CategorySort {
+            before,
+            after: after.clone(),
+        }));
+        stack.undo(&db).expect("撤销分类排序");
+        let restored: Vec<i64> = db
+            .list_categories()
+            .expect("分类")
+            .into_iter()
+            .filter(|c| c.kind == "normal")
+            .map(|c| c.sort_order)
+            .collect();
+        let expect_before: Vec<i64> = cats.iter().map(|(_, s)| *s).collect();
+        assert_eq!(restored, expect_before);
+        stack.redo(&db).expect("重做分类排序");
+        let redone: Vec<i64> = db
+            .list_categories()
+            .expect("分类")
+            .into_iter()
+            .filter(|c| c.kind == "normal")
+            .map(|c| c.sort_order)
+            .collect();
+        let expect_after: Vec<i64> = after.iter().map(|(_, s)| *s).collect();
+        assert_eq!(redone, expect_after);
+
+        // 打卡项：同语义
+        let h1 = db.create_habit("甲", "#111111").expect("建打卡项");
+        let h2 = db.create_habit("乙", "#222222").expect("建打卡项");
+        let before: Vec<(i64, i64)> = db
+            .list_habits()
+            .expect("打卡项")
+            .into_iter()
+            .map(|h| (h.id, h.sort_order))
+            .collect();
+        db.reorder_habits(&[h2.id, h1.id]).expect("重排");
+        let after: Vec<(i64, i64)> = db
+            .list_habits()
+            .expect("打卡项")
+            .into_iter()
+            .map(|h| (h.id, h.sort_order))
+            .collect();
+        stack.push(Box::new(UndoCmd::HabitSort {
+            before,
+            after: after.clone(),
+        }));
+        stack.undo(&db).expect("撤销打卡项排序");
+        assert_eq!(
+            db.list_habits().expect("打卡项")[0].id,
+            h1.id,
+            "撤销后甲回到首位"
+        );
+        stack.redo(&db).expect("重做打卡项排序");
+        assert_eq!(
+            db.list_habits().expect("打卡项")[0].id,
+            h2.id,
+            "重做后乙回到首位"
         );
     }
 

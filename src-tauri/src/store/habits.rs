@@ -170,6 +170,49 @@ pub fn delete(conn: &mut Connection, id: i64) -> Result<Vec<i64>> {
     Ok(affected)
 }
 
+/// 单行 sort 更新（撤销/重做恢复用，对齐 set_field_sort）。
+pub fn set_sort(conn: &Connection, id: i64, sort_order: i64) -> Result<()> {
+    let affected = conn.execute(
+        "UPDATE habits SET sort_order = ?2 WHERE id = ?1",
+        rusqlite::params![id, sort_order],
+    )?;
+    if affected == 0 {
+        return Err(Error::Business("打卡项不存在".to_string()));
+    }
+    Ok(())
+}
+
+/// 拖拽重排（v1.28 ①）：按传入 id 顺序整体重写 sort_order（0 起步递增）。
+/// 传入集合须=全部打卡项 id 且无重复，否则报错整批回滚（前端总是从 list 全量获取）。
+pub fn reorder(conn: &mut Connection, ordered_ids: &[i64]) -> Result<()> {
+    let total: i64 = conn.query_row("SELECT COUNT(*) FROM habits", [], |r| r.get(0))?;
+    if ordered_ids.len() as i64 != total {
+        return Err(Error::Business(
+            "打卡项顺序数据不完整，请刷新后重试".to_string(),
+        ));
+    }
+    let mut seen = std::collections::HashSet::new();
+    for id in ordered_ids {
+        if !seen.insert(*id) {
+            return Err(Error::Business(
+                "打卡项顺序数据重复，请刷新后重试".to_string(),
+            ));
+        }
+    }
+    let tx = conn.transaction()?;
+    for (i, id) in ordered_ids.iter().enumerate() {
+        let n = tx.execute(
+            "UPDATE habits SET sort_order = ?2 WHERE id = ?1",
+            rusqlite::params![id, i as i64],
+        )?;
+        if n == 0 {
+            return Err(Error::Business("打卡项不存在，请刷新后重试".to_string()));
+        }
+    }
+    tx.commit()?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,6 +285,36 @@ mod tests {
 
         // 不存在
         assert!(set_template(&conn, 99999, None).is_err());
+    }
+
+    #[test]
+    fn reorder_updates_sort_and_validates() {
+        // 拖拽重排（v1.28 ①）：整体重写 sort_order；集合不齐/未知/重复整批拒绝
+        let mut conn = db();
+        let a = create(&conn, "A", "#111111").expect("新建失败");
+        let b = create(&conn, "B", "#222222").expect("新建失败");
+        let c = create(&conn, "C", "#333333").expect("新建失败");
+
+        reorder(&mut conn, &[c.id, b.id, a.id]).expect("重排失败");
+        let ordered = list(&conn).expect("查询失败");
+        let names: Vec<&str> = ordered.iter().map(|h| h.name.as_str()).collect();
+        assert_eq!(names, vec!["C", "B", "A"]);
+        let sorts: Vec<i64> = ordered.iter().map(|h| h.sort_order).collect();
+        assert_eq!(sorts, vec![0, 1, 2]);
+
+        // 非法输入：数量不齐 / 未知 id / 重复 id
+        assert!(reorder(&mut conn, &[a.id, b.id]).is_err());
+        assert!(reorder(&mut conn, &[a.id, b.id, 99999]).is_err());
+        assert!(reorder(&mut conn, &[a.id, b.id, b.id]).is_err());
+        // 失败后顺序未被部分改写
+        let after_fail = list(&conn).expect("查询失败");
+        let names2: Vec<&str> = after_fail.iter().map(|h| h.name.as_str()).collect();
+        assert_eq!(names2, vec!["C", "B", "A"]);
+
+        // set_sort 单行更新与存在校验
+        set_sort(&conn, a.id, 42).expect("更新失败");
+        assert_eq!(get(&conn, a.id).expect("查询失败").sort_order, 42);
+        assert!(set_sort(&conn, 99999, 0).is_err());
     }
 
     #[test]

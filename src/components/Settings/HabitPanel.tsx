@@ -10,6 +10,8 @@ import { mockHabitApi } from "../../services/mock";
 import { decodeFieldValue, encodeFieldValue } from "../../features/fields/value";
 import type { FieldEditValue } from "../../features/fields/value";
 import { decodeHabitTemplate, encodeHabitTemplate } from "../../features/checkin/template";
+import { reorderById } from "../../features/dnd/reorder";
+import { dropLineClass, useListDrag } from "../../features/dnd/useListDrag";
 import { useAppStore } from "../../stores/appStore";
 import type { Category, FieldDef, Habit } from "../../services/types";
 
@@ -25,6 +27,19 @@ export default function HabitPanel() {
   const [tplDlg, setTplDlg] = useState<Habit | null>(null);
   // 新增行关联分类（v1.26）：默认颜色=所选分类颜色，创建后可点色块修改
   const [newCatId, setNewCatId] = useState<number>(categories[0]?.id ?? 0);
+
+  // 拖拽排序（v1.28 ①）：仅 ⠿ 手柄可拖（不占名称输入框选中文本）；落定按新全量顺序持久化，一步撤销
+  const drag = useListDrag(
+    () => !busy,
+    async (fromId, toId, before) => {
+      const list = habits ?? [];
+      const next = reorderById(list, fromId, toId, before);
+      if (!next) return;
+      await act(async () => {
+        await src.reorder(next.map((h) => h.id));
+      });
+    },
+  );
 
   const load = async () => {
     try {
@@ -89,7 +104,22 @@ export default function HabitPanel() {
           <div className="note">暂无打卡项</div>
         ) : (
           habits.map((h) => (
-            <div key={h.id} className="hb-row">
+            <div
+              key={h.id}
+              className={`hb-row ${drag.dragId === h.id ? "dragging" : ""} ${dropLineClass(drag.over, h.id)}`}
+              onDragOver={drag.onDragOver(h.id)}
+              onDragLeave={drag.onDragLeave}
+              onDrop={drag.onDrop(h.id)}
+            >
+              <span
+                className="hb-grip"
+                title="拖拽调整顺序"
+                draggable={!busy}
+                onDragStart={drag.onDragStart(h.id)}
+                onDragEnd={drag.onDragEnd}
+              >
+                ⠿
+              </span>
               <button type="button" className="hb-color" style={{ background: h.color }} title="点击选色（同分类色盘）" disabled={busy} onClick={() => setColorDlg(h)} />
               <input
                 className="hb-name"
@@ -137,6 +167,7 @@ export default function HabitPanel() {
       </div>
       {err !== "" ? <div className="note" style={{ color: "var(--danger)" }}>{err}</div> : null}
       <div className="note">
+        · 拖拽 ⠿ 调整顺序：打卡视图筛选行、全部页列表与各处打卡项下拉均按此顺序展示（v1.28）。<br />
         · 打卡项是打卡记录的归类（改名全局生效，历史不断档）。<br />
         · 「模板」预设默认分类/标题/字段值，新增打卡或勾选打卡时自动带出（仅填空值，已有值不覆盖）。<br />
         · 新增打卡项的默认颜色=所选事项分类的颜色，创建后可点色块修改。<br />

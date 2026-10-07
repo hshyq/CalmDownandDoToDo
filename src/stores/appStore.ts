@@ -21,6 +21,8 @@ interface AppStore {
   rename: (id: number, name: string) => Promise<void>;
   setColor: (id: number, color: string) => Promise<void>;
   remove: (id: number, mode: DeleteMode) => Promise<void>;
+  /** 左侧拖拽重排（v1.28 ④）：orderedIds=拖拽后普通分类完整顺序。 */
+  reorder: (orderedIds: number[]) => Promise<void>;
   loadItems: () => Promise<void>;
   createItem: (draft: ItemDraft) => Promise<void>;
   updateItem: (id: number, draft: ItemDraft) => Promise<void>;
@@ -67,6 +69,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
     set({ categories: await categorySource.list() });
     await get().loadItems();
     get().bump();
+  },
+  async reorder(orderedIds) {
+    await categorySource.reorder(orderedIds);
+    set({ categories: await categorySource.list() });
+    get().bump(); // 各入口分类下拉读 store.categories，bump 驱动依赖视图刷新
   },
   async loadItems() {
     const { activeTab } = get();

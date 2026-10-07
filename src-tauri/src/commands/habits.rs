@@ -107,3 +107,20 @@ pub fn delete_habit(
     emit_depth(&app, &stack);
     Ok(n)
 }
+
+/// 拖拽重排（v1.28 ①）：ordered_ids=拖拽后完整顺序（list_habits 顺序）；一步撤销。
+#[tauri::command]
+pub fn reorder_habits(
+    db: State<'_, Db>,
+    stack: State<'_, UndoStack>,
+    app: AppHandle,
+    ordered_ids: Vec<i64>,
+) -> Result<(), String> {
+    let sorts = |hs: &[Habit]| hs.iter().map(|h| (h.id, h.sort_order)).collect::<Vec<_>>();
+    let before = sorts(&db.list_habits().map_err(|e| e.to_string())?);
+    db.reorder_habits(&ordered_ids).map_err(|e| e.to_string())?;
+    let after = sorts(&db.list_habits().map_err(|e| e.to_string())?);
+    stack.push(Box::new(UndoCmd::HabitSort { before, after }));
+    emit_depth(&app, &stack);
+    Ok(())
+}

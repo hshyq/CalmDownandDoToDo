@@ -97,3 +97,21 @@ pub fn delete_category(
     emit_depth(&app, &stack);
     Ok(())
 }
+
+/// 拖拽重排（v1.28 ④）：ordered_ids=拖拽后普通分类完整顺序（未分类不传、自动沉底）；一步撤销。
+#[tauri::command]
+pub fn reorder_categories(
+    db: State<'_, Db>,
+    stack: State<'_, UndoStack>,
+    app: AppHandle,
+    ordered_ids: Vec<i64>,
+) -> Result<(), String> {
+    let sorts = |cs: &[Category]| cs.iter().map(|c| (c.id, c.sort_order)).collect::<Vec<_>>();
+    let before = sorts(&db.list_categories().map_err(|e| e.to_string())?);
+    db.reorder_categories(&ordered_ids)
+        .map_err(|e| e.to_string())?;
+    let after = sorts(&db.list_categories().map_err(|e| e.to_string())?);
+    stack.push(Box::new(UndoCmd::CategorySort { before, after }));
+    emit_depth(&app, &stack);
+    Ok(())
+}

@@ -5,7 +5,8 @@
   - 单文件零依赖，双击浏览器即可演示
   - 纪律：只保留最新确认态；配色/间距用 CSS 变量集中定义（可搬为设计 token）
   - 演示已实现：标签页切换、周/月切换、前后导航、事项增/改/删与日历⇄待办动态迁移、
-    日历格 hover「+」快捷新建（总览可新增、弹窗选分类）、待办分组折叠、+N 浮层、分类增删改/改色、字段管理界面
+    日历格 hover「+」快捷新建（总览可新增、弹窗选分类）、待办分组折叠、+N 浮层、分类增删改/改色、字段管理界面、
+    左侧事项类型拖拽排序（各入口所属分类下拉同步）、打卡项拖拽排序（打卡视图同步）、字段管理入口移入设置弹窗
   - 演示未实现（正式版按文档实现）：撤销栈（10 步）、类型转换矩阵的实际数据迁移、
     备份导入导出、持久化（刷新即还原演示数据）
 ============================================================ -->
@@ -52,6 +53,10 @@ input,select,textarea{font:inherit;color:inherit}
 .tab-fixed-top{order:0}
 .tab-fixed-bottom{margin-top:auto}
 .tabbar .divider{height:1px;background:var(--border);margin:6px 4px}
+/* 左侧事项类型拖拽排序（v1.28 ④）：整行可拖，插入位置用上下指示线；未分类/总览固定不拖 */
+.tab.dragging{opacity:.4}
+.tab.drop-before{box-shadow:inset 0 2px 0 var(--accent)}
+.tab.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
 .btn-newcat{margin:4px 0 0;padding:6px 8px;border:1px dashed var(--border);border-radius:6px;color:var(--muted);text-align:left}
 .btn-newcat:hover{color:var(--accent);border-color:var(--accent)}
 /* 中：主区 */
@@ -169,7 +174,7 @@ input,select,textarea{font:inherit;color:inherit}
 /* 字段管理：全局字段 + 分类可见性（PRD 4.3 v1.17） */
 .vis-tag{border:1px solid var(--border);background:#fff;border-radius:10px;padding:2px 8px;font-size:11px;color:var(--muted);cursor:pointer;width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .vis-tag:hover{border-color:var(--accent);color:var(--accent)}
-.fm-vis{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 8px 6px 26px;border-bottom:1px dashed var(--border)}
+.fm-vis{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 8px 6px 6px;border-bottom:1px dashed var(--border)}
 .vis-chip{display:inline-flex;align-items:center;gap:3px;border:1px solid var(--border);border-radius:10px;padding:1px 8px;font-size:11px;cursor:pointer;color:var(--text);user-select:none}
 .vis-chip.on{border-color:var(--accent);background:#e8f0fe;color:var(--accent)}
 .vis-chip input{display:none}
@@ -254,6 +259,12 @@ input,select,textarea{font:inherit;color:inherit}
 .hb-name{flex:1;border:1px solid transparent;border-radius:6px;padding:4px 6px;font:inherit;background:#fff}
 .hb-name:hover,.hb-name:focus{border-color:var(--border);outline:none}
 .hb-meta{font-size:12px;color:var(--muted);white-space:nowrap}
+/* 打卡项拖拽排序（v1.28 ①）：仅 ⠿ 手柄可拖，行上显示插入位置指示线 */
+.hb-grip{width:14px;flex:none;text-align:center;color:#b9c0c9;font-size:13px;cursor:grab;user-select:none}
+.hb-row:has(.hb-grip:active) .hb-grip{cursor:grabbing}
+.hb-row.dragging{opacity:.4}
+.hb-row.drop-before{box-shadow:inset 0 2px 0 var(--accent)}
+.hb-row.drop-after{box-shadow:inset 0 -2px 0 var(--accent)}
 /* 日期/时间控件：隐藏系统日历/挂钟图标；配合全局点击委托，点击输入框任意位置即打开选择器 */
 /* 列表视图 v1.19：归属列 / 今日线 / 范围下拉 */
 .lkind{white-space:nowrap;color:var(--muted)}
@@ -349,12 +360,12 @@ input,select,textarea{font:inherit;color:inherit}
 .pk-months button{height:30px;border-radius:6px;border:1px solid var(--border);color:var(--text);background:#fff}
 .pk-months button:hover{border-color:var(--accent);color:var(--accent)}
 .pk-months button.on{background:var(--accent);border-color:var(--accent);color:#fff}
-/* 字段管理 */
+/* 字段管理（v1.28 ②：「可见」列与各列固定宽硬对齐；字段名过长省略，不挤压后续列） */
 .fm-row{display:flex;align-items:center;gap:8px;padding:8px 6px;border-bottom:1px solid #f0f2f5}
-.fm-row .fname{flex:1;font-weight:600}
-.fm-row .ftype{color:var(--muted);font-size:12px;width:64px}
-.fm-row .fopt{color:var(--muted);font-size:12px;width:56px}
-.fm-row .op{width:24px;height:24px;border-radius:5px;color:var(--muted);text-align:center;line-height:22px}
+.fm-row .fname{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fm-row .ftype{color:var(--muted);font-size:12px;width:64px;flex:none}
+.fm-row .fopt{color:var(--muted);font-size:12px;width:56px;flex:none}
+.fm-row .op{width:24px;height:24px;border-radius:5px;color:var(--muted);text-align:center;line-height:22px;flex:none}
 .fm-row .op:hover{background:#eef2f8;color:var(--text)}
 .fm-row .op.dis{opacity:.3;pointer-events:none}
 .fm-form{border:1px solid var(--border);border-radius:8px;padding:10px;margin:10px 0}
@@ -546,18 +557,55 @@ function toast(msg){
 function renderTabs(){
   const cats=state.categories.filter(c=>c.kind==='normal');
   const unc=state.categories.find(c=>c.kind==='uncategorized');
-  const tab=(c,fixedTop)=>`
-    <div class="tab ${(c.id?state.activeTab===c.id:state.activeTab===OVERVIEW)?'active':''} ${fixedTop?'tab-fixed-top':''}" onclick="switchTab('${c.id||OVERVIEW}')">
+  const tab=(c,fixedTop,draggable)=>`
+    <div class="tab ${(c.id?state.activeTab===c.id:state.activeTab===OVERVIEW)?'active':''} ${fixedTop?'tab-fixed-top':''}"
+      ${draggable?`draggable="true" ondragstart="tabDragStart(event,${c.id})" ondragover="tabDragOver(event,${c.id})" ondragleave="tabDragLeave(event)" ondrop="tabDrop(event,${c.id})" ondragend="tabDragEnd(event)"`:''}
+      onclick="switchTab('${c.id||OVERVIEW}')">
       ${c.id?`<span class="dotc" style="background:${c.color}"></span>`:''}
       <span class="tname" title="${esc(c.name)}">${esc(c.name)}</span>
       ${c.id?`<span class="more" onclick="openMenu(${c.id},this)">⋮</span>`:''}
     </div>`;
   let html=tab({name:'总览'},true);
-  html+=cats.map(c=>tab(c)).join('');
+  html+=cats.map(c=>tab(c,false,true)).join('');
   html+=`<button class="btn-newcat" onclick="openNewCat()">＋ 新建分类</button>`;
   html+=`<div class="tab-fixed-bottom">${tab(unc)}<div class="divider"></div>
     <div class="tab" onclick="openSettings()"><span class="tname">⚙ 设置</span></div></div>`;
   $('#tabbar').innerHTML=html;
+}
+/* 左侧事项类型拖拽排序（v1.28 ④）：普通分类整行可拖（总览/未分类固定）；上下半区决定插前/插后。
+   重排 state.categories 数组序后，事项弹窗/添加打卡/打卡项模板/打卡项新增行/字段可见性等
+   所有「所属分类」下拉与勾选项均按数组序渲染，顺序自动同步，无需逐处修改。 */
+let tabDragId=null;
+function tabDragStart(e,id){
+  tabDragId=id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(id));
+  e.currentTarget.classList.add('dragging');
+}
+function tabDragOver(e,id){
+  if(tabDragId===null||tabDragId===id)return;
+  e.preventDefault();e.dataTransfer.dropEffect='move';
+  const el=e.currentTarget,rect=el.getBoundingClientRect(),before=(e.clientY-rect.top)<rect.height/2;
+  el.classList.toggle('drop-before',before);el.classList.toggle('drop-after',!before);
+}
+function tabDragLeave(e){e.currentTarget.classList.remove('drop-before','drop-after')}
+function tabDrop(e,id){
+  e.preventDefault();
+  const el=e.currentTarget,rect=el.getBoundingClientRect(),before=(e.clientY-rect.top)<rect.height/2;
+  el.classList.remove('drop-before','drop-after');
+  if(tabDragId!==null&&tabDragId!==id)catReorder(tabDragId,id,before);
+}
+function tabDragEnd(){
+  tabDragId=null;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('dragging','drop-before','drop-after'));
+}
+function catReorder(fromId,toId,before){
+  const cats=state.categories.filter(c=>c.kind==='normal');
+  const from=cats.findIndex(c=>c.id===fromId);if(from<0)return;
+  const [moved]=cats.splice(from,1);
+  let to=cats.findIndex(c=>c.id===toId);if(to<0)return;
+  if(!before)to++;
+  cats.splice(to,0,moved);
+  state.categories=[...cats,...state.categories.filter(c=>c.kind!=='normal')]; // 未分类保持沉底
+  renderAll();toast('已调整分类顺序（各处「所属分类」下拉已同步）');
 }
 function switchTab(id){state.activeTab=id===OVERVIEW?OVERVIEW:Number(id);renderAll()}
 
@@ -720,7 +768,6 @@ function renderToolbar(){
     <span class="spacer"></span>
     <button class="tbtn icon" title="撤销 Ctrl+Z" onclick="undoDemo()">↶</button>
     <button class="tbtn icon" title="重做 Ctrl+Y" onclick="redoDemo()">↷</button>
-    <button class="btn-ghost" onclick="openFieldManager()">字段管理</button>
     <button class="btn-primary" onclick="openItemModal(null)">＋ 新增事项</button>`;
 }
 function setView(v){state.view=v;renderAll()}
@@ -876,7 +923,7 @@ function ckStats(hid){
   return {today:daysMap[t]||0,streak,monthCnt};
 }
 function renderCheckin(){
-  const habits=state.habits;
+  const habits=habitSortedList(); // 按设置中的拖拽顺序展示（v1.28 ①）
   const days=CK_RANGES[ckRange];
   const end=todayStr(), start=addDays(end,-(days-1));
   // 分桶：hid|日期 → 次数（仅勾打卡的事项，按归属日期聚合）
@@ -946,7 +993,7 @@ function quickCheckin(hid){
   renderCheckin();
 }
 function openCheckinModal(){
-  const opts=state.habits.map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join('');
+  const opts=habitSortedList().map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join('');
   const catOpts=globalCatOpts;
   modal(`<div class="dhead">添加打卡<button class="x" onclick="closeModal()">✕</button></div>
     <div class="dbody">
@@ -985,7 +1032,7 @@ function saveCheckin(){
     const name=$('#ck-new').value.trim();
     if(!name){err.textContent='请输入新打卡项名称';return}
     if(state.habits.some(h=>h.name===name)){err.textContent='已存在同名打卡项';return}
-    const h={id:habitSeq++,name,color:'#4F8EF7',sort:state.habits.length+1};
+    const h={id:habitSeq++,name,color:'#4F8EF7',sort:Math.max(0,...state.habits.map(x=>x.sort))+1};
     state.habits.push(h); hid=h.id;
   }else hid=Number(sel);
   if(!date){err.textContent='请选择打卡日期';return}
@@ -1423,7 +1470,7 @@ function fvInput(f,val){
 }
 function fieldsSection(catId,vals){
   const list=fieldsOf(catId);
-  if(!list.length)return `<div class="cbody sub" style="padding:2px 0 4px">该分类暂无自定义字段（可在工具栏「字段管理」中添加）</div>`;
+  if(!list.length)return `<div class="cbody sub" style="padding:2px 0 4px">该分类暂无自定义字段（可在「设置→字段管理」中添加）</div>`;
   return list.map(f=>`<div class="frow"><label>${esc(f.name)}</label>${fvInput(f,vals[f.id])}</div>`).join('');
 }
 function openItemModal(id,preSd){
@@ -1474,9 +1521,9 @@ function onCatChange(newCat){
   const it=state.items.find(x=>x.id===id);
   $('#if-fields').innerHTML=fieldsSection(Number(newCat),it?it.fv:{});
 }
-/* 打卡项下拉（v1.25）：复用 catsel 形态；选中只更新值不刷字段区 */
+/* 打卡项下拉（v1.25）：复用 catsel 形态；选中只更新值不刷字段区；顺序按设置中的拖拽排序（v1.28 ①） */
 function habitSelHtml(selId){
-  const list=state.habits;
+  const list=habitSortedList();
   if(!list.length)return `<span class="ldim" style="align-self:center">暂无打卡项——可在「设置→打卡项」或打卡视图创建</span>`;
   const sel=selId&&list.some(h=>h.id===selId)?selId:list[0].id;
   const dot=id=>{const h=list.find(x=>x.id===id);return `<span class="dotc" style="background:${h.color}"></span>`};
@@ -1609,6 +1656,7 @@ function openDayOverlay(ds){
 }
 
 /* ================= 字段管理（全局字段 + 分类可见性，PRD 4.3 v1.17） ================= */
+/* v1.28 ③：入口从工具栏移入设置弹窗页签（日期类型下方、打卡项上方），renderFm 改为 fieldsBody 返回页签 HTML */
 let fmEditing=null;   // 编辑中的字段 id 或 'new'
 let fmVisOpen=null;   // 展开可见性勾选的字段 id
 
@@ -1617,8 +1665,7 @@ function visLabel(f){
   if(f.vis.length===state.categories.length)return '全部分类';
   return f.vis.map(catName).join('、')||'无';
 }
-function openFieldManager(){fmEditing=null;fmVisOpen=null;renderFm()}
-function renderFm(){
+function fieldsBody(){
   const list=[...state.fields].sort((a,b)=>a.sort-b.sort);
   const editing=list.find(f=>f.id===fmEditing);
   const visChips=(f)=>state.categories.map(c=>`<label class="vis-chip ${f.vis.includes(c.id)?'on':''}">
@@ -1629,23 +1676,22 @@ function renderFm(){
     <div class="fm-form">
       <div class="frow"><label>字段名称</label><input type="text" id="fm-name" maxlength="20" value="${esc(editing.name)}"></div>
       <div class="frow"><label>类型</label>
-        <select id="fm-type">${Object.keys(TYPE_LABEL).map(t=>`<option value="${t}" ${t===editing.type?'selected':''}>${TYPE_LABEL[t]}</option>`).join('')}</select></div>
+        <select id="fm-type" onchange="document.getElementById('fm-optrow').style.display=isChoice(this.value)?'flex':'none'">${Object.keys(TYPE_LABEL).map(t=>`<option value="${t}" ${t===editing.type?'selected':''}>${TYPE_LABEL[t]}</option>`).join('')}</select></div>
       <div class="frow" id="fm-optrow" style="display:${isChoice(editing.type)?'flex':'none'}">
         <label>选项</label><input type="text" id="fm-opts" value="${editing.options?esc(editing.options.join('，')):''}" placeholder="用中文逗号分隔，如：高，中，低"></div>
       <div class="frow"><label>可见分类</label><span class="chips">${visChips(editing)}</span></div>
       <div class="dfoot" style="padding:4px 0 0">
-        <button class="btn-ghost" onclick="fmEditing=null;renderFm()">取消</button>
+        <button class="btn-ghost" onclick="fmEditing=null;renderSettings()">取消</button>
         <button class="btn-primary" onclick="fmSubmit(${editing.id})">保存</button></div>
     </div>`:'';
-  modal(`<div class="dhead">字段管理<button class="x" onclick="closeModal()">✕</button></div>
-    <div class="dbody" style="min-width:460px">
-      <div class="note" style="margin-bottom:6px">自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。</div>
+  return `<div class="set-body">
+      <div class="note" style="margin:0 0 6px">自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。</div>
       ${list.length?list.map((f,i)=>`
         <div class="fm-row">
-          <span class="fname">${esc(f.name)}</span>
+          <span class="fname" title="${esc(f.name)}">${esc(f.name)}</span>
           <span class="ftype">${TYPE_LABEL[f.type]}</span>
           <span class="fopt">${isChoice(f.type)?(f.options.length+' 选项'):'—'}</span>
-          <button class="vis-tag" onclick="fmVisOpen=fmVisOpen===${f.id}?null:${f.id};renderFm()" title="配置可见分类">可见：${visLabel(f)}</button>
+          <button class="vis-tag" onclick="fmVisOpen=fmVisOpen===${f.id}?null:${f.id};renderSettings()" title="配置可见分类">可见：${visLabel(f)}</button>
           <button class="op ${i===0?'dis':''}" onclick="fmMove(${f.id},-1)">↑</button>
           <button class="op ${i===list.length-1?'dis':''}" onclick="fmMove(${f.id},1)">↓</button>
           <button class="op" title="编辑" onclick="fmEdit(${f.id})">✎</button>
@@ -1655,9 +1701,7 @@ function renderFm(){
       ${editingForm}
       ${editing?'':`<div class="dfoot" style="justify-content:flex-start;padding:8px 0 0">
         <button class="btn-primary" onclick="fmEdit('new')">＋ 新增字段</button></div>`}
-    </div>`);
-  const sel=$('#fm-type');
-  if(sel)sel.onchange=()=>{$('#fm-optrow').style.display=isChoice(sel.value)?'flex':'none'};
+    </div>`;
 }
 function fmEdit(fid){
   if(fid==='new'){
@@ -1666,13 +1710,13 @@ function fmEdit(fid){
       vis:state.categories.map(c=>c.id)};
     state.fields.push(f);fmEditing=f.id;
   }else{fmEditing=fid}
-  renderFm();
+  renderSettings();
 }
 function fmToggleVis(fid,catId,on){
   const f=state.fields.find(x=>x.id===fid);if(!f)return;
   if(on){if(!f.vis.includes(catId))f.vis.push(catId)}
   else f.vis=f.vis.filter(x=>x!==catId);
-  renderFm();
+  renderSettings();
 }
 function fmSubmit(fid){
   const name=$('#fm-name').value.trim();
@@ -1684,7 +1728,7 @@ function fmSubmit(fid){
     opts=$('#fm-opts').value.split(/[,，]/).map(s=>s.trim()).filter(Boolean);
     if(!opts.length){toast('单选/多选至少需要一个选项');return}
   }
-  const finish=()=>{f.name=name;f.type=type;f.options=opts;fmEditing=null;renderFm();toast('已保存')};
+  const finish=()=>{f.name=name;f.type=type;f.options=opts;fmEditing=null;renderSettings();toast('已保存')};
   if(f.type===type){finish();return}
   const zeroLoss=isChoice(type)&&!isChoice(f.type); // 转单选/多选：历史值去重生成选项，零丢失（PRD 6.6 v1.2）
   const rule=zeroLoss
@@ -1699,7 +1743,7 @@ function fmMove(fid,dir){
   const i=list.findIndex(f=>f.id===fid),j=i+dir;
   if(j<0||j>=list.length)return;
   [list[i].sort,list[j].sort]=[list[j].sort,list[i].sort];
-  renderFm();
+  renderSettings();
 }
 function fmDeleteAsk(fid){
   const f=state.fields.find(x=>x.id===fid);
@@ -1707,7 +1751,7 @@ function fmDeleteAsk(fid){
     {danger:true,okText:'删除',onOk(){
       state.fields=state.fields.filter(x=>x.id!==fid);
       state.items.forEach(it=>{if(it.fv)delete it.fv[fid]});
-      fmEditing=null;renderFm();toast('字段已删除');
+      fmEditing=null;renderSettings();toast('字段已删除');
     }});
 }
 
@@ -1716,16 +1760,19 @@ function fmDeleteAsk(fid){
 function globalCatOpts(){return state.categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}
 function openSettings(){settingsTab='backup';renderSettings()}
 let settingsTab='backup';
-function settingsTabSwitch(t){settingsTab=t;renderSettings()}
+function settingsTabSwitch(t){
+  if(t==='fields'){fmEditing=null;fmVisOpen=null} // 切入字段管理页签时复位编辑态
+  settingsTab=t;renderSettings();
+}
 /* 打卡项管理（v1.25）：增删改名/色盘选色（同分类）/模板；删除仅解除打卡身份不删事项 */
 const HB_COLORS=['#F0883A','#3FB950','#8957E5','#E3B341','#39C5CF','#4F8EF7','#E5534B','#D29922'];
 function hbAdd(){
   const name=$('#hb-new').value.trim();
   if(!name){toast('请输入打卡项名称');return}
   if(state.habits.some(h=>h.name===name)){toast('已存在同名打卡项');return}
-  // 默认颜色=所选事项分类的颜色（v1.26），创建后可点色块修改
+  // 默认颜色=所选事项分类的颜色（v1.26），创建后可点色块修改；追加到当前排序末尾
   const cat=state.categories.find(c=>c.id===Number($('#hb-cat').value));
-  state.habits.push({id:habitSeq++,name,color:cat?cat.color:'#4F8EF7',sort:state.habits.length+1});
+  state.habits.push({id:habitSeq++,name,color:cat?cat.color:'#4F8EF7',sort:Math.max(0,...state.habits.map(x=>x.sort))+1});
   renderSettings();toast('已新增打卡项');
 }
 function hbRename(id,name){
@@ -1759,6 +1806,41 @@ function hbDel(id){
       state.habits=state.habits.filter(x=>x.id!==id);
       renderSettings();renderAll();toast('打卡项已删除');
     }});
+}
+/* 打卡项拖拽排序（v1.28 ①）：仅 ⠿ 手柄可拖（不影响名称输入框选中文本），行上显示插入位置指示线；
+   松手按 sort 重排，打卡视图筛选行/全部页/事项弹窗与添加打卡的打卡项下拉均按此顺序展示 */
+function habitSortedList(){return [...state.habits].sort((a,b)=>a.sort-b.sort)}
+let hbDragId=null;
+function hbDragStart(e,id){
+  hbDragId=id;e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',String(id));
+  e.currentTarget.closest('.hb-row').classList.add('dragging');
+}
+function hbDragOver(e,id){
+  if(hbDragId===null||hbDragId===id)return;
+  e.preventDefault();e.dataTransfer.dropEffect='move';
+  const row=e.currentTarget,rect=row.getBoundingClientRect(),before=(e.clientY-rect.top)<rect.height/2;
+  row.classList.toggle('drop-before',before);row.classList.toggle('drop-after',!before);
+}
+function hbDragLeave(e){e.currentTarget.classList.remove('drop-before','drop-after')}
+function hbDrop(e,id){
+  e.preventDefault();
+  const row=e.currentTarget,rect=row.getBoundingClientRect(),before=(e.clientY-rect.top)<rect.height/2;
+  row.classList.remove('drop-before','drop-after');
+  if(hbDragId!==null&&hbDragId!==id)hbReorder(hbDragId,id,before);
+}
+function hbDragEnd(){
+  hbDragId=null;
+  document.querySelectorAll('.hb-row').forEach(r=>r.classList.remove('dragging','drop-before','drop-after'));
+}
+function hbReorder(fromId,toId,before){
+  const list=habitSortedList();
+  const from=list.findIndex(h=>h.id===fromId);if(from<0)return;
+  const [moved]=list.splice(from,1);
+  let to=list.findIndex(h=>h.id===toId);if(to<0)return;
+  if(!before)to++;
+  list.splice(to,0,moved);
+  list.forEach((h,i)=>h.sort=i+1);
+  renderSettings();renderAll();toast('已调整打卡项顺序');
 }
 /* 打卡项模板（v1.25 ③，方案确认中）：预设默认分类/标题/字段值，新增打卡或勾选打卡时带出（可编辑） */
 function openHabitTpl(id){
@@ -1810,8 +1892,9 @@ function renderSettings(){
       </div>`;
   const habitsBody=`
       <div class="set-body">
-        <div class="hb-list">${state.habits.map(h=>`
-          <div class="hb-row" data-id="${h.id}">
+        <div class="hb-list">${habitSortedList().map(h=>`
+          <div class="hb-row" data-id="${h.id}" ondragover="hbDragOver(event,${h.id})" ondragleave="hbDragLeave(event)" ondrop="hbDrop(event,${h.id})">
+            <span class="hb-grip" title="拖拽调整顺序" draggable="true" ondragstart="hbDragStart(event,${h.id})" ondragend="hbDragEnd(event)">⠿</span>
             <button class="hb-color" style="background:${h.color}" title="点击选色（同分类色盘）" onclick="event.stopPropagation();hbOpenPalette(${h.id},this)"></button>
             <input class="hb-name" value="${esc(h.name)}" maxlength="30" onchange="hbRename(${h.id},this.value)">
             ${h.tpl?`<span class="hb-meta" title="已配置模板">模</span>`:''}
@@ -1821,17 +1904,19 @@ function renderSettings(){
         <div class="frow" style="margin-top:10px"><input id="hb-new" placeholder="新打卡项名称" maxlength="30" style="flex:1">
           <select id="hb-cat" style="width:140px;flex:none" title="默认颜色跟随所选分类">${globalCatOpts()}</select>
           <button class="btn-primary" style="flex:none;white-space:nowrap" onclick="hbAdd()">新增</button></div>
-        <div class="note">· 打卡项是打卡记录的归类（改名全局生效，历史不断档）。<br>
+        <div class="note">· 拖拽 ⠿ 调整顺序：打卡视图筛选行、全部页列表与各处打卡项下拉均按此顺序展示。<br>
+          · 打卡项是打卡记录的归类（改名全局生效，历史不断档）。<br>
           · 「模板」预设默认分类/标题/字段值，新增打卡或勾选打卡时自动带出（可改；已有值不会被覆盖）。<br>
           · 新增打卡项的默认颜色=所选事项分类的颜色，创建后可点色块修改。<br>
           · 删除打卡项仅解除其打卡记录的打卡身份（事项本身保留，回到日历/待办正常展示）。</div>
       </div>`;
-  const body=settingsTab==='daytypes'?daytypesBody:settingsTab==='habits'?habitsBody:backupBody;
+  const body=settingsTab==='daytypes'?daytypesBody:settingsTab==='fields'?fieldsBody():settingsTab==='habits'?habitsBody:backupBody;
   modal(`<div class="dhead">设置<button class="x" onclick="closeModal()">✕</button></div>
     <div class="dbody" style="padding:0"><div class="set-wrap">
       <div class="set-tabs">
         <button class="${settingsTab==='backup'?'on':''}" onclick="settingsTabSwitch('backup')">数据备份</button>
         <button class="${settingsTab==='daytypes'?'on':''}" onclick="settingsTabSwitch('daytypes')">日期类型</button>
+        <button class="${settingsTab==='fields'?'on':''}" onclick="settingsTabSwitch('fields')">字段管理</button>
         <button class="${settingsTab==='habits'?'on':''}" onclick="settingsTabSwitch('habits')">打卡项</button>
         <button class="dis">邮箱绑定 <span class="badge">二期</span></button>
         <button class="dis">提醒发送记录 <span class="badge">二期</span></button>

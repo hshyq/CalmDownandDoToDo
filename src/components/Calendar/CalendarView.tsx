@@ -1,7 +1,6 @@
 // P4 日历视图：周/月网格 + 横条泳道布局 + +N 浮层 + 格内「+」快捷新建。
 import { useCallback, useEffect, useRef, useState } from "react";
 import ItemModal from "../Items/ItemModal";
-import FieldManager from "../fields/FieldManager";
 import ListView from "./ListView";
 import CheckinView from "./CheckinView";
 import { useUndoStore } from "../../stores/undoStore";
@@ -34,7 +33,6 @@ export default function CalendarView() {
   const [items, setItems] = useState<CalendarItem[]>([]);
   const [modal, setModal] = useState<ModalState | null>(null);
   const [day, setDay] = useState<string | null>(null);
-  const [fmOpen, setFmOpen] = useState(false);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   // 年月选择面板（原型 pk-* 契约）：浏览的年月；null=关闭
   const [pick, setPick] = useState<{ y: number; m: number } | null>(null);
@@ -469,7 +467,6 @@ export default function CalendarView() {
         <span style={{ flex: 1 }} />
         <button type="button" className="btn-ghost undobtn" disabled={!canUndo} title="撤销 Ctrl+Z" onClick={() => void onUndo()}>↶</button>
         <button type="button" className="btn-ghost undobtn" disabled={!canRedo} title="重做 Ctrl+Y" onClick={() => void onRedo()}>↷</button>
-        <button type="button" className="btn-ghost" onClick={() => setFmOpen(true)}>字段管理</button>
         <button
           type="button"
           className="btn-primary add"
@@ -518,7 +515,6 @@ export default function CalendarView() {
       {day ? (
         <DayOverlay date={day} items={items} categories={categories} onPick={(id) => void openEdit(id)} onClose={() => setDay(null)} />
       ) : null}
-      {fmOpen ? <FieldManager categories={categories} onClose={() => setFmOpen(false)} /> : null}
       {toast ? <div className="toast">{toast}</div> : null}
     </main>
   );

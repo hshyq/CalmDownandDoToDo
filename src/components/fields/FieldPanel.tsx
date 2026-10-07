@@ -1,28 +1,26 @@
-// 字段管理弹窗（PRD 4.3/6.5/6.6 v1.17；字段全局定义 + 分类可见性配置）。
-// 入口：所有页面工具栏「字段管理」按钮；可见分类勾选即时生效（一步撤销）。
+// 设置弹窗「字段管理」页签（PRD 4.3/6.5/6.6 v1.17；v1.28 入口从工具栏移入设置弹窗，
+// 位于「日期类型」下方、「打卡项」上方；参照 HabitPanel 自包含面板模式）。
+// 字段全局定义 + 分类可见性配置：可见分类勾选即时生效（一步撤销）。
 import { useCallback, useEffect, useState } from "react";
 import Modal from "../Modal/Modal";
 import { fieldApi } from "../../services/ipc";
 import { FIELD_TYPE_LABELS } from "../../services/types";
-import type { Category, FieldDef, FieldType } from "../../services/types";
+import type { FieldDef, FieldType } from "../../services/types";
 import {
   isChoiceType,
   joinOptionsText,
   parseOptions,
   splitOptionsText,
 } from "../../features/fields/value";
-
-interface Props {
-  categories: Category[];
-  onClose: () => void;
-}
+import { useAppStore } from "../../stores/appStore";
 
 type Editing = { mode: "new"; visible: number[] } | { mode: "edit"; field: FieldDef };
 type Confirm = { kind: "del"; field: FieldDef } | { kind: "type" } | null;
 
 const TYPE_KEYS = Object.keys(FIELD_TYPE_LABELS) as FieldType[];
 
-export default function FieldManager({ categories, onClose }: Props) {
+export default function FieldPanel() {
+  const categories = useAppStore((s) => s.categories);
   const [fields, setFields] = useState<FieldDef[] | null>(null);
   const [editing, setEditing] = useState<Editing | null>(null);
   const [name, setName] = useState("");
@@ -46,6 +44,7 @@ export default function FieldManager({ categories, onClose }: Props) {
       setFields([]);
       showToast(e instanceof Error ? e.message : "加载字段失败，请重试");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -203,8 +202,8 @@ export default function FieldManager({ categories, onClose }: Props) {
   const newVisibleSet = editing?.mode === "new" ? new Set(editing.visible) : null;
 
   return (
-    <Modal title="字段管理" onClose={onClose} width={520}>
-      <div className="note" style={{ marginBottom: 6 }}>
+    <div className="set-body">
+      <div className="note" style={{ marginTop: 0 }}>
         自定义字段<b>全部分类通用</b>（数据跟随事项，切分类不丢失）；每个分类可配置显示哪些字段。
       </div>
       {fields === null ? (
@@ -342,6 +341,6 @@ export default function FieldManager({ categories, onClose }: Props) {
       ) : null}
 
       {toast ? <div className="toast">{toast}</div> : null}
-    </Modal>
+    </div>
   );
 }

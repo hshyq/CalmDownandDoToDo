@@ -329,7 +329,7 @@ export default function ItemModal({ item, categories, defaultCategoryId, allowCa
           {defLoading ? (
             <div className="iempty">字段加载中…</div>
           ) : defs.length === 0 ? (
-            <div className="iempty">该分类暂无自定义字段（可在工具栏「字段管理」中添加）</div>
+            <div className="iempty">该分类暂无自定义字段（可在「设置→字段管理」中添加）</div>
           ) : (
             defs.map((d) => (
               <div key={d.id} className="frow fv-row">

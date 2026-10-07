@@ -50,6 +50,10 @@ export const categoryApi = {
   async remove(id: number, mode: DeleteMode): Promise<void> {
     await call<void>("delete_category", { id, mode });
   },
+  /** 左侧拖拽重排（v1.28 ④）：orderedIds=拖拽后普通分类完整顺序（未分类不传、后端自动沉底）；一步撤销。 */
+  async reorder(orderedIds: number[]): Promise<void> {
+    await call<void>("reorder_categories", { orderedIds });
+  },
 };
 
 export const itemApi = {
@@ -207,6 +211,10 @@ export const habitApi = {
   /** 删除打卡项；返回被解除打卡身份的事项条数。 */
   async remove(id: number): Promise<number> {
     return await call<number>("delete_habit", { id });
+  },
+  /** 拖拽重排（v1.28 ①）：orderedIds=拖拽后完整顺序；一步撤销。 */
+  async reorder(orderedIds: number[]): Promise<void> {
+    await call<void>("reorder_habits", { orderedIds });
   },
 };
 
