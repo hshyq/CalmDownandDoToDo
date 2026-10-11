@@ -518,9 +518,21 @@ ORDER BY COALESCE(due_date, '9999-12-31') ASC,
         backup::dump(&guard).map(|v| v.to_string())
     }
 
+    /// 按时间范围导出（v1.29）：事项按范围语义过滤，分类/字段定义/设置全量。
+    pub fn dump_json_range(&self, start: &str, end: &str) -> Result<String> {
+        let guard = self.lock()?;
+        backup::dump_range(&guard, start, end).map(|v| v.to_string())
+    }
+
     pub fn next_backup_path(&self) -> Result<PathBuf> {
         let guard = self.lock()?;
         backup::default_export_path(&self.data_dir, &guard)
+    }
+
+    /// 导出文件名（v1.29 默认目录=桌面，由 commands 层拼接；拿不到桌面时回退 next_backup_path）。
+    pub fn backup_export_filename(&self) -> Result<String> {
+        let guard = self.lock()?;
+        backup::export_filename(&guard)
     }
 
     pub fn import_json(&self, text: &str) -> Result<()> {

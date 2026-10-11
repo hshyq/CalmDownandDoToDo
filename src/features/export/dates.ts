@@ -55,3 +55,22 @@ export const shortcutRange = (unit: ShortcutUnit, today: string): { start: strin
   }
   return { start: today, end: addMonthsMinusOne(today, unit) };
 };
+
+/** 备份导出快捷范围单位（PRD 6.8 v1.29）：自然月语义（与 TXT 的「今天起算」不同）。 */
+export type BackupQuickUnit = "this" | "prev" | "prev2";
+
+/** 备份导出快捷范围（TC-BAK-008）：本月/上个月/上上个月的自然月起止；跨年正确。 */
+export const backupQuickRange = (
+  unit: BackupQuickUnit,
+  today: string,
+): { start: string; end: string } => {
+  const [y, m] = today.split("-").map(Number);
+  const back = unit === "this" ? 0 : unit === "prev" ? 1 : 2; // 往前推的自然月数
+  const total = y * 12 + (m - 1) - back;
+  const yy = Math.floor(total / 12);
+  const mm = (total % 12) + 1;
+  return {
+    start: `${yy}-${pad2(mm)}-01`,
+    end: `${yy}-${pad2(mm)}-${pad2(daysInMonth(yy, mm))}`,
+  };
+};

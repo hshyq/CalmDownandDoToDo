@@ -5,12 +5,12 @@ import { useState } from "react";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import Modal from "../Modal/Modal";
 import { backupApi, txtExportApi } from "../../services/ipc";
-import { defaultExportRange, maxEndDate, shortcutRange } from "../../features/export/dates";
+import { backupQuickRange, defaultExportRange, maxEndDate, shortcutRange } from "../../features/export/dates";
+import type { BackupQuickUnit, ShortcutUnit } from "../../features/export/dates";
 import { SegDateInput } from "../fields/SegInputs";
 import DayTypePanel from "../Calendar/DayTypePanel";
 import FieldPanel from "../fields/FieldPanel";
 import HabitPanel from "./HabitPanel";
-import type { ShortcutUnit } from "../../features/export/dates";
 import { useAppStore } from "../../stores/appStore";
 
 interface Props {
@@ -18,9 +18,18 @@ interface Props {
 }
 
 type Tab = "backup" | "daytypes" | "fields" | "habits" | "mail" | "records";
+/** 备份导出范围选择状态（v1.29 两段式导出）：快捷项或 custom（手动改过日期）。 */
+type BkQuick = BackupQuickUnit | "all" | "custom";
 
 const JSON_FILTER = [{ name: "JSON 备份", extensions: ["json"] }];
 const TXT_FILTER = [{ name: "文本文件", extensions: ["txt"] }];
+
+const BK_QUICK_OPTIONS: ReadonlyArray<{ unit: BackupQuickUnit | "all"; label: string }> = [
+  { unit: "this", label: "本月" },
+  { unit: "prev", label: "上个月" },
+  { unit: "prev2", label: "上上个月" },
+  { unit: "all", label: "全部" },
+];
 
 /** 本地今天（yyyy-MM-dd）。 */
 const todayStr = (): string => {
@@ -36,6 +45,12 @@ export default function SettingsDialog({ onClose }: Props) {
   const [confirmPath, setConfirmPath] = useState<string | null>(null);
   // TXT 导出范围弹窗（PRD 6.9）
   const [txtOpen, setTxtOpen] = useState(false);
+  // 备份导出范围弹窗（v1.29 两段式：先范围后另存为）
+  const [bkOpen, setBkOpen] = useState(false);
+  const [bkQuick, setBkQuick] = useState<BkQuick>("this");
+  const [bkStart, setBkStart] = useState("");
+  const [bkEnd, setBkEnd] = useState("");
+  const [bkErr, setBkErr] = useState("");
   const def = defaultExportRange(todayStr());
   const [txtStart, setTxtStart] = useState(def.start);
   const [txtEnd, setTxtEnd] = useState(def.end);
@@ -46,7 +61,47 @@ export default function SettingsDialog({ onClose }: Props) {
     window.setTimeout(() => setToast(""), 3600);
   };
 
-  const doExport = async () => {
+  /** 打开备份导出范围弹窗（v1.29 两段式第①步）：默认当前自然月。 */
+  const openBkDialog = () => {
+    const r = backupQuickRange("this", todayStr());
+    setBkStart(r.start);
+    setBkEnd(r.end);
+    setBkQuick("this");
+    setBkErr("");
+    setBkOpen(true);
+  };
+
+  /** 快捷范围点选：填入自然月起止并高亮；「全部」=不过滤。 */
+  const applyBkQuick = (unit: BackupQuickUnit | "all") => {
+    setBkQuick(unit);
+    setBkErr("");
+    if (unit === "all") return;
+    const r = backupQuickRange(unit, todayStr());
+    setBkStart(r.start);
+    setBkEnd(r.end);
+  };
+
+  /** 手动改日期 → 自定义范围（取消快捷高亮）。 */
+  const onBkDate = (which: "start" | "end", v: string) => {
+    if (which === "start") setBkStart(v);
+    else setBkEnd(v);
+    setBkQuick((q) => (q === "all" ? q : "custom"));
+    setBkErr("");
+  };
+
+  /** 两段式第②步（v1.29）：校验范围 → 另存为（默认桌面）→ 按范围导出。 */
+  const doExportBackup = async () => {
+    if (bkQuick !== "all") {
+      if (bkStart.length !== 10 || bkEnd.length !== 10) {
+        setBkErr("请先填完整的开始与结束日期，或选择快捷范围");
+        return;
+      }
+      if (bkEnd < bkStart) {
+        setBkErr("结束日期不能早于开始日期");
+        return;
+      }
+    }
+    setBkErr("");
     setBusy(true);
     try {
       const defaultPath = await backupApi.defaultPath();
@@ -59,8 +114,11 @@ export default function SettingsDialog({ onClose }: Props) {
         showToast("已取消导出");
         return;
       }
-      await backupApi.export(path);
-      showToast(`已导出：${path}`);
+      const s = bkQuick === "all" ? undefined : bkStart;
+      const e = bkQuick === "all" ? undefined : bkEnd;
+      await backupApi.export(path, s, e);
+      setBkOpen(false);
+      showToast(s ? `已导出 ${s} ~ ${e} 范围备份：${path}` : `已导出全部数据备份：${path}`);
     } catch (e) {
       showToast(e instanceof Error ? e.message : "导出失败，请重试");
     } finally {
@@ -210,7 +268,7 @@ export default function SettingsDialog({ onClose }: Props) {
         ) : (
         <div className="set-body">
           <div className="set-actions">
-            <button type="button" className="btn-primary" disabled={busy} onClick={() => void doExport()}>
+            <button type="button" className="btn-primary" disabled={busy} onClick={openBkDialog}>
               导出备份
             </button>
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => void pickImport()}>
@@ -224,13 +282,67 @@ export default function SettingsDialog({ onClose }: Props) {
             <div className="note picked">已选择：{importPath}</div>
           ) : null}
           <div className="note">
-            · 导出为带版本号的单 JSON 文件，文件名默认含导出日期，可在对话框中选择保存目录。<br />
+            · 导出前先选择<b>时间范围</b>（默认当前自然月，可快捷选上个月/上上个月/全部，或自定义），确定后选择保存位置（默认桌面）。<br />
+            · 范围内事项：日历与范围有交集即含（显示自身完整起止）、待办按截止日期；分类与字段定义始终全量导出。<br />
+            · 导出为带版本号的单 JSON 文件，文件名默认含导出日期。<br />
             · 导入会覆盖当前全部数据，需二次确认；导入前的状态可撤销（Ctrl+Z）。<br />
+            · 「导出 TXT」按时间范围导出事项清单（PRD 6.9）：默认当前月+下一自然月，结束最晚=开始+6 个月−1 天；日历显示自身起止、待办按截止日期，无截止不导出。<br />
             · 备份文件不含邮箱授权码；数据库位于 exe 同目录 data\calendar.db，删除目录即卸载干净。
           </div>
         </div>
         )}
       </div>
+
+      {bkOpen ? (
+        <Modal
+          title="导出备份"
+          onClose={() => setBkOpen(false)}
+          width={440}
+          footer={
+            <>
+              <button type="button" className="btn-ghost" disabled={busy} onClick={() => setBkOpen(false)}>取消</button>
+              <button type="button" className="btn-primary" disabled={busy} onClick={() => void doExportBackup()}>选择位置并导出</button>
+            </>
+          }
+        >
+          <div className="iform">
+            <div className="frow">
+              <label>导出范围</label>
+              <span className="chips">
+                {BK_QUICK_OPTIONS.map(({ unit, label }) => (
+                  <button
+                    key={unit}
+                    type="button"
+                    className={`chip${bkQuick === unit ? " on" : ""}`}
+                    disabled={busy}
+                    onClick={() => applyBkQuick(unit)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </span>
+            </div>
+            <div className="frow">
+              <label>开始日期</label>
+              <span style={bkQuick === "all" ? { opacity: 0.45, pointerEvents: "none" } : undefined}>
+                <SegDateInput value={bkStart} onChange={(v) => onBkDate("start", v)} />
+              </span>
+            </div>
+            <div className="frow">
+              <label>结束日期</label>
+              <span style={bkQuick === "all" ? { opacity: 0.45, pointerEvents: "none" } : undefined}>
+                <SegDateInput value={bkEnd} onChange={(v) => onBkDate("end", v)} />
+              </span>
+            </div>
+          </div>
+          {bkErr ? <div className="ferr">{bkErr}</div> : null}
+          <div className="note">
+            · 日历事项与范围有交集即导出（显示自身完整起止）；待办按截止日期在范围内；未设截止的事项仅「全部」包含。<br />
+            · 分类与自定义字段定义始终全量导出（导入后结构完整）。<br />
+            · 确定范围后选择保存位置（<b>默认桌面</b>），文件名含导出日期。
+          </div>
+        </Modal>
+      ) : null}
 
       {confirmPath !== null ? (
         <Modal

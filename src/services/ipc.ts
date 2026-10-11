@@ -237,14 +237,14 @@ export const undoApi = {  async undo(): Promise<void> {
 
 /** 备份 IPC（PRD 6.8：路径由 tauri-plugin-dialog 提供；导入整库替换计入撤销栈）。 */
 export const backupApi = {
-  /** 默认导出路径（data\backups\日历待办备份_<时间>.json），供「另存为」默认文件名。 */
+  /** 默认导出路径（桌面\日历待办备份_<时间>.json，v1.29；环境异常时后端回退 data\backups）。 */
   async defaultPath(): Promise<string> {
     const v = await call<unknown>("default_backup_path");
     return typeof v === "string" ? v : "";
   },
-  /** 导出备份到指定路径。 */
-  async export(path: string): Promise<void> {
-    await call<void>("export_backup", { path });
+  /** 导出备份到指定路径；start/end 可选范围（v1.29，成对传=范围导出，省略=全量）。 */
+  async export(path: string, start?: string, end?: string): Promise<void> {
+    await call<void>("export_backup", { path, start: start ?? null, end: end ?? null });
   },
   /** 导入备份（整库替换；导入前状态可撤销）。 */
   async import(path: string): Promise<void> {

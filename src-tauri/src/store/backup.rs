@@ -31,15 +31,40 @@ fn parse_options(options_json: &Option<String>) -> Vec<String> {
         .unwrap_or_default()
 }
 
+/// 事项是否落在导出范围内（PRD 6.8 v1.29 范围语义）：
+/// 日历（开始+结束均有）与范围有交集即含；否则按截止日期在范围内；无截止不含（仅「全部」导出）。
+fn item_in_range(it: &items::Item, start: &str, end: &str) -> bool {
+    let calendar_hit = match (it.start_date.as_deref(), it.end_date.as_deref()) {
+        (Some(sd), Some(ed)) => sd <= end && ed >= start,
+        _ => false,
+    };
+    let due_hit = it
+        .due_date
+        .as_deref()
+        .map(|d| d >= start && d <= end)
+        .unwrap_or(false);
+    calendar_hit || due_hit
+}
+
 /// 导出全库为备份 JSON（分类 + 字段定义 + 事项[含字段值] + 设置）。
 pub fn dump(conn: &Connection) -> Result<Value> {
+    dump_impl(conn, None)
+}
+
+/// 按时间范围导出（v1.29）：事项按 item_in_range 过滤（字段值随保留事项）；
+/// 分类/字段定义/设置始终全量（结构性数据不裁剪，导入后结构完整）。
+pub fn dump_range(conn: &Connection, start: &str, end: &str) -> Result<Value> {
+    dump_impl(conn, Some((start, end)))
+}
+
+fn dump_impl(conn: &Connection, range: Option<(&str, &str)>) -> Result<Value> {
     let cats = categories::list(conn)?;
     let cat_values: Vec<Value> = cats
         .iter()
         .map(|c| serde_json::to_value(c).expect("分类序列化"))
         .collect();
 
-    // field_defs 全表（跨分类）
+    // field_defs 全表（跨分类；范围导出同样全量，v1.29）
     let defs = fields::list_all(conn)?;
     let def_values: Vec<Value> = defs
         .iter()
@@ -55,10 +80,15 @@ pub fn dump(conn: &Connection) -> Result<Value> {
         })
         .collect();
 
-    // items 全量 + 各事项字段值
+    // items（范围导出按 v1.29 语义过滤）+ 各事项字段值
     let all_items = items::list(conn, None)?;
-    let mut item_values = Vec::with_capacity(all_items.len());
+    let mut item_values = Vec::new();
     for it in &all_items {
+        if let Some((start, end)) = range {
+            if !item_in_range(it, start, end) {
+                continue;
+            }
+        }
         let vals = super::values::list_for_item(conn, it.id)?;
         let fvs: Vec<Value> = vals
             .iter()
@@ -93,16 +123,21 @@ pub fn dump(conn: &Connection) -> Result<Value> {
     }))
 }
 
-/// 默认导出路径：`data\backups\日历待办备份_<本地时间>.json`（文件名含导出日期，TC-BAK-001）。
-pub fn default_export_path(data_dir: &Path, conn: &Connection) -> Result<PathBuf> {
+/// 导出文件名：`日历待办备份_<本地时间>.json`（TC-BAK-001；v1.29 起默认目录=桌面，由 commands 层拼接）。
+pub fn export_filename(conn: &Connection) -> Result<String> {
     let ts: String = conn.query_row(
         "SELECT strftime('%Y%m%d_%H%M%S', 'now', 'localtime')",
         [],
         |r| r.get(0),
     )?;
+    Ok(format!("日历待办备份_{ts}.json"))
+}
+
+/// 默认导出路径（回退用）：`data\backups\日历待办备份_<本地时间>.json`（v1.29 起主路径=桌面）。
+pub fn default_export_path(data_dir: &Path, conn: &Connection) -> Result<PathBuf> {
     let dir = data_dir.join("backups");
     fs::create_dir_all(&dir)?;
-    Ok(dir.join(format!("日历待办备份_{ts}.json")))
+    Ok(dir.join(export_filename(conn)?))
 }
 
 /// 把备份 JSON 文本导入（整库替换）；失败时当前数据不变（调用方在事务前校验）。
@@ -617,5 +652,123 @@ mod tests {
         assert!(out["items"].is_array());
         assert!(out.get("mail_config").is_none());
         assert_eq!(out["reminders"].as_array().expect("reminders").len(), 0);
+    }
+
+    #[test]
+    fn dump_range_filters_items_but_keeps_structure() {
+        // 范围导出（v1.29 / TC-BAK-009）：日历交集即含（完整起止）、待办按截止、
+        // 无截止不含；分类/字段定义/设置全量；全量导出不受影响
+        let mut conn = db();
+        let work = work_id(&conn);
+        let f = fields::create(
+            &mut conn,
+            "优先级",
+            "single_choice",
+            Some(&["高".into(), "低".into()]),
+            &[work],
+        )
+        .expect("建字段");
+
+        fn mk<'a>(
+            work: i64,
+            sd: Option<&'a str>,
+            ed: Option<&'a str>,
+            dd: Option<&'a str>,
+        ) -> items::NewItem<'a> {
+            items::NewItem {
+                category_id: work,
+                title: "T",
+                description: None,
+                start_date: sd,
+                start_time: None,
+                end_date: ed,
+                end_time: None,
+                due_date: dd,
+                due_time: None,
+                is_checkin: false,
+                habit_id: None,
+            }
+        }
+        // A 跨边界日历 08-25~09-05；B 范围外日历 10-01~10-03；C 截止 09-15 待办；
+        // D 截止 10-20 待办；E 无任何日期（长期规划）；F 日历交集命中+截止在范围外（任一命中即含）
+        let a = items::create(
+            &conn,
+            &mk(work, Some("2026-08-25"), Some("2026-09-05"), None),
+        )
+        .expect("A");
+        let _b = items::create(
+            &conn,
+            &mk(work, Some("2026-10-01"), Some("2026-10-03"), None),
+        )
+        .expect("B");
+        let c = items::create(&conn, &mk(work, None, None, Some("2026-09-15"))).expect("C");
+        let _d = items::create(&conn, &mk(work, None, None, Some("2026-10-20"))).expect("D");
+        let _e = items::create(&conn, &mk(work, None, None, None)).expect("E");
+        let f6 = items::create(
+            &conn,
+            &mk(
+                work,
+                Some("2026-08-30"),
+                Some("2026-09-02"),
+                Some("2026-12-31"),
+            ),
+        )
+        .expect("F");
+        for id in [a.id, c.id] {
+            values::set_values(&mut conn, id, &[(f.id, Some("\"高\"".to_string()))]).expect("写值");
+        }
+
+        let out = dump_range(&conn, "2026-09-01", "2026-09-30").expect("范围导出");
+        let arr = out["items"].as_array().expect("items");
+        assert_eq!(
+            arr.len(),
+            3,
+            "A（交集）+ C（截止在范围）+ F（日历交集命中）"
+        );
+        let ids: Vec<i64> = arr
+            .iter()
+            .map(|it| it["id"].as_i64().expect("id"))
+            .collect();
+        assert!(ids.contains(&a.id));
+        assert!(ids.contains(&c.id));
+        assert!(ids.contains(&f6.id));
+        assert!(!ids.contains(&_b.id));
+        assert!(!ids.contains(&_d.id));
+        assert!(!ids.contains(&_e.id), "无截止事项仅「全部」包含");
+        // A 保留自身完整起止（不被范围截断）
+        let a_json = arr
+            .iter()
+            .find(|it| it["id"].as_i64() == Some(a.id))
+            .expect("A");
+        assert_eq!(a_json["start_date"].as_str(), Some("2026-08-25"));
+        assert_eq!(a_json["end_date"].as_str(), Some("2026-09-05"));
+        // 保留事项的字段值随包；分类与字段定义全量
+        assert_eq!(
+            a_json["field_values"].as_array().expect("A 值").len(),
+            1,
+            "字段值随保留事项导出"
+        );
+        assert_eq!(
+            out["categories"].as_array().expect("分类").len(),
+            categories::list(&conn).expect("分类").len(),
+            "分类全量"
+        );
+        assert_eq!(
+            out["field_defs"].as_array().expect("字段").len(),
+            fields::list_all(&conn).expect("字段").len(),
+            "字段定义全量"
+        );
+        assert_eq!(out["format_version"].as_i64(), Some(FORMAT_VERSION));
+
+        // 「全部」（dump）= 不过滤
+        let full = dump(&conn).expect("全量导出");
+        assert_eq!(
+            full["items"].as_array().expect("items").len(),
+            items::list(&conn, None).expect("事项").len()
+        );
+
+        // 文件名格式（回退路径与桌面主路径共用）
+        let name = export_filename(&conn).expect("文件名");
+        assert!(name.starts_with("日历待办备份_") && name.ends_with(".json"));
     }
 }

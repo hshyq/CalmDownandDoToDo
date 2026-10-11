@@ -128,7 +128,7 @@
 | 分类色盘 / 颜色 token | `src/styles/tokens.css` | 与原型一致 |
 | 分类删除二选一 | `commands/categories.rs` delete(mode) | 对照 TC-CL-003~006 |
 | 分类/打卡项拖拽排序（v1.28） | 纯函数 `src/features/dnd/reorder.ts` + hook `useListDrag.ts`；`TabBar.tsx`（分类整行）/`HabitPanel.tsx`（⠿ 手柄）；后端 `reorder_categories`/`reorder_habits` + `UndoCmd::CategorySort/HabitSort` | 对照 TC-CL-011/012、TC-CK-022、TC-UNDO-011；全量顺序整批提交，撤销=sort 快照恢复 |
-| 备份导入导出 | `store/backup.rs` + `commands/backup.rs` + `components/Settings/SettingsDialog.tsx` | 对照 TC-BAK-001~006；导入前整库快照落 undo_tmp（D10） |
+| 备份导入导出 | `store/backup.rs`（dump 全量/dump_range 范围过滤，v1.29）+ `commands/backup.rs`（默认路径=桌面）+ `components/Settings/SettingsDialog.tsx`（两段式：范围弹窗→另存为）+ `features/export/dates.ts`（backupQuickRange 自然月纯函数） | 对照 TC-BAK-001~010；范围语义=日历交集/待办截止/无截止仅全部；分类与字段定义全量随包；导入前整库快照落 undo_tmp（D10） |
 | 列表视图（PRD 6.10） | `src/components/Calendar/ListView.tsx`（冻结列/统一排序/描述列/多选批量删除/动态字段列）；批量删除命令 `src-tauri/src/commands/items.rs::delete_items_batch` + `UndoCmd::ItemDeleteBatch` | 对照 TC-CAL-020~022、TC-UNDO-010；数据源=itemApi.list 全字段查询+全表字段值 |
 | 日期类型管理 | 设置弹窗「日期类型」页签（`DayTypePanel.tsx`） | 对照 TC-DT-001~007；日历格色条点击同样可切换 |
 | 打卡功能（PRD 6.11） | `CheckinView.tsx`/`HabitPanel.tsx`/`ItemModal` 打卡区/`features/checkin/heatmap.ts`（纯函数）；后端 `store/habits.rs`+`commands/habits.rs`+`list_checkins` | 对照 TC-CK-001~022；归属日期=开始优先截止兜底（后端校验+heatmap.ts 双侧对齐，改一侧必改另一侧）；删除打卡项仅解除身份不删事项；打卡项顺序=设置页签拖拽序（v1.28） |

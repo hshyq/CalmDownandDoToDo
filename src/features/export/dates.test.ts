@@ -1,6 +1,24 @@
 // TXT 导出纯函数测试：与后端 store/export.rs 行为对齐（TC-EXP-001/002/007）。
+// 备份快捷范围（v1.29）与 TC-BAK-008 对齐。
 import { describe, expect, it } from "vitest";
-import { daysInMonth, defaultExportRange, maxEndDate, shortcutRange } from "./dates";
+import { backupQuickRange, daysInMonth, defaultExportRange, maxEndDate, shortcutRange } from "./dates";
+
+describe("backupQuickRange 备份快捷范围=自然月起止（TC-BAK-008）", () => {
+  it("本月（普通月与小月）", () => {
+    expect(backupQuickRange("this", "2026-10-11")).toEqual({ start: "2026-10-01", end: "2026-10-31" });
+    expect(backupQuickRange("this", "2026-04-15")).toEqual({ start: "2026-04-01", end: "2026-04-30" });
+  });
+  it("上个月（跨年：1 月→上年 12 月）", () => {
+    expect(backupQuickRange("prev", "2026-10-11")).toEqual({ start: "2026-09-01", end: "2026-09-30" });
+    expect(backupQuickRange("prev", "2026-01-15")).toEqual({ start: "2025-12-01", end: "2025-12-31" });
+  });
+  it("上上个月（跨年：1 月→上年 11 月、2 月→上年 12 月；闰年 2 月）", () => {
+    expect(backupQuickRange("prev2", "2026-10-11")).toEqual({ start: "2026-08-01", end: "2026-08-31" });
+    expect(backupQuickRange("prev2", "2026-01-15")).toEqual({ start: "2025-11-01", end: "2025-11-30" });
+    expect(backupQuickRange("prev2", "2026-02-15")).toEqual({ start: "2025-12-01", end: "2025-12-31" });
+    expect(backupQuickRange("this", "2028-02-10")).toEqual({ start: "2028-02-01", end: "2028-02-29" });
+  });
+});
 
 describe("defaultExportRange 默认范围=当前月首~下月末", () => {
   it("普通月", () => {

@@ -6,7 +6,8 @@
   - 纪律：只保留最新确认态；配色/间距用 CSS 变量集中定义（可搬为设计 token）
   - 演示已实现：标签页切换、周/月切换、前后导航、事项增/改/删与日历⇄待办动态迁移、
     日历格 hover「+」快捷新建（总览可新增、弹窗选分类）、待办分组折叠、+N 浮层、分类增删改/改色、字段管理界面、
-    左侧事项类型拖拽排序（各入口所属分类下拉同步）、打卡项拖拽排序（打卡视图同步）、字段管理入口移入设置弹窗
+    左侧事项类型拖拽排序（各入口所属分类下拉同步）、打卡项拖拽排序（打卡视图同步）、字段管理入口移入设置弹窗、
+    导出备份范围选择弹窗（两段式：范围→另存为，默认桌面，v1.29 方案确认中）
   - 演示未实现（正式版按文档实现）：撤销栈（10 步）、类型转换矩阵的实际数据迁移、
     备份导入导出、持久化（刷新即还原演示数据）
 ============================================================ -->
@@ -183,6 +184,7 @@ input,select,textarea{font:inherit;color:inherit}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{border:1px solid var(--border);background:#fff;border-radius:12px;padding:2px 11px;font-size:12px;cursor:pointer;color:var(--text)}
 .chip:hover{border-color:var(--accent);color:var(--accent)}
+.chip.on{border-color:var(--accent);background:#e8f0fe;color:var(--accent);font-weight:600}
 
 /* ===== 弹窗 ===== */
 .overlay{position:fixed;inset:0;background:rgba(24,30,40,.45);display:flex;align-items:center;justify-content:center;z-index:50}
@@ -1433,15 +1435,23 @@ function renderTodo(){
 function toggleGroup(k){state.collapsed[k]=!state.collapsed[k];renderTodo()}
 
 /* ================= 弹窗基座 ================= */
-function modal(inner,topmost,dismissable,width){
+/* 叠加式（v1.29 修订）：每次 modal() 追加一层 overlay（后开的在上），closeModal() 只关最顶层——
+   设置弹窗上再开范围/模板/TXT 弹窗时，关闭子弹窗不影响设置弹窗（对齐正式版 React 组件树行为）。 */
+function modal(inner,topmost,dismissable,width,key){
   // dismissable=true 时点击遮罩（弹窗以外区域）关闭弹窗；默认不关闭，仅事项弹窗开启（对齐 v0.3.2+ 实现与 TC-IT-014）
   // width：弹窗宽度（默认 520；设置弹窗等宽内容用 640，v1.27）
+  // key：同 key 层先移除再追加（renderSettings 重渲染用，防止叠加重复）
   const root=topmost?$('#confirm-root'):$('#modal-root');
-  root.innerHTML=`<div class="overlay ${topmost?'top':''}" onclick="if(event.target===this&&${!!dismissable})closeModal(${topmost})"><div class="dialog" ${width?`style="width:${width}px"`:''}>${inner}</div></div>`;
+  if(key)root.querySelectorAll(`.overlay[data-key="${key}"]`).forEach(o=>o.remove());
+  root.insertAdjacentHTML('beforeend',`<div class="overlay ${topmost?'top':''}" ${key?`data-key="${key}"`:''} onclick="if(event.target===this&&${!!dismissable})closeModal(${topmost})"><div class="dialog" ${width?`style="width:${width}px"`:''}>${inner}</div></div>`);
 }
 function closeModal(topmost){
-  (topmost?$('#confirm-root'):$('#modal-root')).innerHTML='';
+  const root=topmost?$('#confirm-root'):$('#modal-root');
+  const layers=root.querySelectorAll('.overlay');
+  if(layers.length)layers[layers.length-1].remove(); // 只移除最顶层，下层弹窗保留
 }
+/** 最顶层 dialog（子弹窗内 initSegs 等初始化用，避免误绑到被叠加的下层弹窗）。 */
+function lastDialog(){const ds=document.querySelectorAll('.dialog');return ds[ds.length-1]}
 function confirmBox(msg,opts={}){
   const acts=[{text:'取消',cls:'btn-ghost',fn:null},...(opts.buttons||[{text:opts.okText||'确定',cls:opts.danger?'btn-danger':'btn-primary',fn:opts.onOk}])];
   window.__cfns=acts.map(a=>()=>{closeConfirm();a.fn&&a.fn()});
@@ -1879,11 +1889,13 @@ function renderSettings(){
       </div>`;
   const backupBody=`
       <div class="set-body">
-        <button class="btn-primary" onclick="toast('演示原型：导出逻辑在正式版实现')">导出备份</button>
+        <button class="btn-primary" onclick="openBkExport()">导出备份</button>
         <button class="btn-ghost" style="margin-left:8px" onclick="toast('演示原型：导入逻辑在正式版实现')">导入备份</button>
         <button class="btn-ghost" style="margin-left:8px" onclick="openTxtExport()">导出 TXT</button>
         <div class="note">
+          · 导出前先选择<b>时间范围</b>（默认当前自然月，可快捷选上个月/上上个月/全部，或自定义），确定后选择保存位置（默认桌面）。<br>
           · 导出为带版本号的单 JSON 文件，文件名含导出日期。<br>
+          · 范围内事项：日历与范围有交集即含（显示自身完整起止）、待办按截止日期；分类与字段定义始终全量导出。<br>
           · 导入会覆盖当前全部数据，需二次确认；导入前的状态可撤销。<br>
           · 「导出 TXT」按时间范围导出事项清单（PRD 6.9）：默认当前月+下一自然月，结束最晚=开始+6 个月−1 天；日历显示自身起止、待办按截止日期，无截止不导出。<br>
           · 备份文件<b>不含邮箱授权码</b>；授权码在本机以 Windows DPAPI 加密存储。<br>
@@ -1922,7 +1934,7 @@ function renderSettings(){
         <button class="dis">提醒发送记录 <span class="badge">二期</span></button>
       </div>
       ${body}
-    </div></div>`,false,true,640);
+    </div></div>`,false,true,640,'settings'); // key=settings：页签切换/内部操作重渲染时替换旧层，不叠加
 }
 function dtGridHtml(){
   const first=dtCursor.slice(0,8)+'01',ws=weekStart(first);
@@ -1935,6 +1947,80 @@ function dtGridHtml(){
     cells+=`<div class="dt-cell ${dim?'dim':''}" onclick="dtCycle('${ds}',1)">${Number(ds.slice(8))}<span class="dtype ${dt}">${DTYPE_LABEL[dt]}</span></div>`;
   }
   return cells;
+}
+
+/* ================= 导出备份：范围选择弹窗（v1.29，方案确认中） ================= */
+/* 两段式导出（用户需求）：①选时间范围（默认当前自然月；快捷 本月/上个月/上上个月/全部；可自定义）
+   ②确定后弹「另存为」选保存位置（默认桌面）再导出。范围语义与 TXT 导出对齐：
+   日历=与范围交集、待办=截止日期在范围内；分类/字段定义结构性数据始终全量随包。 */
+let bkQuick='this'; // 当前快捷范围：this/prev/prev2/all/custom（手动改日期后为 custom）
+function bkRangeOf(unit){
+  const [y,m]=todayStr().split('-').map(Number);
+  const mk=(yy,mm)=>`${yy}-${p2(mm)}-01~${yy}-${p2(mm)}-${p2(dimDays(yy,mm))}`;
+  if(unit==='this')return mk(y,m);
+  if(unit==='prev')return mk(m===1?y-1:y,m===1?12:m-1);
+  if(unit==='prev2')return mk(m<=2?y-1:y,m<=2?m+10:m-2);
+  return null;
+}
+function openBkExport(){
+  bkQuick='this';
+  const [s,e]=bkRangeOf('this').split('~');
+  const chip=(u,label)=>`<button type="button" class="chip ${u==='this'?'on':''}" data-bk="${u}" onclick="bkFill('${u}')">${label}</button>`;
+  modal(`<div class="dhead">导出备份<button class="x" onclick="closeModal()">✕</button></div>
+    <div class="dbody"><div class="iform">
+      <div class="frow"><label>导出范围</label><span class="chips">
+        ${chip('this','本月')}${chip('prev','上个月')}${chip('prev2','上上个月')}${chip('all','全部')}
+      </span></div>
+      <div class="frow"><label>开始日期</label>${segDateHtml('bk-sd',s)}<span style="flex:1"></span></div>
+      <div class="frow"><label>结束日期</label>${segDateHtml('bk-ed',e)}</div>
+    </div>
+    <div class="note">
+      · 日历事项与范围有交集即导出（显示自身完整起止）；待办按截止日期在范围内；未设截止的事项仅「全部」包含。<br>
+      · 分类与自定义字段定义始终全量导出（导入后结构完整）。<br>
+      · 确定范围后选择保存位置（<b>默认桌面</b>），文件名含导出日期。
+    </div></div>
+    <div class="dfoot">
+      <span style="flex:1"></span>
+      <button class="btn-ghost" onclick="closeModal()">取消</button>
+      <button class="btn-primary" onclick="bkNext()">选择位置并导出</button>
+    </div>`);
+  initSegs(lastDialog());
+  // 手动改日期 = 自定义范围（去掉快捷高亮；「全部」时日期区已禁用不会触发）
+  ['bk-sd','bk-ed'].forEach(id=>{
+    const w=document.querySelector(`[data-segwrap="${id}"]`);
+    w.querySelectorAll('.seg').forEach(seg=>seg.addEventListener('input',bkMarkCustom));
+    w.querySelector('.seg-native').addEventListener('change',bkMarkCustom);
+  });
+}
+function bkMarkCustom(){bkQuick='custom';bkPaint()}
+function bkFill(unit){
+  bkQuick=unit;
+  if(unit==='all')toast('已选择：全部数据');
+  else{
+    const [s,e]=bkRangeOf(unit).split('~');
+    setSegDate('bk-sd',s);setSegDate('bk-ed',e);
+    toast(`已填入：${s} ~ ${e}`);
+  }
+  bkPaint();
+}
+/* 快捷高亮与日期可用态：直接改 class/style，不重建弹窗（保住输入状态） */
+function bkPaint(){
+  document.querySelectorAll('.chip[data-bk]').forEach(c=>c.classList.toggle('on',c.dataset.bk===bkQuick));
+  const off=bkQuick==='all';
+  ['bk-sd','bk-ed'].forEach(id=>{
+    const w=document.querySelector(`[data-segwrap="${id}"]`);
+    if(w)w.style.cssText=off?'opacity:.45;pointer-events:none':'';
+  });
+}
+function bkNext(){
+  if(bkQuick==='all'){
+    toast('演示原型：正式版将弹出「另存为」（默认桌面）并导出全部数据的备份');
+    return;
+  }
+  const s=segVal('bk-sd'),e=segVal('bk-ed');
+  if(!s||!e){toast('请先填完整的开始与结束日期，或选择快捷范围');return}
+  if(e<s){toast('结束日期不能早于开始日期');return}
+  toast(`演示原型：正式版将弹出「另存为」（默认桌面）并导出 ${s} ~ ${e} 范围的备份`);
 }
 
 /* ================= 导出 TXT：范围选择弹窗（PRD 6.9，v1.14） ================= */
@@ -1984,7 +2070,7 @@ function openTxtExport(){
       <button class="btn-ghost" onclick="closeModal()">取消</button>
       <button class="btn-primary" onclick="const s=segVal('tx-sd'),e2=segVal('tx-ed');toast(s&&e2?('演示原型：按 '+s+'~'+e2+' 导出 txt（正式版实现）'):'请先填完整的开始与结束日期')">选择位置并导出</button>
     </div>`);
-  initSegs(document.querySelector('.dialog .dbody'));
+  initSegs(lastDialog());
 }
 
 /* ================= 撤销（演示） ================= */

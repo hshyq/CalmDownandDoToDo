@@ -380,6 +380,8 @@ input[type="date"], input[type="time"] { cursor: pointer; }
 .chip { border: 1px solid var(--border); background: #fff; border-radius: 12px; padding: 2px 11px; font-size: 12px; cursor: pointer; color: var(--text); }
 .chip:hover { border-color: var(--accent); color: var(--accent); }
 .chip:disabled { opacity: 0.5; cursor: default; }
+/* 快捷范围选中态（备份导出 v1.29；与原型一致） */
+.chip.on { border-color: var(--accent); background: #e8f0fe; color: var(--accent); font-weight: 600; }
 /* P5 修复：覆盖旧占位样式残留的 center 对齐，避免待办列表宽度塌缩 */
 .todo-pane { align-items: stretch; justify-content: flex-start; color: var(--text); }
 /* P5：贯穿时间轴竖线 + 圆点/条目对齐 */
