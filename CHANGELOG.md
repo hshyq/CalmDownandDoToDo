@@ -549,3 +549,20 @@
 - 未动 schema（复用 habits/categories 既有 sort_order 列）；新增 IPC `reorder_categories`/`reorder_habits`（全量顺序整批事务提交+完整性校验）与 `UndoCmd::CategorySort/HabitSort`（sort 快照撤销）；前端共享 `features/dnd/reorder.ts` 纯函数（+7 vitest）与 `useListDrag` hook
 ### 验收
 - `cargo test` 64 passed（+3）、clippy 0、`vitest` 86 passed、`tsc`+`vite build` 通过、tauri dev 起窗正常；用户手测通过；随 v0.3.17 打包
+
+## 2026-10-11（导出备份优化，PRD v1.29）
+
+### 变更（用户需求，原型与范围语义经确认）
+- **导出备份改两段式**：点「导出备份」先弹时间范围弹窗——默认当前自然月，快捷 本月/上个月/上上个月/全部（高亮选中并填入，自然月跨年正确）；起止日期可自定义（手改后取消快捷高亮）；「全部」=不过滤且日期置灰禁用；确定后再弹另存为
+- **另存为默认目录改为桌面**（原 data\backups；极少数拿不到桌面的环境自动回退）
+- **范围过滤语义**：日历事项（有开始+结束）与范围有交集即导出（保留自身完整起止）、待办按截止日期在范围内、未设截止仅「全部」包含；分类与自定义字段定义始终全量随包（导入后结构完整）；导出格式不变（format_version 2），范围备份可直接导入
+### 实现
+- 后端 `export_backup(path, start?, end?)` 可选范围（成对/格式/顺序校验）+ `dump_range` 过滤收口 + 默认路径 `app.path().desktop_dir()`；前端 `backupQuickRange` 自然月纯函数（+3 vitest）与设置弹窗内范围弹窗（叠加层级，取消不影响设置弹窗）
+### 验收
+- `cargo test` 65 passed（+1 范围语义）、clippy 0、`vitest` 89 passed（+3）、`tsc`+`vite build` 通过、tauri dev 起窗正常；用户手测 TC-BAK-007~010 通过；随 v0.3.18 打包
+
+## 2026-10-11 v0.3.18 发布
+
+- 随版内容：PRD v1.29 导出备份优化（两段式范围选择+默认桌面）+ PRD v1.28（分类/打卡项拖拽排序、字段管理入设置弹窗、可见列对齐）
+- 打包：版本号三处升 0.3.18；**新建** `release\日历待办工具 v0.3.18\`（exe+使用说明）；临时目录启动验证通过后清理；v0.3.17 目录及生产 data\ 原地未动
+- 本地提交：feat 51d708f（v1.29）等；未推送、未建 Release（等指令 B/C）
