@@ -575,7 +575,7 @@ function renderTabs(){
   $('#tabbar').innerHTML=html;
 }
 /* 左侧事项类型拖拽排序（v1.28 ④）：普通分类整行可拖（总览/未分类固定）；上下半区决定插前/插后。
-   重排 state.categories 数组序后，事项弹窗/添加打卡/打卡项模板/打卡项新增行/字段可见性等
+   重排 state.categories 数组序后，事项弹窗/打卡项模板/打卡项新增行/字段可见性等
    所有「所属分类」下拉与勾选项均按数组序渲染，顺序自动同步，无需逐处修改。 */
 let tabDragId=null;
 function tabDragStart(e,id){
@@ -939,7 +939,7 @@ function renderCheckin(){
   const ranges=`<div class="ckranges">${Object.keys(CK_RANGES).map(r=>`<button class="${ckRange===r?'on':''}" onclick="ckRange='${r}';renderCheckin()">${CK_RANGE_LABEL[r]}</button>`).join('')}</div>`;
   let body='';
   if(habits.length===0){
-    body=`<div class="tempty" style="padding:40px">还没有打卡项——点击右上「＋ 添加打卡」创建第一个</div>`;
+    body=`<div class="tempty" style="padding:40px">还没有打卡项——可在「设置→打卡项」创建，或编辑事项时勾选「打卡」输入新名称</div>`;
   }else if(ckFocus===null){
     body=habits.map(h=>{
       const st=ckStats(h.id);
@@ -981,8 +981,7 @@ function renderCheckin(){
       <div class="cklist">${recs.map(it=>`<div class="ckitem" onclick="openItemModal(${it.id})"><span class="ldim">${ckDateOf(it)}</span>${esc(it.desc||it.title)}</div>`).join('')||'<div class="ldim">暂无记录</div>'}</div>`;
   }
   $('#cal').innerHTML=`<div class="ckview">
-    <div class="ckbar"><div class="ckchips">${chips}</div>${ranges}<span style="flex:1"></span>
-      <button class="btn-primary" onclick="openCheckinModal()">＋ 添加打卡</button></div>
+    <div class="ckbar"><div class="ckchips">${chips}</div>${ranges}</div>
     <div class="ckbody">${body}</div>
   </div>`;
 }
@@ -994,59 +993,8 @@ function quickCheckin(hid){
   toast(`已打卡「${h.name}」（今天）`);
   renderCheckin();
 }
-function openCheckinModal(){
-  const opts=habitSortedList().map(h=>`<option value="${h.id}">${esc(h.name)}</option>`).join('');
-  const catOpts=globalCatOpts;
-  modal(`<div class="dhead">添加打卡<button class="x" onclick="closeModal()">✕</button></div>
-    <div class="dbody">
-      <div class="frow"><label>打卡项</label><select id="ck-habit">${opts}<option value="new">＋ 新打卡项…</option></select></div>
-      <div class="frow" id="ck-newrow" style="display:none"><label>新名称</label><input type="text" id="ck-new" maxlength="30" placeholder="输入新打卡项名称"></div>
-      <div class="frow"><label>所属分类</label><select id="ck-cat">${catOpts()}</select></div>
-      <div class="frow"><label>标题</label><input type="text" id="ck-title" maxlength="100" placeholder="默认用打卡项名称"></div>
-      <div class="frow"><label>日期</label><input type="date" id="ck-date" value="${todayStr()}"></div>
-      <div class="frow"><label>备注</label><textarea id="ck-desc" rows="3" placeholder="存入描述字段，可空"></textarea></div>
-      <div id="ck-fields"></div>
-      <div class="ferr" id="ck-err"></div>
-    </div>
-    <div class="dfoot"><button class="btn-ghost" onclick="closeModal()">取消</button>
-      <button class="btn-primary" onclick="saveCheckin()">保存</button></div>`);
-  $('#ck-habit').onchange=function(){
-    $('#ck-newrow').style.display=this.value==='new'?'':'none';
-    ckApplyTpl(this.value);
-  };
-  ckApplyTpl($('#ck-habit').value);
-}
-/** 选中打卡项 → 带出模板（分类/标题/字段值），带出后可改（v1.25 ③） */
-function ckApplyTpl(sel){
-  const h=sel&&sel!=='new'?state.habits.find(x=>x.id===Number(sel)):null;
-  const t=h&&h.tpl||{};
-  const catId=t.cat||5; // 无模板默认未分类
-  $('#ck-cat').value=catId;
-  $('#ck-title').value=t.title||(h?h.name:'');
-  $('#ck-fields').innerHTML=fieldsSection(catId,t.fv||{});
-  $('#ck-cat').onchange=function(){$('#ck-fields').innerHTML=fieldsSection(Number(this.value),{})};
-}
-function saveCheckin(){
-  const sel=$('#ck-habit').value, date=$('#ck-date').value, desc=$('#ck-desc').value.trim();
-  const err=$('#ck-err');
-  let hid;
-  if(sel==='new'){
-    const name=$('#ck-new').value.trim();
-    if(!name){err.textContent='请输入新打卡项名称';return}
-    if(state.habits.some(h=>h.name===name)){err.textContent='已存在同名打卡项';return}
-    const h={id:habitSeq++,name,color:'#4F8EF7',sort:Math.max(0,...state.habits.map(x=>x.sort))+1};
-    state.habits.push(h); hid=h.id;
-  }else hid=Number(sel);
-  if(!date){err.textContent='请选择打卡日期';return}
-  const h=state.habits.find(x=>x.id===hid);
-  const catId=Number($('#ck-cat').value);
-  const title=$('#ck-title').value.trim()||h.name;
-  // 字段值：仅收集当前分类模板内字段（同事项保存语义，多选归数组）
-  const fv=collectFields('#ck-fields');
-  state.items.push({id:itemSeq++,cat:catId,title,desc,sd:date,st:'',ed:date,et:'',dd:'',dt:'',fv,ck:1,hid});
-  toast(`已添加打卡「${h.name}」 ${date}`);
-  closeModal(); renderCheckin();
-}
+/* v1.30：打卡视图「＋ 添加打卡」按钮与弹窗已移除——打卡记录创建入口=「今天打卡」快捷按钮、
+   事项弹窗勾「打卡」（选打卡项/输新名即建）；打卡项本身在设置→打卡项管理。 */
 /* ===== 日期类型管理（PRD 方案待确认：班/休/假，默认周一~五工作日、周六日休息日） ===== */
 let dtCursor=TODAY;
 let listRange='m1',listCS='',listCE='';
@@ -1766,7 +1714,7 @@ function fmDeleteAsk(fid){
 }
 
 /* ================= 设置 ================= */
-/** 分类 option 列表（打卡项新增行/添加打卡弹窗共用） */
+/** 分类 option 列表（打卡项新增行用） */
 function globalCatOpts(){return state.categories.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}
 function openSettings(){settingsTab='backup';renderSettings()}
 let settingsTab='backup';
@@ -1818,7 +1766,7 @@ function hbDel(id){
     }});
 }
 /* 打卡项拖拽排序（v1.28 ①）：仅 ⠿ 手柄可拖（不影响名称输入框选中文本），行上显示插入位置指示线；
-   松手按 sort 重排，打卡视图筛选行/全部页/事项弹窗与添加打卡的打卡项下拉均按此顺序展示 */
+   松手按 sort 重排，打卡视图筛选行/全部页/事项弹窗的打卡项下拉均按此顺序展示 */
 function habitSortedList(){return [...state.habits].sort((a,b)=>a.sort-b.sort)}
 let hbDragId=null;
 function hbDragStart(e,id){

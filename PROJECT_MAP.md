@@ -44,7 +44,7 @@
 │  ├─ components/             组件（按模块目录组织）
 │  │  ├─ TabBar/              左侧标签栏：总览/分类/未分类/⋮菜单；普通分类整行拖拽排序（v1.28，drop 指示线）；ColorPicker 墨刀式色盘（色板+SV 取色面板+色相条+HEX）
 │  │  ├─ Modal/               弹窗基座（遮罩/头部/底部；closeOnOverlayClick 时点遮罩等效取消，仅事项弹窗开启）
-│  │  ├─ Calendar/            日历视图 CalendarView（周/月/列表/打卡四态、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；ListView（列表视图，v1.18 起；含描述列 v1.21）；CheckinView（打卡视图：热力带+聚焦大图+添加打卡，v1.25；打卡项顺序=设置页签拖拽序，v1.28）；DayTypePanel（日期类型月历管理面板，v1.18 起嵌设置弹窗）
+│  │  ├─ Calendar/            日历视图 CalendarView（周/月/列表/打卡四态、横条泳道/+N、格内「+」快捷新建、横条拖拽改期/接收待办拖入、头尾拖拽改期、工具栏「‹ 今天 ›」、年月标题点击选择面板、日期类型每天色条+今日按类型染色，v1.16）；ListView（列表视图，v1.18 起；含描述列 v1.21）；CheckinView（打卡视图：热力带+聚焦大图，v1.25；v1.30 移除「添加打卡」按钮——记录创建走今天打卡/事项弹窗勾打卡；打卡项顺序=设置页签拖拽序，v1.28）；DayTypePanel（日期类型月历管理面板，v1.18 起嵌设置弹窗）
 │  │  ├─ Items/               事项弹窗 ItemModal（标准字段+打卡区 v1.25 + 自定义字段区按分类可见过滤；分段日期/时刻输入；「+」新增预填开始=结束=格日期）；CatSelect 通用色点下拉（分类/打卡项共用，输新名即建，v1.24/v1.25；选项顺序=分类列表序，v1.28 拖拽排序自动同步）
 │  │  ├─ Todo/                待办面板 TodoPanel（时间轴分组/折叠/虚拟滚动；条目可拖入日历改期；接收日历横条拖入转待办，v1.16；右侧显示截止日数字；当前时间线无文字标签，v1.22）
 │  │  ├─ Settings/           设置弹窗 SettingsDialog（数据备份：导出/导入/TXT 导出；日期类型页签，v1.18；字段管理页签 FieldPanel，v1.28；打卡项页签 HabitPanel 含 ⠿ 拖拽排序，v1.25/v1.28）
@@ -131,7 +131,7 @@
 | 备份导入导出 | `store/backup.rs`（dump 全量/dump_range 范围过滤，v1.29）+ `commands/backup.rs`（默认路径=桌面）+ `components/Settings/SettingsDialog.tsx`（两段式：范围弹窗→另存为）+ `features/export/dates.ts`（backupQuickRange 自然月纯函数） | 对照 TC-BAK-001~010；范围语义=日历交集/待办截止/无截止仅全部；分类与字段定义全量随包；导入前整库快照落 undo_tmp（D10） |
 | 列表视图（PRD 6.10） | `src/components/Calendar/ListView.tsx`（冻结列/统一排序/描述列/多选批量删除/动态字段列）；批量删除命令 `src-tauri/src/commands/items.rs::delete_items_batch` + `UndoCmd::ItemDeleteBatch` | 对照 TC-CAL-020~022、TC-UNDO-010；数据源=itemApi.list 全字段查询+全表字段值 |
 | 日期类型管理 | 设置弹窗「日期类型」页签（`DayTypePanel.tsx`） | 对照 TC-DT-001~007；日历格色条点击同样可切换 |
-| 打卡功能（PRD 6.11） | `CheckinView.tsx`/`HabitPanel.tsx`/`ItemModal` 打卡区/`features/checkin/heatmap.ts`（纯函数）；后端 `store/habits.rs`+`commands/habits.rs`+`list_checkins` | 对照 TC-CK-001~022；归属日期=开始优先截止兜底（后端校验+heatmap.ts 双侧对齐，改一侧必改另一侧）；删除打卡项仅解除身份不删事项；打卡项顺序=设置页签拖拽序（v1.28） |
+| 打卡功能（PRD 6.11） | `CheckinView.tsx`（热力带+聚焦大图，v1.30 移除添加打卡入口）/`HabitPanel.tsx`/`ItemModal` 打卡区/`features/checkin/heatmap.ts`（纯函数）；后端 `store/habits.rs`+`commands/habits.rs`+`list_checkins` | 对照 TC-CK-001~022；归属日期=开始优先截止兜底（后端校验+heatmap.ts 双侧对齐，改一侧必改另一侧）；删除打卡项仅解除身份不删事项；打卡项顺序=设置页签拖拽序（v1.28）；记录创建两入口=今天打卡/事项弹窗勾打卡（v1.30） |
 | TXT 导出（PRD 6.9） | `store/export.rs` + `commands/export.rs` + `features/export/dates.ts` + `SettingsDialog.tsx` | 对照 TC-EXP-001~006；上限规则前端 dates.ts 与后端 half_year_limit 对齐，改一侧必改另一侧 |
 | 二期邮件/调度 | `mailer.rs` / `scheduler.rs` / `mail.rs` | 对照 TC-MAIL-001~011；确认符合 AGENTS 红线 1 |
 | 界面文案 / 友好报错 | 组件内 + `services/ipc.ts` 错误转换 | 中文；AGENTS 第 5 节 |

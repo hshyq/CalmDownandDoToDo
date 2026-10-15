@@ -1,13 +1,10 @@
-// 打卡视图（PRD 6.11 v1.25）：工具栏「打卡」第四态。
-// 全部=每个打卡项一条紧凑热力带+统计；点单项=聚焦大热力图（列=周、行=周一~周日）+记录列表。
+// 打卡视图（PRD 6.11 v1.25；v1.30 移除「＋ 添加打卡」按钮与弹窗，记录创建走「今天打卡」/事项弹窗勾打卡）：
+// 工具栏「打卡」第四态。全部=每个打卡项一条紧凑热力带+统计；点单项=聚焦大热力图（列=周、行=周一~周日）+记录列表。
 // 悬停方块即时显示「yyyy-MM-dd，n 次」（自定义 tooltip，原生 title 有 ~1s 延迟）。
-import { useEffect, useMemo, useRef, useState } from "react";
-import Modal from "../Modal/Modal";
-import CatSelect from "../Items/CatSelect";
+import { useEffect, useMemo, useState } from "react";
 import ItemModal from "../Items/ItemModal";
-import FieldEditor from "../fields/FieldEditor";
 import { useAppStore } from "../../stores/appStore";
-import { fieldApi, habitApi, itemApi, inTauri } from "../../services/ipc";
+import { habitApi, itemApi, inTauri } from "../../services/ipc";
 import { mockHabitApi, mockItemApi } from "../../services/mock";
 import type { Category, Habit, Item } from "../../services/types";
 import { addDays, todayISO } from "../../features/calendar/dates";
@@ -24,9 +21,6 @@ import {
   type CkRange,
 } from "../../features/checkin/heatmap";
 import { decodeHabitTemplate } from "../../features/checkin/template";
-import { buildFieldPayloads, decodeFieldValue } from "../../features/fields/value";
-import type { FieldEditValue } from "../../features/fields/value";
-import type { FieldDef } from "../../services/types";
 
 const WEEK_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 
@@ -42,7 +36,6 @@ export default function CheckinView({ categories }: Props) {
   const [items, setItems] = useState<Item[] | null>(null);
   const [range, setRange] = useState<CkRange>("1m");
   const [focus, setFocus] = useState<number | null>(null);
-  const [addOpen, setAddOpen] = useState(false);
   const [editItem, setEditItem] = useState<Item | null>(null);
   const [toast, setToast] = useState("");
   const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
@@ -145,7 +138,7 @@ export default function CheckinView({ categories }: Props) {
   const body = (() => {
     if (habits === null) return <div className="tempty" style={{ padding: 40 }}>加载中…</div>;
     if (habits.length === 0) {
-      return <div className="tempty" style={{ padding: 40 }}>还没有打卡项——点击右上「＋ 添加打卡」创建第一个</div>;
+      return <div className="tempty" style={{ padding: 40 }}>还没有打卡项——可在「设置→打卡项」创建，或编辑事项时勾选「打卡」输入新名称</div>;
     }
     if (focus === null) {
       // 全部总览：每项一条紧凑热力带 + 统计 + 今天打卡（靠右）。
@@ -258,30 +251,8 @@ export default function CheckinView({ categories }: Props) {
             </button>
           ))}
         </div>
-        <span style={{ flex: 1 }} />
-        <button type="button" className="btn-primary" onClick={() => setAddOpen(true)}>＋ 添加打卡</button>
       </div>
       <div className="ckbody">{body}</div>
-
-      {addOpen ? (
-        <AddCheckinModal
-          habits={habits ?? []}
-          categories={categories}
-          onCreateHabit={async (name) => {
-            const h = await habitSrc.create(name, "#4F8EF7");
-            setHabits((prev) => [...(prev ?? []), h]);
-            return h.id;
-          }}
-          today={today}
-          uncatId={uncatId}
-          onClose={() => setAddOpen(false)}
-          onSaved={async (msg) => {
-            setAddOpen(false);
-            showToast(msg);
-            await load();
-          }}
-        />
-      ) : null}
 
       {editItem ? (
         <ItemModal
@@ -305,232 +276,3 @@ export default function CheckinView({ categories }: Props) {
   );
 }
 
-/** 添加打卡弹窗（PRD 6.11 v1.25）：打卡项（可选已有/输新名即建）+ 日期（默认今天，可补卡）+ 备注；
- *  选打卡项带出模板（分类/标题/字段值，v1.25 ③），带出后可编辑。 */
-function AddCheckinModal({
-  habits,
-  categories,
-  onCreateHabit,
-  today,
-  uncatId,
-  onClose,
-  onSaved,
-}: {
-  habits: Habit[];
-  categories: Category[];
-  onCreateHabit: (name: string) => Promise<number>;
-  today: string;
-  uncatId: number;
-  onClose: () => void;
-  onSaved: (msg: string) => void | Promise<void>;
-}) {
-  const createItem = useAppStore((s) => s.createItem);
-  const [habitId, setHabitId] = useState<number>(habits[0]?.id ?? 0);
-  const [catId, setCatId] = useState<number>(uncatId);
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState(today);
-  const [desc, setDesc] = useState("");
-  const [defs, setDefs] = useState<FieldDef[] | null>(null);
-  const [fv, setFv] = useState<Record<number, FieldEditValue>>({});
-  const [err, setErr] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  /** 选打卡项 → 带出模板；新项无模板时回落（未分类 + 项名作标题）。 */
-  const applyHabit = (hid: number) => {
-    setHabitId(hid);
-    const h = habits.find((x) => x.id === hid);
-    const tpl = decodeHabitTemplate(h?.template_json ?? null);
-    setCatId(tpl?.categoryId ?? uncatId);
-    setTitle(tpl?.title || h?.name || "");
-    setFv({});
-    if (tpl) {
-      // 模板值并进 valsJson 供 defs 加载后预填
-      valsJsonRef.current = tpl.values;
-    } else {
-      valsJsonRef.current = {};
-    }
-  };
-
-  // 模板值缓冲（避免闭包时序）：defs 按 catId 加载完成时读取
-  const valsJsonRef = useRef<Record<string, string | null>>({});
-
-  // 初始（首个打卡项）带出
-  useEffect(() => {
-    if (habits.length > 0) applyHabit(habits[0].id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // 分类变化 → 按新分类加载字段定义；预填模板值（仅首次带出，手动切分类清空）
-  useEffect(() => {
-    let alive = true;
-    setDefs(null);
-    fieldApi.list(catId)
-      .then((ds) => {
-        if (!alive) return;
-        setDefs(ds);
-        const next: Record<number, FieldEditValue> = {};
-        for (const d of ds) {
-          const raw = valsJsonRef.current[String(d.id)];
-          if (raw !== undefined && raw !== null) {
-            const decoded = decodeFieldValue(d.type, raw);
-            if (decoded !== null) next[d.id] = decoded;
-          }
-        }
-        setFv(next);
-      })
-      .catch(() => {
-        if (alive) setDefs([]);
-      });
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [catId]);
-
-  const save = async () => {
-    if (habits.length === 0) {
-      setErr("请先输入新打卡项名称创建打卡项");
-      return;
-    }
-    if (!date) {
-      setErr("请选择打卡日期");
-      return;
-    }
-    const h = habits.find((x) => x.id === habitId);
-    if (!h) {
-      setErr("请选择打卡项");
-      return;
-    }
-    setBusy(true);
-    setErr("");
-    try {
-      await createItem({
-        categoryId: catId,
-        title: title.trim() || h.name,
-        description: desc.trim() || null,
-        startDate: date,
-        startTime: null,
-        endDate: date,
-        endTime: null,
-        dueDate: null,
-        dueTime: null,
-        isCheckin: true,
-        habitId: h.id,
-        fieldValues: (defs ?? []).length > 0 ? buildFieldPayloads(defs ?? [], fv) : undefined,
-      });
-      await onSaved(`已添加打卡「${h.name}」 ${date}`);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "保存失败，请重试");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Modal
-      title="添加打卡"
-      onClose={onClose}
-      width={420}
-      footer={
-        <>
-          <button type="button" className="btn-ghost" onClick={onClose}>取消</button>
-          <button type="button" className="btn-primary" disabled={busy} onClick={() => void save()}>保存</button>
-        </>
-      }
-    >
-      <div className="iform">
-        <div className="frow">
-          <label>打卡项</label>
-          {habits.length > 0 ? (
-            <CatSelect items={habits} value={habitId} onChange={applyHabit} onCreate={onCreateHabit} />
-          ) : (
-            <NewHabitInput onCreate={onCreateHabit} onCreated={applyHabit} placeholder="输入名称创建第一个打卡项" />
-          )}
-        </div>
-        <div className="frow">
-          <label>所属分类</label>
-          <CatSelect
-            items={categories}
-            value={catId}
-            onChange={(id) => {
-              setCatId(id);
-              valsJsonRef.current = {}; // 手动切分类清空带出值（值不跨分类迁移）
-            }}
-          />
-        </div>
-        <div className="frow">
-          <label>标题</label>
-          <input type="text" maxLength={100} value={title} placeholder="默认用打卡项名称" onChange={(e) => setTitle(e.target.value)} />
-        </div>
-        <div className="frow">
-          <label>日期</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div className="frow">
-          <label>备注</label>
-          <textarea rows={3} value={desc} placeholder="存入描述字段，可空" onChange={(e) => setDesc(e.target.value)} />
-        </div>
-        {defs === null ? null : defs.length === 0 ? null : (
-          <div className="fsec">
-            <div className="sec-t">自定义字段（随所属分类的模板变化）</div>
-            {defs.map((d) => (
-              <div key={d.id} className="frow fv-row">
-                <label>{d.name}</label>
-                <FieldEditor
-                  field={d}
-                  value={fv[d.id] ?? (d.type === "multi_choice" ? [] : "")}
-                  onChange={(v) => setFv((prev) => ({ ...prev, [d.id]: v }))}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-        {err !== "" ? <div className="ferr show">{err}</div> : null}
-      </div>
-    </Modal>
-  );
-}
-
-/** 打卡项为空时的内联新建输入（创建后选中）。 */
-function NewHabitInput({
-  onCreate,
-  onCreated,
-  placeholder,
-}: {
-  onCreate: (name: string) => Promise<number>;
-  onCreated: (id: number) => void;
-  placeholder: string;
-}) {
-  const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const create = async () => {
-    if (busy || name.trim() === "") return;
-    setBusy(true);
-    setErr("");
-    try {
-      onCreated(await onCreate(name.trim()));
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "创建失败，请重试");
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <span style={{ display: "flex", gap: 6, flex: 1, alignItems: "center" }}>
-      <input
-        type="text"
-        value={name}
-        maxLength={30}
-        placeholder={placeholder}
-        disabled={busy}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") void create();
-        }}
-      />
-      <button type="button" className="btn-ghost" disabled={busy || name.trim() === ""} onClick={() => void create()}>
-        创建
-      </button>
-      {err !== "" ? <span className="ldim">{err}</span> : null}
-    </span>
-  );
-}
