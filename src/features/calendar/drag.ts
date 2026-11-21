@@ -30,7 +30,8 @@ export function todoDropDates(dropDate: string): ShiftedDates {
 /**
  * 日历横条拖入待办面板的数据变更（PRD 5.2 v1.16，用户确认）：
  * 结束日期→截止日期、结束时刻→截止时刻，结束日期/时刻清空，开始信息保留；
- * 返回完整 ItemDraft（update_item 为全字段更新，必须携带全部现有字段，仅 fieldValues 不传以保留）。
+ * 返回完整 ItemDraft（update_item 为全字段更新，必须携带全部现有字段，仅 fieldValues 不传以保留）；
+ * isCheckin/habitId 不传 → 打卡身份与关联保留（TC-CK-023，后端缺省=保留）。
  */
 export function calendarToTodoDraft(it: Item): ItemDraft {
   return {

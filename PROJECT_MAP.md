@@ -131,7 +131,7 @@
 | 备份导入导出 | `store/backup.rs`（dump 全量/dump_range 范围过滤，v1.29）+ `commands/backup.rs`（默认路径=桌面）+ `components/Settings/SettingsDialog.tsx`（两段式：范围弹窗→另存为）+ `features/export/dates.ts`（backupQuickRange 自然月纯函数） | 对照 TC-BAK-001~010；范围语义=日历交集/待办截止/无截止仅全部；分类与字段定义全量随包；导入前整库快照落 undo_tmp（D10） |
 | 列表视图（PRD 6.10） | `src/components/Calendar/ListView.tsx`（冻结列/统一排序/描述列/多选批量删除/动态字段列）；批量删除命令 `src-tauri/src/commands/items.rs::delete_items_batch` + `UndoCmd::ItemDeleteBatch` | 对照 TC-CAL-020~022、TC-UNDO-010；数据源=itemApi.list 全字段查询+全表字段值 |
 | 日期类型管理 | 设置弹窗「日期类型」页签（`DayTypePanel.tsx`） | 对照 TC-DT-001~007；日历格色条点击同样可切换 |
-| 打卡功能（PRD 6.11） | `CheckinView.tsx`（热力带+聚焦大图，v1.30 移除添加打卡入口）/`HabitPanel.tsx`/`ItemModal` 打卡区/`features/checkin/heatmap.ts`（纯函数）；后端 `store/habits.rs`+`commands/habits.rs`+`list_checkins` | 对照 TC-CK-001~022；归属日期=开始优先截止兜底（后端校验+heatmap.ts 双侧对齐，改一侧必改另一侧）；删除打卡项仅解除身份不删事项；打卡项顺序=设置页签拖拽序（v1.28）；记录创建两入口=今天打卡/事项弹窗勾打卡（v1.30） |
+| 打卡功能（PRD 6.11） | `CheckinView.tsx`（热力带+聚焦大图，v1.30 移除添加打卡入口）/`HabitPanel.tsx`/`ItemModal` 打卡区/`features/checkin/heatmap.ts`（纯函数）；后端 `store/habits.rs`+`commands/habits.rs`+`list_checkins` | 对照 TC-CK-001~023；归属日期=开始优先截止兜底（后端校验+heatmap.ts 双侧对齐，改一侧必改另一侧）；删除打卡项仅解除身份不删事项；打卡项顺序=设置页签拖拽序（v1.28）；记录创建两入口=今天打卡/事项弹窗勾打卡（v1.30）；拖拽改期/转待办不清打卡身份（update_item 打卡字段缺省=保留，TC-CK-023） |
 | TXT 导出（PRD 6.9） | `store/export.rs` + `commands/export.rs` + `features/export/dates.ts` + `SettingsDialog.tsx` | 对照 TC-EXP-001~006；上限规则前端 dates.ts 与后端 half_year_limit 对齐，改一侧必改另一侧 |
 | 二期邮件/调度 | `mailer.rs` / `scheduler.rs` / `mail.rs` | 对照 TC-MAIL-001~011；确认符合 AGENTS 红线 1 |
 | 界面文案 / 友好报错 | 组件内 + `services/ipc.ts` 错误转换 | 中文；AGENTS 第 5 节 |

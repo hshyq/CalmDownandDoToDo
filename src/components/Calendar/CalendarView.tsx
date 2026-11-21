@@ -148,7 +148,8 @@ export default function CalendarView() {
   };
 
   // 拖拽改期（PRD 5.3 v1.8）：仅改起止日期，标题/描述/截止/分类/字段值原样保留；
-  // 走 update_item（已接撤销包装），不传 fieldValues → 库中字段值不动。
+  // 走 update_item（已接撤销包装），不传 fieldValues → 库中字段值不动；
+  // 不传 isCheckin/habitId → 打卡身份与关联保留（TC-CK-023，后端缺省=保留）。
   const moveItem = async (id: number, dates: ShiftedDates) => {
     try {
       const detail = await itemApi.getDetail(id);

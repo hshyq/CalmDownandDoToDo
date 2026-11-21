@@ -92,7 +92,8 @@ export const mockItemApi = {
     const it = { ...items[idx], category_id: draft.categoryId, title: draft.title,
       description: draft.description, start_date: draft.startDate, start_time: draft.startTime,
       end_date: draft.endDate, end_time: draft.endTime, due_date: draft.dueDate, due_time: draft.dueTime,
-      is_checkin: draft.isCheckin ?? false,
+      // 打卡字段缺省=保留原值（与后端 resolve_update 对齐，TC-CK-023：拖拽改期不清打卡身份）
+      is_checkin: draft.isCheckin ?? items[idx].is_checkin,
       habit_id: draft.habitId !== undefined ? draft.habitId : items[idx].habit_id };
     items[idx] = it;
     return { ...it };

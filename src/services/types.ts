@@ -82,7 +82,8 @@ export interface ItemDraft {
   endTime: string | null;
   dueDate: string | null;
   dueTime: string | null;
-  /** 打卡身份与所属打卡项（PRD 6.11 v1.25；取消打卡时 habitId 传原值保留关联） */
+  /** 打卡身份与所属打卡项（PRD 6.11 v1.25）。**编辑时缺省=保留原值**（拖拽改期/转待办不传，
+   *  后端 resolve_update 兜底，TC-CK-023）；取消打卡勾选时 habitId 传原值保留关联；新建缺省=无打卡。 */
   isCheckin?: boolean;
   habitId?: number | null;
   /** 当前分类模板字段值（P6：仅覆盖当前模板字段，切分类不迁移旧值，PRD 4.3） */
